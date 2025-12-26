@@ -7,6 +7,14 @@
 </head>
 <body>
 
+<script>
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Login required");
+    window.location.href = "login.html";
+  }
+</script>
+
 <header class="navbar">
   <div class="logo">Academic Exchange</div>
   <div class="nav-actions">
@@ -16,27 +24,22 @@
 </header>
 
 <main class="page">
+  <h2>Add Your Item</h2>
 
-  <h2>Add Book for Sell / Rent</h2>
-
-  <div class="card">
-    <input id="title" placeholder="Book Title">
+  <div class="form-card">
+    <input id="title" placeholder="Item Title">
     <textarea id="description" placeholder="Description"></textarea>
     <input id="price" type="number" placeholder="Price">
-
+    
     <select id="type">
       <option value="sell">Sell</option>
       <option value="rent">Rent</option>
     </select>
 
-    <label>Upload exactly 3 images</label>
-    <input id="images" type="file" accept="image/*" multiple>
+    <input type="file" id="images" multiple accept="image/*">
 
-    <button type="button" onclick="addProduct()" class="primary-btn">
-    Submit
-    </button>
+    <button class="primary-btn" onclick="addProduct()">Submit</button>
   </div>
-
 </main>
 
 <script src="./js/add.js"></script>

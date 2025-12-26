@@ -1,20 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
 
-<header class="top-nav">
-  <h2>Admin Dashboard</h2>
+<header class="navbar">
+  <div class="logo">Academic Exchange - Admin</div>
+  <div class="nav-actions">
+    <a href="#" onclick="logout()">Logout</a>
+  </div>
 </header>
 
-<main class="container">
-  <h3>All Listings</h3>
-  <div id="adminListings" class="product-grid"></div>
+<main class="page">
+  <h2>Admin Dashboard</h2>
+
+  <section>
+    <h3>All Users</h3>
+    <table id="usersTable" border="1" width="100%">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Email</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <br><br>
+
+  <section>
+    <h3>All Products</h3>
+    <table id="productsTable" border="1" width="100%">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Title</th>
+          <th>Price</th>
+          <th>Type</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
 </main>
 
-<script src="js/admin.js"></script>
+<script src="./js/admin.js"></script>
 </body>
 </html>

@@ -11,14 +11,18 @@ if (!token) {
 function addProduct() {
   const files = document.getElementById("images").files;
 
-  if (files.length !== 3) {
-    alert("Please upload exactly 3 images");
+  if (!title.value || !price.value || !type.value) {
+    alert("Please fill all required fields");
+    return;
+  }
+
+  if (files.length < 1 || files.length > 3) {
+    alert("Please upload exactly 1 or  3 images");
     return;
   }
 
   // Try to get user location
   if (!navigator.geolocation) {
-    alert("Location not supported by browser");
     submitWithoutLocation(files);
     return;
   }
@@ -28,7 +32,7 @@ function addProduct() {
       submitWithLocation(files, pos.coords.latitude, pos.coords.longitude);
     },
     () => {
-      // If user denies location
+      // User denied location
       submitWithoutLocation(files);
     }
   );
@@ -43,7 +47,7 @@ function submitWithLocation(files, lat, lng) {
   formData.append("price", price.value);
   formData.append("type", type.value);
 
-  // 📍 location fields
+  // 📍 Location
   formData.append("latitude", lat);
   formData.append("longitude", lng);
 
@@ -81,7 +85,7 @@ function sendForm(formData) {
   })
     .then(res => res.json())
     .then(data => {
-      alert(data.message);
+      alert(data.message || "Product added");
       window.location.href = "index.html";
     })
     .catch(() => alert("Failed to add product"));
@@ -90,5 +94,6 @@ function sendForm(formData) {
 // ================== LOGOUT ==================
 function logout() {
   localStorage.removeItem("token");
-  window.location.href = "index.html";
+  localStorage.removeItem("role");
+  window.location.href = "login.html";
 }
