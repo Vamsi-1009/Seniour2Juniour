@@ -3,62 +3,38 @@ dotenv.config();
 
 const http = require("http");
 const app = require("./app");
-
-/* ===============================
-   CREATE HTTP SERVER
-================================ */
 const server = http.createServer(app);
 
-/* ===============================
-   SOCKET.IO SETUP
-================================ */
+const db = require("./config/db");
+
 const { Server } = require("socket.io");
-
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
+  cors: { origin: "*" }
 });
 
-/* ===============================
-   SOCKET EVENTS (1-to-1 CHAT)
-================================ */
 io.on("connection", socket => {
-  console.log("User connected:", socket.id);
+  console.log("User connected");
 
-  // Join private room (buyer-seller)
-  socket.on("joinRoom", ({ roomId }) => {
+  socket.on("joinRoom", roomId => {
     socket.join(roomId);
-    console.log(`Socket ${socket.id} joined room ${roomId}`);
   });
 
-  // Send message to room
   socket.on("sendMessage", data => {
-    /*
-      data = {
-        roomId,
-        senderId,
-        receiverId,
-        message,
-        time
-      }
-    */
+    const { roomId, senderId, receiverId, message } = data;
 
-    // Emit to both users in that room
-    io.to(data.roomId).emit("receiveMessage", data);
-  });
+    // save to DB
+    db.run(
+      `INSERT INTO messages (room_id, sender_id, receiver_id, message)
+       VALUES (?, ?, ?, ?)`,
+      [roomId, senderId, receiverId, message]
+    );
 
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+    // send realtime
+    io.to(roomId).emit("receiveMessage", data);
   });
 });
 
-/* ===============================
-   START SERVER
-================================ */
 const PORT = process.env.PORT || 5000;
-
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
