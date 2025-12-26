@@ -24,6 +24,7 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/listings", listingRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/admin", require("./routes/adminRoutes"));
 
 // test route
 app.get("/", (req, res) => {
@@ -31,3 +32,5 @@ app.get("/", (req, res) => {
 });
 
 module.exports = app;
+
+
