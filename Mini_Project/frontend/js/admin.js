@@ -1,28 +1,75 @@
 const API_URL = "http://localhost:5000";
+const token = localStorage.getItem("token");
+const role = localStorage.getItem("role");
 
-function adminLogin() {
-  const email = document.getElementById("adminEmail").value;
-  const password = document.getElementById("adminPassword").value;
+if (!token || role !== "admin") {
+  alert("Admin access only");
+  window.location.href = "admin-login.html";
+}
 
-  if (!email || !password) {
-    alert("Enter email & password");
-    return;
-  }
+// ================= LOAD USERS =================
+fetch(`${API_URL}/api/admin/users`, {
+  headers: { Authorization: token }
+})
+  .then(res => res.json())
+  .then(users => {
+    // Count
+    document.getElementById("totalUsers").innerText = users.length;
 
-  fetch(`${API_URL}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password })
+    // Table
+    const tbody = document.querySelector("#usersTable tbody");
+    tbody.innerHTML = "";
+
+    users.forEach(u => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${u.id}</td>
+          <td>${u.name}</td>
+          <td>${u.email}</td>
+        </tr>
+      `;
+    });
+  });
+
+// ================= LOAD PRODUCTS =================
+fetch(`${API_URL}/api/admin/listings`, {
+  headers: { Authorization: token }
+})
+  .then(res => res.json())
+  .then(products => {
+    document.getElementById("totalProducts").innerText = products.length;
+
+    const tbody = document.querySelector("#productsTable tbody");
+    tbody.innerHTML = "";
+
+    products.forEach(p => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${p.id}</td>
+          <td>${p.title}</td>
+          <td>₹${p.price}</td>
+          <td>${p.type}</td>
+          <td>
+            <button onclick="deleteProduct(${p.id})">Delete</button>
+          </td>
+        </tr>
+      `;
+    });
+  });
+
+// ================= DELETE =================
+function deleteProduct(id) {
+  if (!confirm("Delete this product?")) return;
+
+  fetch(`${API_URL}/api/admin/listings/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: token }
   })
-    .then(res => res.json())
-    .then(data => {
-      if (data.token && data.role === "admin") {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("role", "admin");
-        window.location.href = "admin.html";
-      } else {
-        alert("Invalid admin credentials");
-      }
-    })
-    .catch(() => alert("Login failed"));
+    .then(() => location.reload());
+}
+
+// ================= LOGOUT =================
+function logout() {
+  localStorage.clear();
+  window.location.href = "admin-login.html";
 }

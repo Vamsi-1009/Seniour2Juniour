@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard | Academic Exchange</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<!-- 🔐 ADMIN AUTH CHECK -->
+<script>
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
+
+  if (!token || role !== "admin") {
+    alert("Admin access only");
+    window.location.href = "admin-login.html";
+  }
+</script>
+
+<header class="navbar">
+  <div class="logo">Academic Exchange — Admin Panel</div>
+
+  <!-- ✅ RIGHT SIDE -->
+  <div class="nav-actions">
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+</header>
+
+<main class="page">
+  <h2>Admin Dashboard</h2>
+
+  <!-- ================= STATS ================= -->
+  <div class="admin-stats">
+    <div class="stat-card">
+      <h1 id="totalUsers">0</h1>
+      <p>Total Users</p>
+    </div>
+    <div class="stat-card">
+      <h1 id="totalProducts">0</h1>
+      <p>Products Listed</p>
+    </div>
+  </div>
+
+  <!-- ================= USERS ================= -->
+  <section>
+    <h3>All Users</h3>
+    <table id="usersTable" width="100%" cellpadding="8">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Email</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <br>
+
+  <!-- ================= PRODUCTS ================= -->
+  <section>
+    <h3>All Products</h3>
+    <table id="productsTable" width="100%" cellpadding="8">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Title</th>
+          <th>Price</th>
+          <th>Type</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+</main>
+
+<script src="../js/admin.js"></script>
+
+<script>
+  function logout() {
+    localStorage.clear();
+    window.location.href = "admin-login.html";
+  }
+</script>
+
+</body>
+</html>

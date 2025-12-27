@@ -3,93 +3,25 @@ let allProducts = [];
 let userLocation = null;
 
 /* =================================================
-   DEMO PRODUCTS (fallback only)
-================================================= */
-const demoProducts = [
-  {
-    id: 1,
-    title: "DBMS – Concepts & Practice",
-    price: 300,
-    type: "sell",
-    image: "https://images.unsplash.com/photo-1555949963-aa79dcee981c",
-    fromBackend: false
-  },
-  {
-    id: 2,
-    title: "Operating Systems",
-    price: 150,
-    type: "rent",
-    image: "https://images.unsplash.com/photo-1518770660439-4636190af475",
-    fromBackend: false
-  },
-  {
-    id: 3,
-    title: "Computer Networks",
-    price: 280,
-    type: "sell",
-    image: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d",
-    fromBackend: false
-  },
-  {
-    id: 4,
-    title: "Data Structures",
-    price: 200,
-    type: "rent",
-    image: "https://images.unsplash.com/photo-1513258496099-48168024aec0",
-    fromBackend: false
-  },
-  {
-    id: 5,
-    title: "Java Programming",
-    price: 350,
-    type: "sell",
-    image: "https://images.unsplash.com/photo-1587620962725-abab7fe55159",
-    fromBackend: false
-  },
-  {
-    id: 6,
-    title: "Engineering Graph Sheet Set",
-    price: 120,
-    type: "sell",
-    image: "https://i.imgur.com/0kXQJZp.png",
-    fromBackend: false
-  },
-  {
-    id: 7,
-    title: "Medical Stethoscope",
-    price: 600,
-    type: "sell",
-    image: "https://i.imgur.com/7FqRZzK.jpg",
-    fromBackend: false
-  },
-  {
-    id: 8,
-    title: "MBBS Anatomy Notes",
-    price: 300,
-    type: "rent",
-    image: "https://i.imgur.com/5f7oT5p.jpg",
-    fromBackend: false
-  }
-];
-
-/* =================================================
-   RENDER PRODUCTS
+   RENDER PRODUCTS (FROM DB ONLY)
 ================================================= */
 function renderProducts(products) {
   const container = document.getElementById("listings");
   container.innerHTML = "";
 
   if (!products || products.length === 0) {
-    container.innerHTML = "<p>No items found near you.</p>";
+    container.innerHTML = "<p>No items found.</p>";
     return;
   }
 
   products.forEach(p => {
-    const imgSrc = p.fromBackend ? `${API_URL}${p.image}` : p.image;
+    const imagePath = p.images
+      ? `${API_URL}${JSON.parse(p.images)[0]}`
+      : "";
 
     container.innerHTML += `
       <div class="product-card" onclick="openProduct(${p.id})">
-        <img src="${imgSrc}" alt="${p.title}">
+        <img src="${imagePath}" alt="${p.title}">
         <div class="product-info">
           <div class="product-title">${p.title}</div>
           <div class="product-price">₹${p.price}</div>
@@ -101,11 +33,11 @@ function renderProducts(products) {
 }
 
 /* =================================================
-   LOCATION – GET USER LOCATION (5 KM)
+   GET USER LOCATION (OPTIONAL – 5 KM)
 ================================================= */
 function getUserLocation() {
   if (!navigator.geolocation) {
-    loadWithoutLocation();
+    loadProducts();
     return;
   }
 
@@ -118,18 +50,13 @@ function getUserLocation() {
       loadProductsNearMe();
     },
     () => {
-      loadWithoutLocation();
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 8000,
-      maximumAge: 0
+      loadProducts();
     }
   );
 }
 
 /* =================================================
-   LOAD PRODUCTS NEAR USER (BACKEND)
+   LOAD PRODUCTS WITH LOCATION
 ================================================= */
 function loadProductsNearMe() {
   fetch(
@@ -137,54 +64,30 @@ function loadProductsNearMe() {
   )
     .then(res => res.json())
     .then(data => {
-      if (!data || data.length === 0) {
-        allProducts = demoProducts.slice();
-      } else {
-        allProducts = data.map(p => ({
-          id: p.id,
-          title: p.title,
-          price: p.price,
-          type: p.type,
-          image: JSON.parse(p.images)[0],
-          fromBackend: true
-        }));
-      }
+      allProducts = data || [];
       renderProducts(allProducts);
     })
-    .catch(() => {
-      loadWithoutLocation();
-    });
+    .catch(() => loadProducts());
 }
 
 /* =================================================
-   FALLBACK – NO LOCATION
+   LOAD ALL PRODUCTS (NO LOCATION)
 ================================================= */
-function loadWithoutLocation() {
+function loadProducts() {
   fetch(`${API_URL}/api/listings`)
     .then(res => res.json())
     .then(data => {
-      if (!data || data.length === 0) {
-        allProducts = demoProducts.slice();
-      } else {
-        allProducts = data.map(p => ({
-          id: p.id,
-          title: p.title,
-          price: p.price,
-          type: p.type,
-          image: JSON.parse(p.images)[0],
-          fromBackend: true
-        }));
-      }
+      allProducts = data || [];
       renderProducts(allProducts);
     })
     .catch(() => {
-      allProducts = demoProducts.slice();
-      renderProducts(allProducts);
+      document.getElementById("listings").innerHTML =
+        "<p>Failed to load products.</p>";
     });
 }
 
 /* =================================================
-   FILTERS & SEARCH
+   SEARCH & FILTER
 ================================================= */
 const priceSlider = document.getElementById("priceSlider");
 const priceValue = document.getElementById("priceValue");
@@ -207,11 +110,9 @@ function applyFilters() {
 }
 
 function clearFilters() {
-  if (searchInput) searchInput.value = "";
-  if (priceSlider && priceValue) {
-    priceSlider.value = 2000;
-    priceValue.textContent = "₹2000";
-  }
+  searchInput.value = "";
+  priceSlider.value = 2000;
+  priceValue.textContent = "2000";
   renderProducts(allProducts);
 }
 
@@ -227,12 +128,14 @@ function openProduct(id) {
 }
 
 /* =================================================
+   LOGOUT
+================================================= */
+function logout() {
+  localStorage.clear();
+  window.location.href = "login.html";
+}
+
+/* =================================================
    START APP
 ================================================= */
 getUserLocation();
-
-function logout() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("role");
-  window.location.href = "login.html";
-}
