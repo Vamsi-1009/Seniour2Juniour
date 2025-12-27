@@ -2,7 +2,9 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-const ADMIN_EMAIL = "admin@academicexchange.com";
+// 🔐 DUMMY ADMIN CREDENTIALS
+const ADMIN_EMAIL = "admin@admin.com";
+const ADMIN_PASSWORD = "admin123";
 
 // =======================
 // REGISTER (USER ONLY)
@@ -12,12 +14,10 @@ exports.register = async (req, res) => {
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({
-        message: "All fields are required"
-      });
+      return res.status(400).json({ message: "All fields are required" });
     }
 
-    // ❌ Prevent admin email from registering
+    // ❌ Block admin email registration
     if (email === ADMIN_EMAIL) {
       return res.status(403).json({
         message: "Admin account cannot be registered"
@@ -26,9 +26,7 @@ exports.register = async (req, res) => {
 
     User.findByEmail(email, async (err, user) => {
       if (err) return res.status(500).json({ message: "Database error" });
-      if (user) {
-        return res.status(400).json({ message: "User already exists" });
-      }
+      if (user) return res.status(400).json({ message: "User already exists" });
 
       const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -37,10 +35,12 @@ exports.register = async (req, res) => {
           name,
           email,
           password: hashedPassword,
-          role: "user" // 👈 USER ROLE
+          role: "user"
         },
         err => {
-          if (err) return res.status(500).json({ message: "Registration failed" });
+          if (err) {
+            return res.status(500).json({ message: "Registration failed" });
+          }
           res.status(201).json({ message: "Registration successful" });
         }
       );
@@ -51,13 +51,13 @@ exports.register = async (req, res) => {
 };
 
 // =======================
-// LOGIN (USER + ADMIN)
+// LOGIN (ADMIN + USER)
 // =======================
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
-  // ================= ADMIN LOGIN =================
-  if (email === ADMIN_EMAIL && password === "Admin@123") {
+  // ===== ADMIN LOGIN (DUMMY) =====
+  if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
     const token = jwt.sign(
       { id: 0, email, role: "admin" },
       process.env.JWT_SECRET || "dev_secret_key",
@@ -70,7 +70,7 @@ exports.login = async (req, res) => {
     });
   }
 
-  // ================= USER LOGIN =================
+  // ===== USER LOGIN =====
   User.findByEmail(email, async (err, user) => {
     if (err) return res.status(500).json({ message: "Database error" });
     if (!user) {

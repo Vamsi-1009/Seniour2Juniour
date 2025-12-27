@@ -1,22 +1,14 @@
 const express = require("express");
 const router = express.Router();
+
 const listingController = require("../controllers/listingController");
 const authMiddleware = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
 
-/*
-  GET
-  /api/listings
-  Supports:
-  ?lat=xx&lng=yy&radius=5
-*/
+// GET all listings (with / without location)
 router.get("/", listingController.getAllListings);
 
-/*
-  POST
-  /api/listings
-  Requires auth + 3 images + location
-*/
+// ADD listing (protected + 3 images)
 router.post(
   "/",
   authMiddleware,
