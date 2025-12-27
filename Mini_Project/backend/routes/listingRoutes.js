@@ -5,10 +5,17 @@ const listingController = require("../controllers/listingController");
 const authMiddleware = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
 
-// GET all listings (with / without location)
+// 🌍 PUBLIC — ALL LISTINGS
 router.get("/", listingController.getAllListings);
 
-// ADD listing (protected + 3 images)
+// 👤 USER — MY LISTINGS
+router.get(
+  "/my",
+  authMiddleware,
+  listingController.getMyListings
+);
+
+// ➕ ADD LISTING
 router.post(
   "/",
   authMiddleware,

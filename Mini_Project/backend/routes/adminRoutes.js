@@ -3,42 +3,16 @@ const router = express.Router();
 const adminController = require("../controllers/adminController");
 const authMiddleware = require("../middleware/authMiddleware");
 
-// ===============================
-// 🔒 ADMIN ONLY MIDDLEWARE
-// ===============================
+// 🔒 ADMIN ONLY
 const adminOnly = (req, res, next) => {
-  // authMiddleware already decoded token → req.user
-  if (!req.user || req.user.role !== "admin") {
-    return res.status(403).json({
-      message: "Access denied. Admin only."
-    });
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Admin only" });
   }
   next();
 };
 
-// ===============================
-// 👥 GET ALL USERS
-// ===============================
-router.get(
-  "/users",
-  authMiddleware,
-  adminOnly,
-  adminController.getUsers
-);
-
-// ===============================
-// 📦 GET ALL LISTINGS
-// ===============================
-router.get(
-  "/listings",
-  authMiddleware,
-  adminOnly,
-  adminController.getListings
-);
-
-// ===============================
-// ❌ DELETE LISTING BY ID
-// ===============================
+router.get("/users", authMiddleware, adminOnly, adminController.getUsers);
+router.get("/listings", authMiddleware, adminOnly, adminController.getListings);
 router.delete(
   "/listings/:id",
   authMiddleware,

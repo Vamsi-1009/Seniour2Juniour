@@ -1,16 +1,13 @@
 const db = require("../config/db");
 
 const Listing = {
-  /* =========================================
-     CREATE LISTING (WITH LOCATION)
-  ========================================= */
+  // CREATE
   create: (data, callback) => {
     const sql = `
       INSERT INTO listings 
       (user_id, title, description, price, type, images, latitude, longitude)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
-
     db.run(
       sql,
       [
@@ -27,9 +24,7 @@ const Listing = {
     );
   },
 
-  /* =========================================
-     GET ALL LISTINGS (NO LOCATION)
-  ========================================= */
+  // GET ALL (for homepage)
   getAll: callback => {
     const sql = `
       SELECT listings.*, users.name AS seller
@@ -40,35 +35,14 @@ const Listing = {
     db.all(sql, [], callback);
   },
 
-  /* =========================================
-     GET NEARBY LISTINGS (5 KM RADIUS)
-     Haversine Formula (SQLite-safe)
-  ========================================= */
-  getNearBy: (lat, lng, radiusKm, callback) => {
+  // ✅ GET LISTINGS OF LOGGED-IN USER
+  getByUser: (userId, callback) => {
     const sql = `
-      SELECT listings.*, users.name AS seller,
-      (
-        6371 * acos(
-          cos(radians(?)) *
-          cos(radians(latitude)) *
-          cos(radians(longitude) - radians(?)) +
-          sin(radians(?)) *
-          sin(radians(latitude))
-        )
-      ) AS distance
-      FROM listings
-      JOIN users ON listings.user_id = users.id
-      WHERE latitude IS NOT NULL
-        AND longitude IS NOT NULL
-      HAVING distance <= ?
-      ORDER BY distance ASC
+      SELECT * FROM listings
+      WHERE user_id = ?
+      ORDER BY created_at DESC
     `;
-
-    db.all(
-      sql,
-      [lat, lng, lat, radiusKm],
-      callback
-    );
+    db.all(sql, [userId], callback);
   }
 };
 

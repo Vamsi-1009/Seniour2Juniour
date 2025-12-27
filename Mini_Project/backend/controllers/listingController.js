@@ -63,3 +63,19 @@ exports.getAllListings = (req, res) => {
     });
   }
 };
+
+// ===============================
+// GET MY LISTINGS (LOGGED-IN USER)
+// ===============================
+exports.getMyListings = (req, res) => {
+  const userId = req.user.id;
+
+  Listing.getByUser(userId, (err, rows) => {
+    if (err) {
+      return res.status(500).json({
+        message: "Failed to fetch your listings"
+      });
+    }
+    res.json(rows);
+  });
+};
