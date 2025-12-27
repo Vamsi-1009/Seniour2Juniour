@@ -4,10 +4,65 @@
   <meta charset="UTF-8">
   <title>Admin Dashboard | Academic Exchange</title>
   <link rel="stylesheet" href="./css/style.css">
+  <style>
+    /* ===== ADMIN STATS ===== */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+
+    .stat-card h2 {
+      margin: 0;
+      font-size: 28px;
+      color: #2874f0;
+    }
+
+    .stat-card p {
+      margin: 8px 0 0;
+      color: #555;
+      font-weight: 600;
+    }
+
+    table {
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    table th {
+      background: #2874f0;
+      color: white;
+    }
+
+    table td, table th {
+      padding: 10px;
+      text-align: center;
+    }
+
+    .delete-btn {
+      background: #e53935;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+  </style>
 </head>
 <body>
 
-<!-- 🔐 ADMIN AUTH CHECK -->
+<!-- 🔐 ADMIN AUTH CHECK (UI ONLY) -->
 <script>
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
@@ -28,10 +83,33 @@
 <main class="page">
   <h2>Admin Dashboard</h2>
 
-  <!-- ================= USERS ================= -->
+  <!-- ===== STATS SECTION ===== -->
+  <div class="stats">
+    <div class="stat-card">
+      <h2>128</h2>
+      <p>Total Users</p>
+    </div>
+
+    <div class="stat-card">
+      <h2>342</h2>
+      <p>Products Listed</p>
+    </div>
+
+    <div class="stat-card">
+      <h2>58</h2>
+      <p>Active Sellers</p>
+    </div>
+
+    <div class="stat-card">
+      <h2>96</h2>
+      <p>Daily Visits</p>
+    </div>
+  </div>
+
+  <!-- ===== USERS TABLE ===== -->
   <section>
-    <h3>All Users</h3>
-    <table id="usersTable" border="1" width="100%" cellpadding="8">
+    <h3>Recent Users</h3>
+    <table width="100%">
       <thead>
         <tr>
           <th>ID</th>
@@ -40,17 +118,31 @@
         </tr>
       </thead>
       <tbody>
-        <!-- Loaded via admin.js -->
+        <tr>
+          <td>1</td>
+          <td>Vamsi</td>
+          <td>vamsi@gmail.com</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Ravi</td>
+          <td>ravi@student.com</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Sneha</td>
+          <td>sneha@college.edu</td>
+        </tr>
       </tbody>
     </table>
   </section>
 
   <br><br>
 
-  <!-- ================= PRODUCTS ================= -->
+  <!-- ===== PRODUCTS TABLE ===== -->
   <section>
-    <h3>All Products</h3>
-    <table id="productsTable" border="1" width="100%" cellpadding="8">
+    <h3>Recent Products</h3>
+    <table width="100%">
       <thead>
         <tr>
           <th>ID</th>
@@ -61,16 +153,26 @@
         </tr>
       </thead>
       <tbody>
-        <!-- Loaded via admin.js -->
+        <tr>
+          <td>101</td>
+          <td>DBMS Book</td>
+          <td>₹300</td>
+          <td>Sell</td>
+          <td><button class="delete-btn">Delete</button></td>
+        </tr>
+        <tr>
+          <td>102</td>
+          <td>Stethoscope</td>
+          <td>₹600</td>
+          <td>Rent</td>
+          <td><button class="delete-btn">Delete</button></td>
+        </tr>
       </tbody>
     </table>
   </section>
+
 </main>
 
-<!-- 🔌 ADMIN SCRIPT -->
-<script src="./js/admin.js"></script>
-
-<!-- 🚪 LOGOUT -->
 <script>
   function logout() {
     localStorage.clear();
