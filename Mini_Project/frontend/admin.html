@@ -2,13 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Admin Dashboard</title>
+  <title>Admin Dashboard | Academic Exchange</title>
   <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
 
+<!-- 🔐 ADMIN AUTH CHECK -->
+<script>
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
+
+  if (!token || role !== "admin") {
+    alert("Admin access only");
+    window.location.href = "admin-login.html";
+  }
+</script>
+
 <header class="navbar">
-  <div class="logo">Academic Exchange - Admin</div>
+  <div class="logo">Academic Exchange — Admin Panel</div>
   <div class="nav-actions">
     <a href="#" onclick="logout()">Logout</a>
   </div>
@@ -17,9 +28,10 @@
 <main class="page">
   <h2>Admin Dashboard</h2>
 
+  <!-- ================= USERS ================= -->
   <section>
     <h3>All Users</h3>
-    <table id="usersTable" border="1" width="100%">
+    <table id="usersTable" border="1" width="100%" cellpadding="8">
       <thead>
         <tr>
           <th>ID</th>
@@ -27,15 +39,18 @@
           <th>Email</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody>
+        <!-- Loaded via admin.js -->
+      </tbody>
     </table>
   </section>
 
   <br><br>
 
+  <!-- ================= PRODUCTS ================= -->
   <section>
     <h3>All Products</h3>
-    <table id="productsTable" border="1" width="100%">
+    <table id="productsTable" border="1" width="100%" cellpadding="8">
       <thead>
         <tr>
           <th>ID</th>
@@ -45,11 +60,23 @@
           <th>Action</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody>
+        <!-- Loaded via admin.js -->
+      </tbody>
     </table>
   </section>
 </main>
 
+<!-- 🔌 ADMIN SCRIPT -->
 <script src="./js/admin.js"></script>
+
+<!-- 🚪 LOGOUT -->
+<script>
+  function logout() {
+    localStorage.clear();
+    window.location.href = "admin-login.html";
+  }
+</script>
+
 </body>
 </html>

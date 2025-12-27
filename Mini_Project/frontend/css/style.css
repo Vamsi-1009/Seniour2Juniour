@@ -476,3 +476,46 @@ meter {
   flex: 1;
   padding: 8px;
 }
+
+.admin-stats {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 200px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.stat-card h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #555;
+}
+
+.stat-card p {
+  font-size: 28px;
+  font-weight: bold;
+  margin: 10px 0 0;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 30px;
+}
+
+.admin-table th,
+.admin-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: left;
+}
+
+.admin-table th {
+  background: #f4f6f8;
+}

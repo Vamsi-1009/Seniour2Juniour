@@ -5,25 +5,45 @@
   <title>Admin Login | Academic Exchange</title>
   <link rel="stylesheet" href="./css/style.css">
 </head>
-<body>
 
-<div class="auth-wrapper">
-  <div class="auth-container">
-    <h1>Academic Exchange</h1>
-    <p class="subtitle">Administrator Access</p>
+<body class="auth-page">
 
-    <div class="form-card">
-      <input id="adminEmail" type="email" placeholder="Admin Email">
-      <input id="adminPassword" type="password" placeholder="Password">
-      <button class="primary-btn" onclick="adminLogin()">Login</button>
+  <div class="auth-wrapper">
+    <div class="auth-container">
+      <h1>Academic Exchange</h1>
+      <p class="subtitle">Administrator Access</p>
+
+      <div class="form-card">
+        <input
+          id="adminEmail"
+          type="email"
+          placeholder="Admin Email"
+          autocomplete="username"
+        >
+
+        <input
+          id="adminPassword"
+          type="password"
+          placeholder="Password"
+          autocomplete="current-password"
+        >
+
+        <button
+          type="button"
+          class="primary-btn"
+          onclick="adminLogin()"
+        >
+          Login
+        </button>
+      </div>
+
+      <p style="margin-top: 15px;">
+        <a href="login.html">← Back to User Login</a>
+      </p>
     </div>
-
-    <p style="margin-top:15px;">
-      <a href="index.html">← Back to Home</a>
-    </p>
   </div>
-</div>
 
-<script src="./js/admin.js"></script>
+  <!-- Admin JS -->
+  <script src="./js/admin.js"></script>
 </body>
 </html>
