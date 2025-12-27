@@ -1,45 +1,49 @@
 const API_URL = "http://localhost:5000";
 const token = localStorage.getItem("token");
 
-// ================== AUTH CHECK ==================
+// 🔐 AUTH CHECK
 if (!token) {
   alert("Login required");
   window.location.href = "login.html";
 }
 
-// ================== ADD PRODUCT ==================
+// ================= ADD PRODUCT =================
 function addProduct() {
+  const title = document.getElementById("title").value.trim();
+  const description = document.getElementById("description").value.trim();
+  const price = document.getElementById("price").value;
+  const type = document.getElementById("type").value;
   const files = document.getElementById("images").files;
 
-  if (!title.value || !price.value || !type.value) {
+  // VALIDATION
+  if (!title || !price || !type) {
     alert("Please fill all required fields");
     return;
   }
 
-  if (files.length < 1 || files.length > 3) {
-    alert("Please upload exactly 1 or  3 images");
+  if (files.length !== 3) {
+    alert("Please upload exactly 3 images");
     return;
   }
 
-  // Try to get user location
+  // LOCATION (OPTIONAL)
   if (!navigator.geolocation) {
-    submitWithoutLocation(files);
+    submitProduct(files, null, null);
     return;
   }
 
   navigator.geolocation.getCurrentPosition(
     pos => {
-      submitWithLocation(files, pos.coords.latitude, pos.coords.longitude);
+      submitProduct(files, pos.coords.latitude, pos.coords.longitude);
     },
     () => {
-      // User denied location
-      submitWithoutLocation(files);
+      submitProduct(files, null, null);
     }
   );
 }
 
-// ================== SUBMIT WITH LOCATION ==================
-function submitWithLocation(files, lat, lng) {
+// ================= SUBMIT =================
+function submitProduct(files, lat, lng) {
   const formData = new FormData();
 
   formData.append("title", title.value);
@@ -47,35 +51,15 @@ function submitWithLocation(files, lat, lng) {
   formData.append("price", price.value);
   formData.append("type", type.value);
 
-  // 📍 Location
-  formData.append("latitude", lat);
-  formData.append("longitude", lng);
+  if (lat && lng) {
+    formData.append("latitude", lat);
+    formData.append("longitude", lng);
+  }
 
   for (let i = 0; i < files.length; i++) {
     formData.append("images", files[i]);
   }
 
-  sendForm(formData);
-}
-
-// ================== SUBMIT WITHOUT LOCATION ==================
-function submitWithoutLocation(files) {
-  const formData = new FormData();
-
-  formData.append("title", title.value);
-  formData.append("description", description.value || "");
-  formData.append("price", price.value);
-  formData.append("type", type.value);
-
-  for (let i = 0; i < files.length; i++) {
-    formData.append("images", files[i]);
-  }
-
-  sendForm(formData);
-}
-
-// ================== SEND TO BACKEND ==================
-function sendForm(formData) {
   fetch(`${API_URL}/api/listings`, {
     method: "POST",
     headers: {
@@ -85,15 +69,16 @@ function sendForm(formData) {
   })
     .then(res => res.json())
     .then(data => {
-      alert(data.message || "Product added");
+      alert(data.message || "Product added successfully");
       window.location.href = "index.html";
     })
-    .catch(() => alert("Failed to add product"));
+    .catch(() => {
+      alert("Failed to add product");
+    });
 }
 
-// ================== LOGOUT ==================
+// ================= LOGOUT =================
 function logout() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("role");
+  localStorage.clear();
   window.location.href = "login.html";
 }

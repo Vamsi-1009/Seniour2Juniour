@@ -19,15 +19,14 @@
 
   <div class="detail-card">
 
-    <!-- IMAGE SECTION -->
+    <!-- IMAGE SLIDER -->
     <div class="slider">
       <button class="nav-btn left" onclick="prevImage()">‹</button>
-      <img id="mainImage">
+      <img id="mainImage" alt="Product Image">
       <button class="nav-btn right" onclick="nextImage()">›</button>
-      <div id="thumbnails" class="thumbnails"></div>
     </div>
 
-    <!-- PRODUCT INFO -->
+    <!-- PRODUCT DETAILS -->
     <div class="detail-info">
       <h2 id="title"></h2>
       <p id="description"></p>
@@ -38,19 +37,26 @@
       </div>
 
       <div class="action-buttons">
-        <button onclick="buyOrRent()" class="primary-btn">Buy / Rent</button>
-        <button onclick="openChat()" class="primary-btn">Chat with Seller</button>
-        <button onclick="shareOnWhatsApp()" class="wa-btn">WhatsApp</button>
+        <button class="primary-btn">Buy / Rent</button>
+        <button onclick="openChat()" class="primary-btn">
+          Chat with Seller
+        </button>
+        <button onclick="shareOnWhatsApp()" class="wa-btn">
+          WhatsApp
+        </button>
       </div>
 
       <!-- GOOGLE MAP -->
-      <div id="map" style="height:300px;margin-top:20px;"></div>
+      <div id="map" class="map-box"></div>
     </div>
 
   </div>
+
 </main>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY"></script>
+<script
+  src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY">
+</script>
 <script src="./js/product.js"></script>
 </body>
 </html>

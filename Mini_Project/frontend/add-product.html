@@ -2,43 +2,66 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Add Product</title>
+  <title>Add Product | Academic Exchange</title>
   <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
-
-<script>
-  const token = localStorage.getItem("token");
-  if (!token) {
-    alert("Login required");
-    window.location.href = "login.html";
-  }
-</script>
 
 <header class="navbar">
   <div class="logo">Academic Exchange</div>
   <div class="nav-actions">
     <a href="index.html">Home</a>
-    <a href="#" onclick="logout()">Logout</a>
+    <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
 </header>
 
 <main class="page">
   <h2>Add Your Item</h2>
 
-  <div class="form-card">
-    <input id="title" placeholder="Item Title">
-    <textarea id="description" placeholder="Description"></textarea>
-    <input id="price" type="number" placeholder="Price">
-    
+  <!-- CARD FORM -->
+  <div class="card form-card">
+
+    <input
+      id="title"
+      type="text"
+      placeholder="Item Title"
+    />
+
+    <textarea
+      id="description"
+      placeholder="Item Description"
+    ></textarea>
+
+    <input
+      id="price"
+      type="number"
+      placeholder="Price"
+    />
+
     <select id="type">
       <option value="sell">Sell</option>
       <option value="rent">Rent</option>
     </select>
 
-    <input type="file" id="images" multiple accept="image/*">
+    <!-- ✅ MULTIPLE FILE UPLOAD -->
+    <input
+      id="images"
+      type="file"
+      accept="image/*"
+      multiple
+    />
 
-    <button class="primary-btn" onclick="addProduct()">Submit</button>
+    <p class="hint">
+      Upload exactly <b>3 images</b>
+    </p>
+
+    <button
+      type="button"
+      class="primary-btn"
+      onclick="addProduct()"
+    >
+      Submit
+    </button>
   </div>
 </main>
 

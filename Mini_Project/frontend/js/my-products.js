@@ -2,23 +2,15 @@ const API_URL = "http://localhost:5000";
 const token = localStorage.getItem("token");
 
 fetch(`${API_URL}/api/listings/my`, {
-  headers: {
-    Authorization: token
-  }
+  headers: { Authorization: token }
 })
   .then(res => res.json())
-  .then(products => {
-    const container = document.getElementById("myListings");
+  .then(data => {
+    const container = document.getElementById("listings");
     container.innerHTML = "";
 
-    if (!products.length) {
-      container.innerHTML = "<p>You have not added any products yet.</p>";
-      return;
-    }
-
-    products.forEach(p => {
+    data.forEach(p => {
       const img = JSON.parse(p.images)[0];
-
       container.innerHTML += `
         <div class="product-card">
           <img src="${API_URL}${img}">

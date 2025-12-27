@@ -549,3 +549,35 @@ meter {
   text-align: center;
   box-shadow: 0 4px 10px rgba(0,0,0,0.08);
 }
+.card {
+  background: #fff;
+  padding: 25px;
+  max-width: 450px;
+  margin: 30px auto;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+
+.form-card input,
+.form-card textarea,
+.form-card select {
+  width: 100%;
+  margin-bottom: 15px;
+  padding: 10px;
+  font-size: 14px;
+}
+
+.hint {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.logout-btn {
+  background: #ff4d4d;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
