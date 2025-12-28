@@ -75,3 +75,25 @@ exports.getMyListings = (req, res) => {
     res.json(rows);
   });
 };
+
+
+exports.getListingById = (req, res) => {
+  const id = req.params.id;
+
+  if (!id) {
+    return res.status(400).json({ message: "Listing ID required" });
+  }
+
+  Listing.getById(id, (err, row) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Failed to fetch listing" });
+    }
+
+    if (!row) {
+      return res.status(404).json({ message: "Listing not found" });
+    }
+
+    res.json(row);
+  });
+};

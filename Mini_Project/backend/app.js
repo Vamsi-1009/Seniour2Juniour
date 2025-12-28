@@ -33,6 +33,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/listings", listingRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin", require("./routes/adminRoutes"));
+
 
 // =====================
 // HEALTH CHECK

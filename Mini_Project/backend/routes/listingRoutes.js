@@ -7,6 +7,7 @@ const upload = require("../middleware/uploadMiddleware");
 
 // 🌍 PUBLIC — ALL LISTINGS
 router.get("/", listingController.getAllListings);
+router.get("/:id", listingController.getListingById);
 
 // 👤 USER — MY LISTINGS
 router.get(
@@ -24,3 +25,5 @@ router.post(
 );
 
 module.exports = router;
+
+

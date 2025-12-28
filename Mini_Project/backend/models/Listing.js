@@ -44,12 +44,25 @@ const Listing = {
   // =========================
   // GET LISTING BY ID
   // =========================
-  getById: (id, callback) => {
-    const sql = `
-      SELECT * FROM listings WHERE id = ?
-    `;
-    db.get(sql, [id], callback);
-  },
+getById: (id, callback) => {
+  const sql = `
+    SELECT listings.*, users.name AS seller
+    FROM listings
+    JOIN users ON listings.user_id = users.id
+    WHERE listings.id = ?
+  `;
+  db.get(sql, [id], callback);
+},
+
+getById: (id, callback) => {
+  const sql = `
+    SELECT * FROM listings
+    WHERE id = ?
+  `;
+  db.get(sql, [id], callback);
+},
+
+
 
   // =========================
   // GET LISTINGS OF LOGGED-IN USER
@@ -96,3 +109,4 @@ const Listing = {
 };
 
 module.exports = Listing;
+
