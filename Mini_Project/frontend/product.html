@@ -19,12 +19,17 @@
 
   <div class="detail-card">
 
-    <!-- IMAGE SLIDER -->
-    <div class="slider">
-      <button class="nav-btn left" onclick="prevImage()">‹</button>
-      <img id="mainImage" alt="Product Image">
-      <button class="nav-btn right" onclick="nextImage()">›</button>
-    </div>
+   <!-- IMAGE SECTION -->
+   <div class="slider">
+     <button class="nav-btn" onclick="prevImage()">‹</button>
+   
+     <img id="mainImage" alt="Product Image">
+   
+     <button class="nav-btn" onclick="nextImage()">›</button>
+   
+     <div id="thumbnails" class="thumbnails"></div>
+   </div>
+   
 
     <!-- PRODUCT DETAILS -->
     <div class="detail-info">
