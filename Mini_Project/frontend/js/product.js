@@ -12,7 +12,7 @@ fetch(`http://localhost:5000/api/listings/${productId}`)
   .then(res => res.json())
   .then(data => {
     product = data;
-    images = JSON.parse(prod uct.images); // 👈 all 3 images
+    images = JSON.parse(product.images); // 👈 all 3 images
     loadProduct();
     renderThumbnails();
     initMap();

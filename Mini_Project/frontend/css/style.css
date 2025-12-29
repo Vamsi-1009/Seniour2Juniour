@@ -581,3 +581,47 @@ meter {
   border-radius: 6px;
   cursor: pointer;
 }
+/* PRODUCT PAGE BUTTONS */
+.action-buttons {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+}
+
+.primary-btn {
+  flex: 1;
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.primary-btn {
+  background: #2874f0;
+  color: white;
+}
+
+.primary-btn:hover {
+  background: #1e5fd0;
+  transform: translateY(-1px);
+}
+
+.wa-btn {
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #25d366;
+  color: white;
+  transition: all 0.2s;
+}
+
+.wa-btn:hover {
+  background: #128c7e;
+  transform: translateY(-1px);
+}
