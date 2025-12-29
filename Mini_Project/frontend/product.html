@@ -42,7 +42,13 @@
       </div>
 
       <div class="action-buttons">
-        <button class="primary-btn">Buy / Rent</button>
+        <button
+  onclick="window.location.href='checkout.html?id=' + product.id"
+  class="primary-btn"
+>
+  Buy / Rent
+</button>
+
         <button onclick="openChat()" class="primary-btn">
           Chat with Seller
         </button>
