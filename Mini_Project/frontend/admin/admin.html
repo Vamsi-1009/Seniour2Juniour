@@ -7,21 +7,9 @@
 </head>
 <body>
 
-<!-- 🔐 ADMIN AUTH CHECK -->
-<script>
-  const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role");
-
-  if (!token || role !== "admin") {
-    alert("Admin access only");
-    window.location.href = "admin-login.html";
-  }
-</script>
-
 <header class="navbar">
   <div class="logo">Academic Exchange — Admin Panel</div>
 
-  <!-- ✅ RIGHT SIDE -->
   <div class="nav-actions">
     <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
@@ -31,16 +19,15 @@
   <h2>Admin Dashboard</h2>
 
   <!-- ================= STATS ================= -->
-<div class="card">
-  <h1 id="totalUsers">0</h1>
-  <p>Total Users</p>
-</div>
+  <div class="card">
+    <h1 id="totalUsers">0</h1>
+    <p>Total Users</p>
+  </div>
 
-<div class="card">
-  <h1 id="totalProducts">0</h1>
-  <p>Products Listed</p>
-</div>
-
+  <div class="card">
+    <h1 id="totalProducts">0</h1>
+    <p>Products Listed</p>
+  </div>
 
   <!-- ================= USERS ================= -->
   <section>
@@ -78,6 +65,7 @@
   </section>
 </main>
 
+<!-- ✅ ONLY ONE JS FILE HANDLES AUTH & DATA -->
 <script src="../js/admin.js"></script>
 
 <script>
