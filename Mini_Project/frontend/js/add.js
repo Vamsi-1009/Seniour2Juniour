@@ -1,4 +1,4 @@
-const API_URL = "http://10.10.1.128:5000";
+const API_URL = "http://localhost:5000";
 const token = localStorage.getItem("token");
 
 // 🔐 AUTH CHECK
