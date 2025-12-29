@@ -1,6 +1,8 @@
 const API_URL = "http://localhost:5000";
 let allProducts = [];
 let userLocation = null;
+const authRoutes = require("./routes/authRoutes");
+app.use("/api/auth", authRoutes);
 
 /* =================================================
    RENDER PRODUCTS (FROM DB ONLY)

@@ -1,33 +1,32 @@
-const API_URL = "http://localhost:5000";
 
-/*
-  Dummy fixed admin credentials for this project
-  Email: admin@admin.com
-  Password: admin123
-*/
+console.log("ADMIN LOGIN JS LOADED");
+const API_URL = "http://localhost:5000";
 
 function adminLogin() {
   const email = document.getElementById("adminEmail").value.trim();
   const password = document.getElementById("adminPassword").value.trim();
 
-  // Basic validation
-  if (!email || !password) {
-    alert("Please enter admin email and password");
-    return;
-  }
+  fetch(`${API_URL}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  })
+    .then(res => res.json())
+    .then(data => {
+      console.log("LOGIN RESPONSE:", data); // 🔥 DEBUG
 
-  // ✅ HARD-CODED ADMIN CHECK
-  if (email !== "admin@admin.com" || password !== "admin123") {
-    alert("Invalid admin credentials");
-    return;
-  }
+      if (!data.token) {
+        alert("Login failed");
+        return;
+      }
 
-  // ✅ Create dummy admin session
-  const dummyToken = "admin_dummy_token_123";
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("role", data.role);
 
-  localStorage.setItem("token", dummyToken);
-  localStorage.setItem("role", "admin");
-
-  // Redirect to admin dashboard
-  window.location.href = "admin.html";
+      window.location.href = "admin.html";
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Server error");
+    });
 }
