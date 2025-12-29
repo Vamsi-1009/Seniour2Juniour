@@ -12,9 +12,10 @@ module.exports = (req, res, next) => {
       token,
       process.env.JWT_SECRET || "dev_secret"
     );
+    
     req.user = decoded;
     next();
-  } catch {
-    res.status(401).json({ message: "Invalid token" });
+  } catch (err) {
+    return res.status(401).json({ message: "Invalid token" });
   }
 };
