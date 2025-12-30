@@ -8,6 +8,18 @@ const listingRoutes = require("./routes/listingRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 
+// ================= SERVE UPLOADS FOLDER =================
+app.use('/uploads', express.static('uploads'));
+app.use('/images', express.static('uploads'));
+
+// Create uploads folder if missing
+const fs = require('fs');
+if (!fs.existsSync('./uploads')) {
+  fs.mkdirSync('./uploads');
+  console.log("📁 Created uploads folder");
+}
+
+
 // CREATE APP
 const app = express();
 
