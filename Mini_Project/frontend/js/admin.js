@@ -53,14 +53,17 @@ function goBackToDashboard() {
   });
   
   // Show dashboard stats only
-  document.querySelectorAll(".admin-stats").forEach(stats => {
-    stats.style.display = "flex";
-  });
+  const stats = document.querySelector(".admin-stats");
+  if (stats) stats.style.display = "flex";
   
   // Reset active cards
   document.querySelectorAll(".stat-card").forEach(card => {
     card.classList.remove("active");
   });
+  
+  // Update title
+  const pageTitle = document.getElementById("pageTitle");
+  if (pageTitle) pageTitle.textContent = "Admin Dashboard";
   
   currentSection = 'dashboard';
 }
@@ -68,6 +71,8 @@ function goBackToDashboard() {
 // ================= LOAD USERS TABLE (LATEST FIRST) =================
 function loadUsersTable(users) {
   const tbody = document.querySelector("#usersTable tbody");
+  if (!tbody) return;
+  
   tbody.innerHTML = "";
   
   // Sort by latest registered first
@@ -76,20 +81,22 @@ function loadUsersTable(users) {
   sortedUsers.forEach(u => {
     tbody.innerHTML += `
       <tr>
-        <td>${u.id}</td>
-        <td>${u.name}</td>
-        <td>${u.email}</td>
+        <td>${u.id || '-'}</td>
+        <td>${u.name || 'N/A'}</td>
+        <td>${u.email || 'N/A'}</td>
         <td><span style="color: ${u.role === 'admin' ? '#ff4d4d' : '#28a745'}; font-weight: bold;">${u.role || 'user'}</span></td>
         <td>${u.phone || '-'}</td>
-        <td>${new Date(u.created_at).toLocaleDateString('en-IN')}</td>
+        <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN') : '-'}</td>
       </tr>
     `;
   });
 }
 
-// ================= LOAD PRODUCTS TABLE (FIXED IMAGES + SELLER) =================
+// ================= LOAD PRODUCTS TABLE (PERFECT IMAGES) =================
 function loadProductsTable(products) {
   const tbody = document.querySelector("#productsTable tbody");
+  if (!tbody) return;
+  
   tbody.innerHTML = "";
   
   // Sort by latest uploads first
@@ -100,23 +107,7 @@ function loadProductsTable(products) {
     try {
       imgs = JSON.parse(p.images || "[]");
     } catch (e) {
-      console.log("Image parse error:", p.images);
-    }
-
-    // FIXED IMAGE PATHS - TRY MULTIPLE LOCATIONS
-    let imgSrc = "";
-    if (imgs[0]) {
-      const filename = imgs[0];
-      // Test these paths automatically:
-      const paths = [
-        `/uploads/${filename}`,                    // Static serve (MOST COMMON)
-        `${API_URL}/uploads/${filename}`,          // Backend API
-        `/images/${filename}`,                     // Alternative folder
-        `${API_URL}/images/${filename}`,           // Backend images
-        filename                                   // Direct filename
-      ];
-      
-      imgSrc = paths[0]; // Start with static uploads/
+      console.log("Image parse error for", p.title, ":", p.images);
     }
 
     // Seller name from multiple fields
@@ -127,53 +118,31 @@ function loadProductsTable(products) {
         <td>${p.id}</td>
         <td>${p.title}</td>
         <td>₹${p.price}</td>
-        <td><span style="color: ${p.type === 'sell' ? '#28a745' : '#ffc107'}; font-weight: bold;">${p.type.toUpperCase()}</span></td>
+        <td><span style="color: ${p.type === 'sell' ? '#28a745' : '#ffc107'}; font-weight: bold;">${p.type?.toUpperCase() || 'N/A'}</span></td>
         <td>${sellerName}</td>
         <td>
-          ${imgSrc ? `
-            <img src="${imgSrc}" 
-                 width="60" height="60" 
-                 style="border-radius: 6px; object-fit: cover; background: linear-gradient(135deg, #f8f9fa, #e9ecef); border: 2px solid #f0f0f0;" 
-                 onerror="fixImage(this, '${imgSrc}')" 
-                 loading="lazy">
+          ${imgs[0] ? `
+            <div style="position:relative;width:68px;height:60px;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,#f8f9fa,#e9ecef);border:2px solid #f0f0f0;">
+              <img src="/uploads/${imgs[0]}" 
+                   style="width:100%;height:100%;object-fit:cover;border-radius:6px;" 
+                   onerror="this.style.display='none';this.parentNode.style.background='linear-gradient(135deg,#f8f9fa,#e9ecef)';this.nextSibling.style.display='flex';"
+                   loading="lazy">
+              <div style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;align-items:center;justify-content:center;color:#999;font-size:12px;font-weight:500;background:rgba(255,255,255,0.9);">
+                📷
+              </div>
+            </div>
           ` : `
-            <div style="width:68px;height:60px;background:linear-gradient(135deg,#f8f9fa,#e9ecef);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px;font-weight:500;border:2px solid #f0f0f0;">
-              📷 No Image
+            <div style="width:68px;height:60px;background:linear-gradient(135deg,#f8f9fa,#e9ecef);border-radius:8px;border:2px solid #f0f0f0;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;font-weight:500;">
+              📷
             </div>
           `}
         </td>
         <td>
-          <button onclick="deleteProduct(${p.id})" class="delete-btn">🗑️ Delete</button>
+          <button onclick="deleteProduct(${p.id})" class="delete-btn" title="Delete Product">🗑️</button>
         </td>
       </tr>
     `;
   });
-}
-
-// ================= IMAGE FIX FUNCTION =================
-function fixImage(img, originalSrc) {
-  // Try alternative paths
-  const altPaths = [
-    originalSrc.replace(API_URL, '/uploads'),
-    originalSrc.replace('/uploads/', '/images/'),
-    originalSrc.replace(API_URL, '/images/'),
-    '/uploads/placeholder.jpg'
-  ];
-  
-  let pathIndex = 0;
-  const tryNextPath = () => {
-    if (pathIndex < altPaths.length) {
-      img.src = altPaths[pathIndex];
-      pathIndex++;
-      img.onerror = tryNextPath;
-    } else {
-      // Final fallback
-      img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIGZpbGw9IiNGRkY4RjAiLz48dGV4dCB4PSIzMCIgeT0iMzUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
-      img.style.background = 'linear-gradient(135deg, #f8f9fa, #e9ecef)';
-    }
-  };
-  
-  tryNextPath();
 }
 
 // ================= USERS API =================
@@ -194,7 +163,8 @@ fetch(`${API_URL}/api/admin/users`, {
 .then(users => {
   console.log("USERS FROM API:", users);
   adminUsers = users;
-  document.getElementById("totalUsers").textContent = users.length;
+  const totalUsersEl = document.getElementById("totalUsers");
+  if (totalUsersEl) totalUsersEl.textContent = users.length;
 })
 .catch(err => console.error("Users fetch error:", err));
 
@@ -209,11 +179,12 @@ fetch(`${API_URL}/api/admin/listings`, {
 .then(products => {
   console.log("PRODUCTS FROM API:", products);
   adminProducts = products;
-  document.getElementById("totalProducts").textContent = products.length;
+  const totalProductsEl = document.getElementById("totalProducts");
+  if (totalProductsEl) totalProductsEl.textContent = products.length;
   
-  // Log first product images for debugging
+  // Log first product for debugging
   if (products[0]) {
-    console.log("FIRST PRODUCT IMAGES:", products[0].images);
+    console.log("FIRST PRODUCT:", products[0]);
   }
 })
 .catch(err => console.error("Products fetch error:", err));

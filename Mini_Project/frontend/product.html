@@ -2,72 +2,294 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Product Details</title>
+  <title>Product Details | Academic Exchange</title>
   <link rel="stylesheet" href="./css/style.css">
+  <style>
+    /* ================= PRODUCT PAGE ENHANCEMENTS ================= */
+    .product-page { padding: 2rem 40px; }
+    
+    .detail-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      padding: 2.5rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
+      align-items: start;
+    }
+    
+    /* IMAGE SLIDER */
+    .slider {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .main-image {
+      width: 100%;
+      max-width: 400px;
+      height: 280px;
+      object-fit: cover;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+    
+    .main-image:hover {
+      transform: scale(1.02);
+    }
+    
+    .nav-btn {
+      background: rgba(255,255,255,0.9);
+      border: none;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .nav-btn:hover {
+      background: white;
+      transform: scale(1.1);
+    }
+    
+    .thumbnails {
+      display: flex;
+      gap: 8px;
+      max-width: 400px;
+      overflow-x: auto;
+      padding: 8px 0;
+    }
+    
+    .thumb {
+      width: 70px;
+      height: 50px;
+      object-fit: cover;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .thumb:hover, .thumb.active {
+      border-color: #2874f0;
+      transform: scale(1.05);
+      box-shadow: 0 4px 15px rgba(40,116,240,0.3);
+    }
+    
+    /* PRODUCT INFO */
+    .detail-info h2 {
+      margin: 0 0 1rem 0;
+      font-size: 2rem;
+      color: #333;
+    }
+    
+    .price-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    
+    .price-row h3 {
+      margin: 0;
+      font-size: 2.5rem;
+      color: #2874f0;
+      font-weight: 700;
+    }
+    
+    .badge {
+      padding: 0.4rem 1rem;
+      border-radius: 25px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #ffe8cc, #ffd699);
+      color: #c06000;
+    }
+    
+    .badge-rent {
+      background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+      color: #1976d2;
+    }
+    
+    .action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+    
+    .action-buttons .wa-btn {
+      grid-column: span 2;
+    }
+    
+    /* SELLER INFO */
+    .seller-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border-radius: 12px;
+      margin: 2rem 0;
+    }
+    
+    .seller-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2874f0, #1e5fd0);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    
+    .seller-name {
+      font-weight: 600;
+      color: #333;
+      margin: 0;
+    }
+    
+    .seller-listings {
+      color: #666;
+      font-size: 0.9rem;
+    }
+    
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 300px;
+      color: #666;
+    }
+    
+    .no-images {
+      grid-column: 1;
+      text-align: center;
+      color: #999;
+      font-size: 1.1rem;
+      padding: 2rem;
+    }
+    
+    @media (max-width: 768px) {
+      .detail-card {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        padding: 1.5rem;
+      }
+      
+      .product-page {
+        padding: 1rem;
+      }
+      
+      .action-buttons {
+        grid-template-columns: 1fr;
+      }
+      
+      .action-buttons .wa-btn {
+        grid-column: span 1;
+      }
+    }
+  </style>
 </head>
 <body>
+
+<script>
+  // Auth check
+  const token = localStorage.getItem("token");
+  if (!token) {
+    window.location.href = "login.html";
+  }
+</script>
 
 <header class="navbar">
   <div class="logo">Academic Exchange</div>
   <div class="nav-actions">
-    <a href="index.html">Home</a>
+    <a href="index.html">← Home</a>
     <a href="chat.html">Chat</a>
+    <a href="my-products.html">My Products</a>
+    <a href="#" onclick="logout()">Logout</a>
   </div>
 </header>
 
 <main class="product-page">
+  <!-- LOADING STATE -->
+  <div class="loading" id="loading">
+    <div>🔄 Loading product...</div>
+  </div>
 
-  <div class="detail-card">
-
-   <!-- IMAGE SECTION -->
-   <div class="slider">
-     <button class="nav-btn" onclick="prevImage()">‹</button>
-   
-     <img id="mainImage" alt="Product Image">
-   
-     <button class="nav-btn" onclick="nextImage()">›</button>
-   
-     <div id="thumbnails" class="thumbnails"></div>
-   </div>
-   
+  <div class="detail-card" id="productCard" style="display: none;">
+    
+    <!-- IMAGE SECTION -->
+    <div class="slider">
+      <div style="display: flex; gap: 8px; width: 100%; justify-content: center;">
+        <button class="nav-btn" onclick="prevImage()" title="Previous">‹</button>
+        <img id="mainImage" class="main-image" alt="Product Image">
+        <button class="nav-btn" onclick="nextImage()" title="Next">›</button>
+      </div>
+      
+      <div id="thumbnails" class="thumbnails"></div>
+      <div class="no-images">📷 No images available for this product</div>
+    </div>
 
     <!-- PRODUCT DETAILS -->
     <div class="detail-info">
-      <h2 id="title"></h2>
-      <p id="description"></p>
+      <h2 id="title">Loading...</h2>
+      
+      <!-- SELLER INFO -->
+      <div class="seller-info">
+        <div class="seller-avatar">👤</div>
+        <div>
+          <div class="seller-name">Loading seller...</div>
+          <div class="seller-listings">0 listings</div>
+        </div>
+      </div>
+      
+      <p id="description">Loading description...</p>
 
       <div class="price-row">
-        <h3 id="price"></h3>
-        <span id="type" class="badge"></span>
+        <h3 id="price">₹0</h3>
+        <div class="badges">
+          <span id="type" class="badge">Loading...</span>
+        </div>
       </div>
 
       <div class="action-buttons">
-        <button
-  onclick="window.location.href='checkout.html?id=' + product.id"
-  class="primary-btn"
->
-  Buy / Rent
-</button>
-
-        <button onclick="openChat()" class="primary-btn">
-          Chat with Seller
+        <button onclick="goToCheckout()" class="primary-btn" style="background: linear-gradient(135deg, #28a745, #20c997);">
+          🛒 Buy / Rent Now
         </button>
-        <button onclick="shareOnWhatsApp()" class="wa-btn">
-          WhatsApp
+        <button onclick="openChat()" class="primary-btn" style="background: linear-gradient(135deg, #2874f0, #1e5fd0);">
+          💬 Chat with Seller
+        </button>
+        <button onclick="openWhatsApp()" class="wa-btn">
+          📱 WhatsApp
         </button>
       </div>
-
-      <!-- GOOGLE MAP -->
-      <div id="map" class="map-box"></div>
     </div>
 
   </div>
-
 </main>
 
-<script
-  src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY">
-</script>
 <script src="./js/product.js"></script>
+<script>
+  function logout() {
+    localStorage.clear();
+    window.location.href = "login.html";
+  }
+</script>
+
 </body>
 </html>

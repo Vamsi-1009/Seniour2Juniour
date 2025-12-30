@@ -626,3 +626,48 @@ body {
     max-width: 300px;
   }
 }
+
+
+.top-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.filter-icon-btn {
+  background: #2874f0;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.8rem 1.2rem;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.filter-icon-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40,116,240,0.4);
+}
+
+.filter-panel.hidden {
+  display: none;
+}
+
+.filter-panel {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+  margin-bottom: 2rem;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
