@@ -1,0 +1,84 @@
+* {
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+/* Only for login page */
+body {
+  margin: 0;
+}
+
+/* Full screen center with gradient */
+.auth-wrapper {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1e6df0, #3a8bff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Card */
+.auth-container {
+  background: white;
+  width: 420px;
+  padding: 30px;
+  border-radius: 14px;
+  text-align: center;
+}
+
+.auth-container h1 {
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  color: #555;
+  margin-bottom: 20px;
+}
+
+/* Forms */
+.form-card input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #eef4ff;
+}
+
+.primary-btn {
+  width: 100%;
+  padding: 12px;
+  background: #2874f0;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Switch bar */
+.switch-bar {
+  margin-top: 18px;
+  display: flex;
+  background: #f1f1f1;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.tab.active {
+  background: #2874f0;
+  color: white;
+}

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Product Details</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+<header class="navbar">
+  <div class="logo">Academic Exchange</div>
+  <div class="nav-actions">
+    <a href="index.html">Home</a>
+    <a href="chat.html">Chat</a>
+  </div>
+</header>
+
+<main class="product-page">
+
+  <div class="detail-card">
+
+   <!-- IMAGE SECTION -->
+   <div class="slider">
+     <button class="nav-btn" onclick="prevImage()">‹</button>
+   
+     <img id="mainImage" alt="Product Image">
+   
+     <button class="nav-btn" onclick="nextImage()">›</button>
+   
+     <div id="thumbnails" class="thumbnails"></div>
+   </div>
+   
+
+    <!-- PRODUCT DETAILS -->
+    <div class="detail-info">
+      <h2 id="title"></h2>
+      <p id="description"></p>
+
+      <div class="price-row">
+        <h3 id="price"></h3>
+        <span id="type" class="badge"></span>
+      </div>
+
+      <div class="action-buttons">
+        <button
+  onclick="window.location.href='checkout.html?id=' + product.id"
+  class="primary-btn"
+>
+  Buy / Rent
+</button>
+
+        <button onclick="openChat()" class="primary-btn">
+          Chat with Seller
+        </button>
+        <button onclick="shareOnWhatsApp()" class="wa-btn">
+          WhatsApp
+        </button>
+      </div>
+
+      <!-- GOOGLE MAP -->
+      <div id="map" class="map-box"></div>
+    </div>
+
+  </div>
+
+</main>
+
+<script
+  src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY">
+</script>
+<script src="./js/product.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Product</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+<header class="navbar">
+  <div class="logo">Academic Exchange</div>
+  <div class="nav-actions">
+    <a href="index.html">Home</a>
+    <a href="#" onclick="logout()">Logout</a>
+  </div>
+</header>
+
+<main class="page">
+
+  <h2>Add Book for Sell / Rent</h2>
+
+  <div class="card">
+    <input id="title" placeholder="Book Title">
+    <textarea id="description" placeholder="Description"></textarea>
+    <input id="price" type="number" placeholder="Price">
+
+    <select id="type">
+      <option value="sell">Sell</option>
+      <option value="rent">Rent</option>
+    </select>
+
+    <label>Upload exactly 3 images</label>
+    <input id="images" type="file" accept="image/*" multiple>
+
+    <button type="button" onclick="addProduct()" class="primary-btn">
+    Submit
+    </button>
+  </div>
+
+</main>
+
+<script src="./js/add.js"></script>
+</body>
+</html>

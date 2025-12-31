@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Account | Academic Exchange</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+<div class="auth-wrapper">
+  <div class="auth-container">
+    <h1>Create Account</h1>
+    <p class="subtitle">Register to start using Academic Exchange</p>
+
+    <div class="form-card">
+
+      <input id="regName" placeholder="Full Name">
+
+      <input id="regEmail" placeholder="Email"
+             onblur="validateEmail()">
+      <small id="emailError" style="color:red;"></small>
+
+      <input id="regPhone" placeholder="Phone Number"
+             maxlength="10"
+             oninput="validatePhone()">
+      <small id="phoneError" style="color:red;"></small>
+
+      <input id="regPassword" type="password" placeholder="Password"
+             oninput="updateStrength()">
+
+      <meter id="strengthMeter" min="0" max="4" value="0"></meter>
+      <p id="strengthText"></p>
+
+      <button class="primary-btn" onclick="register()">Create Account</button>
+    </div>
+
+    <p style="margin-top:15px;">
+      Already have an account?
+      <a href="login.html"><b>Login</b></a>
+    </p>
+  </div>
+</div>
+
+<script src="./js/auth.js"></script>
+</body>
+</html>

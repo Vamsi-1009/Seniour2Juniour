@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Checkout | Academic Exchange</title>
+  <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/checkout.css">
+</head>
+<body>
+
+<script>
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Login required");
+    window.location.href = "login.html";
+  }
+</script>
+
+<header class="navbar">
+  <div class="logo">Academic Exchange</div>
+  <div class="nav-actions">
+    <a href="index.html">Home</a>
+    <a href="#" onclick="logout()">Logout</a>
+  </div>
+</header>
+
+<main class="checkout-page">
+
+  <h2>Checkout</h2>
+
+  <!-- PRODUCT SUMMARY -->
+  <div class="checkout-card">
+    <h3>Product Details</h3>
+    <p><strong>Title:</strong> <span id="productTitle"></span></p>
+    <p><strong>Type:</strong> <span id="productType"></span></p>
+    <p><strong>Price:</strong> ₹<span id="productPrice"></span></p>
+  </div>
+
+  <!-- BUYER DETAILS -->
+  <div class="checkout-card">
+    <h3>Your Details</h3>
+
+    <input id="buyerName" placeholder="Full Name">
+    <input id="buyerPhone" placeholder="Phone Number">
+    <textarea id="buyerAddress" placeholder="Delivery / Meeting Address"></textarea>
+
+    <button class="primary-btn" onclick="confirmOrder()">
+      Confirm Order
+    </button>
+  </div>
+
+</main>
+
+<script src="./js/checkout.js"></script>
+
+<script>
+  function logout() {
+    localStorage.clear();
+    window.location.href = "login.html";
+  }
+</script>
+
+</body>
+</html>

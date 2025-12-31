@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Product | Academic Exchange</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+<header class="navbar">
+  <div class="logo">Academic Exchange</div>
+  <div class="nav-actions">
+    <a href="index.html">Home</a>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+</header>
+
+<main class="page">
+  <h2>Add Your Item</h2>
+
+  <!-- CARD FORM -->
+  <div class="card form-card">
+
+    <input
+      id="title"
+      type="text"
+      placeholder="Item Title"
+    />
+
+    <textarea
+      id="description"
+      placeholder="Item Description"
+    ></textarea>
+
+    <input
+      id="price"
+      type="number"
+      placeholder="Price"
+    />
+
+    <select id="type">
+      <option value="sell">Sell</option>
+      <option value="rent">Rent</option>
+    </select>
+
+    <!-- ✅ MULTIPLE FILE UPLOAD -->
+    <input
+      id="images"
+      type="file"
+      accept="image/*"
+      multiple
+    />
+
+    <p class="hint">
+      Upload exactly <b>3 images</b>
+    </p>
+
+    <button
+      type="button"
+      class="primary-btn"
+      onclick="addProduct()"
+    >
+      Submit
+    </button>
+  </div>
+</main>
+
+<script src="./js/add.js"></script>
+</body>
+</html>
