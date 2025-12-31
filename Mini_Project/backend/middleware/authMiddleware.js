@@ -7,8 +7,11 @@ module.exports = (req, res, next) => {
     return res.status(401).json({ message: "No token provided" });
   }
 
-  // 🔥 Bearer token split
-  const token = authHeader.split(" ")[1];
+  // 🔥 FIX: Handle both formats - "Bearer token" OR just "token"
+  let token = authHeader;
+  if (authHeader.startsWith("Bearer ")) {
+    token = authHeader.split(" ")[1];
+  }
 
   if (!token) {
     return res.status(401).json({ message: "Invalid token format" });
@@ -20,7 +23,6 @@ module.exports = (req, res, next) => {
       process.env.JWT_SECRET || "dev_secret"
     );
 
-    // 🔥 IMPORTANT: req.user must contain role
     req.user = {
       id: decoded.id,
       role: decoded.role

@@ -94,6 +94,7 @@ exports.getListingById = (req, res) => {
       return res.status(404).json({ message: "Listing not found" });
     }
 
+    row.images = JSON.parse(row.images || '[]')
     res.json(row);
   });
 };
