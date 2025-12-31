@@ -16,6 +16,10 @@ const app = express();
 // =====================
 app.use(cors());
 app.use(express.json());
+// After app.use(express.json()); ADD:
+app.use('/uploads', express.static('uploads'));
+console.log("✅ Images served from /uploads");
+
 app.use(express.urlencoded({ extended: true }));
 
 // =====================
