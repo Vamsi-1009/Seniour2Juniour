@@ -14,7 +14,7 @@ fetch(`${API_URL}/api/listings/${productId}`)
   })
   .then(data => {
     product = data;
-    images = JSON.parse(product.images || "[]");
+    images = Array.isArray(product.images) ? product.images : [];  // ✅ WORKS
     loadProduct();
     renderThumbnails();
   })

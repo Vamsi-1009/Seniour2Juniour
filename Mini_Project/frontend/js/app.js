@@ -2,23 +2,16 @@ const API_URL = "http://localhost:5000";
 let allProducts = [];
 let userLocation = null;
 
-/* =================================================
-   LOGOUT FUNCTION - REQUIRED FOR index.html
-================================================= */
 function logout() {
   localStorage.clear();
   window.location.href = 'login.html';
 }
 
-/* =================================================
-   AUTH CHECK - Hide/show navbar buttons
-================================================= */
 function checkAuth() {
   const token = localStorage.getItem("token");
   const navActions = document.querySelector(".nav-actions");
   
   if (token) {
-    // Logged in - show Add/My/Logout
     navActions.innerHTML = `
       <a href="chat.html">Chat</a>
       <a href="add-product.html">Add Item</a>
@@ -26,14 +19,10 @@ function checkAuth() {
       <a href="#" onclick="logout()">Logout</a>
     `;
   } else {
-    // Not logged in - redirect
     window.location.href = "login.html";
   }
 }
 
-/* =================================================
-   RENDER PRODUCTS (PERFECT - NO CHANGES)
-================================================= */
 function renderProducts(products) {
   const container = document.getElementById("listings");
   container.innerHTML = "";
@@ -44,7 +33,22 @@ function renderProducts(products) {
   }
 
   products.forEach(p => {
-    const imagePath = p.images ? `${API_URL}${JSON.parse(p.images)[0]}` : "/uploads/demo.jpg";
+    // ✅ FIXED: Handle both array and string images
+    let firstImage = '/uploads/demo.jpg';
+    if (p.images) {
+      try {
+        if (Array.isArray(p.images)) {
+          firstImage = p.images[0];
+        } else {
+          const imgArray = JSON.parse(p.images);
+          firstImage = imgArray[0];
+        }
+      } catch(e) {
+        firstImage = '/uploads/demo.jpg';
+      }
+    }
+    const imagePath = p.images && Array.isArray(p.images) ? '${API_URL}${p.images[0]}' : '${API_URL}/uploads/demo.jpg';
+    
     container.innerHTML += `
       <div class="product-card" onclick="openProduct(${p.id})">
         <img src="${imagePath}" alt="${p.title}" onerror="this.src='/uploads/demo.jpg'">
@@ -58,9 +62,6 @@ function renderProducts(products) {
   });
 }
 
-/* =================================================
-   LOAD PRODUCTS (ENHANCED)
-================================================= */
 function loadProducts() {
   fetch(`${API_URL}/api/listings`)
     .then(res => {
@@ -69,27 +70,21 @@ function loadProducts() {
     })
     .then(data => {
       allProducts = data || [];
-      renderProducts(allProducts);
+      renderProducts(allProducts);  // "new one" from backend
     })
     .catch(error => {
       console.error('Listings load error:', error);
-      // Demo fallback
-      allProducts = [
-        {id:1, title:"DBMS Book", price:450, type:"rent", images:JSON.stringify(['/uploads/demo.jpg'])},
-        {id:2, title:"OS Notes", price:250, type:"buy", images:JSON.stringify(['/uploads/demo.jpg'])}
-      ];
-      renderProducts(allProducts);
+      document.getElementById("listings").innerHTML = "<p>Backend offline.</p>";
     });
 }
 
-function openProduct(id) {
-  window.location.href = `product.html?id=${id}`;
-}
 
-/* =================================================
-   PAGE LOAD - PERFECT ORDER
-================================================= */
+window.openProduct = function(id) {
+  console.log("Opening product ID:", id);
+  window.location.href = `product.html?id=${id}`;
+};
+
 window.onload = function() {
-  checkAuth();  // Navbar + auth check
-  loadProducts(); // Load listings
+  checkAuth();
+  loadProducts();
 };
