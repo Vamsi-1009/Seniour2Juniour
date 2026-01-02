@@ -89,3 +89,15 @@ function openChat() {
   const url = `chat.html?sellerId=${sellerId}&listingId=${listingId}&action=${selectedAction}&message=${encodeURIComponent(autoMessage)}`;
   window.location.href = url;
 }
+
+// Add this to js/product.js
+function openChat() {
+  const action = document.querySelector('input[name="action"]:checked').value;
+  const title = document.getElementById("title").innerText;
+  
+  // Construct the message
+  const msg = `Hi, I am interested to ${action} your product: ${title}`;
+  
+  // Redirect to chat.html with message param
+  window.location.href = `chat.html?message=${encodeURIComponent(msg)}`;
+}
