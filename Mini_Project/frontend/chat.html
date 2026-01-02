@@ -43,5 +43,17 @@
   </div>
 </div>
 
-<!-- ✅ Socket.IO CDN -->
-<script src="https://cdn.socket.io/4.7.2/socket.io.min
+<!-- ✅ Socket.IO CDN (Complete) -->
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+<script>
+const socket = io('http://localhost:5000'); // Your server URL
+const token = localStorage.getItem('token');
+
+let currentChat = null; // {listingId, sellerId, sellerName}
+
+// ✅ DOM Ready
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!token) {
+    alert('Please login first');
+    window.location.href

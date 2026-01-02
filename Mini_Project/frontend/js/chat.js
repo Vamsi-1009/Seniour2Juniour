@@ -14,7 +14,7 @@ let socket;
 
 // ✅ INITIALIZE SOCKET.IO CONNECTION
 function initializeSocket() {
-  socket = io();
+  socket = io('http://localhost:5000');
 
   socket.on("connect", () => {
     console.log("✅ Connected to Socket.io server:", socket.id);
@@ -339,5 +339,23 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     console.log("👁️ Page is now visible, refreshing chats...");
     loadChats();
+  }
+});
+
+// ✅ AUTO-LOAD FROM PRODUCT PAGE
+document.addEventListener('DOMContentLoaded', () => {
+  // Check if coming from product page
+  const sellerId = localStorage.getItem('chat_seller_id');
+  const listingId = localStorage.getItem('chat_listing_id');
+  const sellerName = localStorage.getItem('chat_seller_name');
+  
+  if (sellerId && listingId && sellerName) {
+    console.log('🎯 Auto-opening chat with seller:', sellerName);
+    openChat(listingId, sellerId, sellerName);
+    
+    // Clear storage
+    localStorage.removeItem('chat_seller_id');
+    localStorage.removeItem('chat_listing_id');
+    localStorage.removeItem('chat_seller_name');
   }
 });

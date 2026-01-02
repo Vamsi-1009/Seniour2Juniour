@@ -101,3 +101,9 @@ function openChat() {
   // Redirect to chat.html with message param
   window.location.href = `chat.html?message=${encodeURIComponent(msg)}`;
 }
+
+// On "Chat with Seller" button click
+localStorage.setItem('chat_seller_id', sellerId);
+localStorage.setItem('chat_listing_id', listingId);
+localStorage.setItem('chat_seller_name', sellerName);
+window.location.href = 'chat.html';
