@@ -8,39 +8,51 @@ if (!token) {
 }
 
 // ================= ADD PRODUCT =================
-function addProduct() {
-  const title = document.getElementById("title").value.trim();
-  const description = document.getElementById("description").value.trim();
+async function addProduct() {
+  const title = document.getElementById("title").value;
+  const description = document.getElementById("description").value;
   const price = document.getElementById("price").value;
   const type = document.getElementById("type").value;
-  const files = document.getElementById("images").files;
+  const imageFiles = document.getElementById("images").files;
 
-  // VALIDATION
-  if (!title || !price || !type) {
-    alert("Please fill all required fields");
+  if (!title || !description || !price || imageFiles.length === 0) {
+    alert("Please fill all fields and upload at least 1 image");
     return;
   }
 
-  if (files.length !== 3) {
-    alert("Please upload exactly 3 images");
-    return;
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("description", description);
+  formData.append("price", price);
+  formData.append("type", type);
+  
+  // ✅ Add ALL images to FormData
+  for (let i = 0; i < imageFiles.length; i++) {
+    formData.append("images", imageFiles[i]);
   }
 
-  // LOCATION (OPTIONAL)
-  if (!navigator.geolocation) {
-    submitProduct(files, null, null);
-    return;
-  }
+  try {
+    const response = await fetch("http://localhost:5000/api/listings", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+      },
+      body: formData
+    });
 
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      submitProduct(files, pos.coords.latitude, pos.coords.longitude);
-    },
-    () => {
-      submitProduct(files, null, null);
+    if (response.ok) {
+      const result = await response.json();
+      alert("Product added successfully!");
+      window.location.href = "index.html";
+    } else {
+      alert("Error adding product");
     }
-  );
+  } catch (error) {
+    console.error("Error:", error);
+    alert("Error uploading product");
+  }
 }
+
 
 // ================= SUBMIT =================
 function submitProduct(files, lat, lng) {

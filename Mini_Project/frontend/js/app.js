@@ -33,25 +33,34 @@ function renderProducts(products) {
   }
 
   products.forEach(p => {
-    // ✅ FIXED: Handle both array and string images
+    // ✅ FIXED: Robust image handling
     let firstImage = '/uploads/demo.jpg';
+    
     if (p.images) {
       try {
-        if (Array.isArray(p.images)) {
+        if (Array.isArray(p.images) && p.images.length > 0) {
           firstImage = p.images[0];
-        } else {
-          const imgArray = JSON.parse(p.images);
-          firstImage = imgArray[0];
+        } else if (typeof p.images === 'string') {
+          // Handle stringified array or single path
+          if (p.images.startsWith('[')) {
+            const parsed = JSON.parse(p.images);
+            if (parsed.length > 0) firstImage = parsed[0];
+          } else {
+            firstImage = p.images;
+          }
         }
       } catch(e) {
+        console.warn('Image parse error for product:', p.id, e);
         firstImage = '/uploads/demo.jpg';
       }
     }
-    const imagePath = p.images && Array.isArray(p.images) ? '${API_URL}${p.images[0]}' : '${API_URL}/uploads/demo.jpg';
-    
+
+    // Ensure image path is absolute URL
+    const imageUrl = firstImage.startsWith('http') ? firstImage : `${API_URL}${firstImage}`;
+
     container.innerHTML += `
-      <div class="product-card" onclick="openProduct(${p.id})">
-        <img src="${imagePath}" alt="${p.title}" onerror="this.src='/uploads/demo.jpg'">
+      <div class="product-card" onclick="openProduct('${p._id || p.id}')">
+        <img src="${imageUrl}" alt="${p.title}" onerror="this.src='/uploads/demo.jpg'">
         <div class="product-info">
           <div class="product-title">${p.title}</div>
           <div class="product-price">₹${p.price}</div>
@@ -63,25 +72,46 @@ function renderProducts(products) {
 }
 
 function loadProducts() {
-  fetch(`${API_URL}/api/listings`)
+  fetch(`${API_URL}/api/listings`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem("token")}`
+    }
+  })
     .then(res => {
       if (!res.ok) throw new Error('API error');
       return res.json();
     })
     .then(data => {
+      console.log("Loaded products:", data);
       allProducts = data || [];
-      renderProducts(allProducts);  // "new one" from backend
+      renderProducts(allProducts);
     })
     .catch(error => {
       console.error('Listings load error:', error);
-      document.getElementById("listings").innerHTML = "<p>Backend offline.</p>";
+      document.getElementById("listings").innerHTML = "<p>Backend offline or error.</p>";
     });
 }
-
 
 window.openProduct = function(id) {
   console.log("Opening product ID:", id);
   window.location.href = `product.html?id=${id}`;
+};
+
+// Filter functions
+window.toggleFilters = function() {
+  document.getElementById('filterPanel').classList.toggle('hidden');
+};
+
+window.applyFilters = function() {
+  const maxPrice = document.getElementById('priceSlider').value;
+  const filtered = allProducts.filter(p => p.price <= maxPrice);
+  renderProducts(filtered);
+};
+
+window.clearFilters = function() {
+  document.getElementById('priceSlider').value = 1000;
+  document.getElementById('priceValue').innerText = 1000;
+  renderProducts(allProducts);
 };
 
 window.onload = function() {

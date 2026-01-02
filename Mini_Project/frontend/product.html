@@ -2,72 +2,79 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Product Details</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Details - Academic Exchange</title>
   <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 </head>
 <body>
 
+<!-- ✅ NAVBAR -->
 <header class="navbar">
   <div class="logo">Academic Exchange</div>
   <div class="nav-actions">
     <a href="index.html">Home</a>
+    <a href="my-products.html">My Products</a>
     <a href="chat.html">Chat</a>
+    <a href="#" onclick="logout()">Logout</a>
   </div>
 </header>
 
 <main class="product-page">
-
   <div class="detail-card">
+    
+    <!-- ✅ LEFT COLUMN: IMAGES -->
+    <div class="slider-container">
+      <div class="slider">
+        <button class="nav-btn prev-btn" onclick="prevImage()">❮</button>
+        <img id="mainImage" src="" alt="Product Image" onerror="this.src='./assets/placeholder.jpg'">
+        <button class="nav-btn next-btn" onclick="nextImage()">❯</button>
+      </div>
+      <div id="thumbnails" class="thumbnails"></div>
+    </div>
 
-   <!-- IMAGE SECTION -->
-   <div class="slider">
-     <button class="nav-btn" onclick="prevImage()">‹</button>
-   
-     <img id="mainImage" alt="Product Image">
-   
-     <button class="nav-btn" onclick="nextImage()">›</button>
-   
-     <div id="thumbnails" class="thumbnails"></div>
-   </div>
-   
-
-    <!-- PRODUCT DETAILS -->
+    <!-- ✅ RIGHT COLUMN: INFO -->
     <div class="detail-info">
-      <h2 id="title"></h2>
-      <p id="description"></p>
-
+      <h1 id="title" class="product-title">Loading...</h1>
+      
       <div class="price-row">
-        <h3 id="price"></h3>
+        <h2 id="price" class="product-price"></h2>
         <span id="type" class="badge"></span>
       </div>
 
-      <div class="action-buttons">
-        <button
-  onclick="window.location.href='checkout.html?id=' + product.id"
-  class="primary-btn"
->
-  Buy / Rent
-</button>
+      <p id="description" class="product-description"></p>
+      
+      <hr class="divider">
 
-        <button onclick="openChat()" class="primary-btn">
-          Chat with Seller
-        </button>
-        <button onclick="shareOnWhatsApp()" class="wa-btn">
-          WhatsApp
-        </button>
+      <!-- ✅ ACTION SELECTION (Buy/Rent) -->
+      <div class="action-section">
+        <div class="radio-group">
+          <label class="radio-btn">
+            <input type="radio" name="action" value="Buy" onchange="updateAction('Buy')" checked>
+            <span class="radio-box">Buy</span>
+          </label>
+          <label class="radio-btn">
+            <input type="radio" name="action" value="Rent" onchange="updateAction('Rent')">
+            <span class="radio-box">Rent</span>
+          </label>
+        </div>
       </div>
 
-      <!-- GOOGLE MAP -->
-      <div id="map" class="map-box"></div>
+      <!-- ✅ CHAT BUTTON (Calls openChat in product.js) -->
+      <div class="action-buttons">
+        <button onclick="openChat()" class="primary-btn chat-btn">
+          <i class="fa-solid fa-comments"></i> Chat with Seller
+        </button>
+      </div>
     </div>
 
   </div>
-
 </main>
 
-<script
-  src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY">
-</script>
+<!-- ✅ SCRIPTS -->
+<!-- Replace YOUR_GOOGLE_MAPS_KEY with your actual API Key -->
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY&callback=initMap" async defer></script>
 <script src="./js/product.js"></script>
+
 </body>
 </html>

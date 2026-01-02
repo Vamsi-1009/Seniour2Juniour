@@ -6,6 +6,7 @@ const productId = params.get("id");
 let product = null;
 let images = [];
 let currentIndex = 0;
+let selectedAction = 'buy'; // ✅ Global action tracker
 
 fetch(`${API_URL}/api/listings/${productId}`)
   .then(res => {
@@ -14,7 +15,7 @@ fetch(`${API_URL}/api/listings/${productId}`)
   })
   .then(data => {
     product = data;
-    images = Array.isArray(product.images) ? product.images : [];  // ✅ WORKS
+    images = Array.isArray(product.images) ? product.images : [];
     loadProduct();
     renderThumbnails();
   })
@@ -56,10 +57,35 @@ function renderThumbnails() {
   });
 }
 
-function openChat() {
-  window.location.href = `chat.html?listingId=${product.id}&sellerId=${product.user_id}`;
+// ✅ NEW: Select Buy or Rent
+function selectAction(action) {
+  selectedAction = action; // 'buy' or 'rent'
+  
+  // Visual feedback - highlight selected option
+  document.querySelectorAll('input[name="action"]').forEach(radio => {
+    radio.parentElement.style.opacity = radio.value === action ? '1' : '0.6';
+  });
 }
 
-function goToCheckout() {
-  window.location.href = `checkout.html?id=${product.id}`;
+// ✅ NEW: Open Chat with Pre-filled Message
+function openChat() {
+  if (!product) {
+    alert("Product not loaded");
+    return;
+  }
+
+  const sellerId = product.user_id;
+  const listingId = product.id;
+  
+  // ✅ Create auto message based on selected action
+  let autoMessage = '';
+  if (selectedAction === 'buy') {
+    autoMessage = `Hi, I want to buy this product: "${product.title}"`;
+  } else if (selectedAction === 'rent') {
+    autoMessage = `Hi, I want to rent this product: "${product.title}"`;
+  }
+
+  // ✅ Redirect to chat with auto message
+  const url = `chat.html?sellerId=${sellerId}&listingId=${listingId}&action=${selectedAction}&message=${encodeURIComponent(autoMessage)}`;
+  window.location.href = url;
 }

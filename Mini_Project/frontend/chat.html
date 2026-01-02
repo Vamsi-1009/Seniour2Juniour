@@ -1,23 +1,46 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Chat</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat | Academic Exchange</title>
   <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
 
-<div class="chat-container">
-  <h3>Chat with Seller</h3>
+<!-- ✅ NEW: Navbar -->
+<header class="navbar">
+  <div class="logo">
+    <a href="index.html">Academic Exchange</a>
+  </div>
+  <div class="nav-actions">
+    <a href="index.html">Home</a>
+    <a href="#" onclick="logout()">Logout</a>
+  </div>
+</header>
 
+<div class="chat-container">
+  <!-- ✅ NEW: Chat Header with Seller Info + Action -->
+  <div class="chat-header">
+    <div class="seller-info">
+      <h3>Chat with Seller</h3>
+      <div id="chatTitle">Loading seller...</div>
+      <div id="chatAction" class="chat-action-badge"></div>
+    </div>
+    <div class="listing-info">
+      <span id="listingTitle">Product discussion</span>
+    </div>
+  </div>
+
+  <!-- ✅ Messages Container -->
   <div id="messages" class="chat-box"></div>
 
+  <!-- ✅ Chat Input -->
   <div class="chat-input">
-    <input id="msgInput" placeholder="Type message..." />
+    <input id="msgInput" placeholder="Type message about your request..." />
     <button onclick="sendMessage()">Send</button>
   </div>
 </div>
 
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<script src="./js/chat.js"></script>
-</body>
-</html>
+<!-- ✅ Socket.IO CDN -->
+<script src="https://cdn.socket.io/4.7.2/socket.io.min

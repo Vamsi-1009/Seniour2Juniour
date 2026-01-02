@@ -1,14 +1,17 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Academic Exchange</title>
   <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
 
 <script>
-  // Redirect to login if user not logged in
+  // ✅ CHECK AUTH BEFORE PAGE RENDERS
   const token = localStorage.getItem("token");
   if (!token) {
     window.location.href = "login.html";
@@ -25,8 +28,6 @@
   </div>
 </header>
 
-
-
 <main class="page">
   <h2 class="section-title">Recommended for Students</h2>
 
@@ -38,19 +39,12 @@
       class="big-search"
       placeholder="Search books, subjects, notes..."
     />
-
-    <!-- FILTER SYMBOL ⇅ -->
-    <button class="filter-icon-btn" onclick="toggleFilters()">
-      ⇅
-    </button>
+    <button class="filter-icon-btn" onclick="toggleFilters()">⇅</button>
   </div>
 
   <!-- FILTER PANEL -->
   <div id="filterPanel" class="filter-panel hidden">
-    <label>
-      Max Price: ₹<span id="priceValue">1000</span>
-    </label>
-
+    <label>Max Price: ₹<span id="priceValue">1000</span></label>
     <input
       type="range"
       id="priceSlider"
@@ -59,21 +53,19 @@
       value="1000"
       oninput="priceValue.innerText=this.value"
     />
-
     <div class="filter-actions">
-      <button onclick="applyFilters()" class="primary-btn">
-        Apply
-      </button>
-      <button onclick="clearFilters()" class="clear-btn">
-        Clear
-      </button>
+      <button onclick="applyFilters()" class="primary-btn">Apply</button>
+      <button onclick="clearFilters()" class="clear-btn">Clear</button>
     </div>
   </div>
 
-  <!-- LISTINGS GRID -->
-  <div id="listings" class="product-grid"></div>
+  <!-- LISTINGS GRID - LOADED BY app.js -->
+  <div id="listings" class="product-grid">
+    <!-- Products rendered here by renderProducts() -->
+  </div>
 </main>
 
 <script src="./js/app.js"></script>
+
 </body>
 </html>
