@@ -1,4 +1,6 @@
-<html lang="en"><head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Academic Exchange</title>
@@ -14,14 +16,31 @@
   }
 </script>
 
+<!-- NAVBAR WITH USERNAME + PROFILE DROPDOWN -->
 <header class="navbar">
+  <!-- Welcome Message with Username (LEFT) -->
+  <div class="welcome-section">
+    <span class="welcome-text">Welcome, </span>
+    <span class="user-name-left" id="userNameLeft">User</span>
+  </div>
+
+  <!-- Logo (CENTER) -->
   <div class="logo">Academic Exchange</div>
-  <div class="nav-actions">
-      
-      <a href="add-product.html">Add Item</a>
-      <a href="my-products.html">My Products</a>
-      <a href="#" onclick="logout()">Logout</a>
+  
+  <!-- Profile Dropdown (RIGHT) -->
+  <div class="profile-dropdown">
+    <button class="profile-btn" onclick="toggleDropdown()">
+      <span class="profile-icon">👤</span>
+      <span class="profile-name" id="userName">User</span>
+      <span class="dropdown-arrow">▼</span>
+    </button>
+    
+    <div class="dropdown-menu" id="dropdownMenu">
+      <a href="add-product.html" class="dropdown-item">➕ Add Item</a>
+      <a href="my-products.html" class="dropdown-item">📦 My Products</a>
+      <a href="#" onclick="logout()" class="dropdown-item logout-item">🚪 Logout</a>
     </div>
+  </div>
 </header>
 
 <main class="page">
@@ -67,6 +86,55 @@
 
 <script src="./js/app.js"></script>
 
+<script>
+  // ========== PROFILE DROPDOWN FUNCTIONALITY ==========
 
+  // Toggle dropdown menu
+  function toggleDropdown() {
+    const menu = document.getElementById('dropdownMenu');
+    const btn = document.querySelector('.profile-btn');
+    
+    menu.classList.toggle('show');
+    btn.classList.toggle('active');
+  }
 
-</body></html>
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(event) {
+    const profile = document.querySelector('.profile-dropdown');
+    if (profile && !profile.contains(event.target)) {
+      document.getElementById('dropdownMenu').classList.remove('show');
+      document.querySelector('.profile-btn').classList.remove('active');
+    }
+  });
+
+  // Set user name in profile button AND welcome section
+  function setUserProfile() {
+    const userName = localStorage.getItem('userName') || 'User';
+    
+    // Set username in right corner (profile dropdown)
+    const userNameEl = document.getElementById('userName');
+    if (userNameEl) {
+      userNameEl.textContent = userName;
+    }
+
+    // Set username in left corner (welcome message)
+    const userNameLeftEl = document.getElementById('userNameLeft');
+    if (userNameLeftEl) {
+      userNameLeftEl.textContent = userName;
+    }
+  }
+
+  // Logout function
+  function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userName');
+    window.location.href = 'login.html';
+  }
+
+  // Run on page load
+  window.addEventListener('DOMContentLoaded', setUserProfile);
+</script>
+
+</body>
+</html>
