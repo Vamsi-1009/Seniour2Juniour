@@ -1,8 +1,4 @@
-
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="en"><head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Academic Exchange</title>
@@ -21,11 +17,11 @@
 <header class="navbar">
   <div class="logo">Academic Exchange</div>
   <div class="nav-actions">
-    <a href="chat.html">Chat</a>
-    <a href="add-product.html">Add Item</a>
-    <a href="my-products.html">My Products</a>
-    <a href="#" onclick="logout()">Logout</a>
-  </div>
+      
+      <a href="add-product.html">Add Item</a>
+      <a href="my-products.html">My Products</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
 </header>
 
 <main class="page">
@@ -33,26 +29,14 @@
 
   <!-- TOP SEARCH + FILTER ICON -->
   <div class="top-filter-bar">
-    <input
-      type="text"
-      id="searchInput"
-      class="big-search"
-      placeholder="Search books, subjects, notes..."
-    />
+    <input type="text" id="searchInput" class="big-search" placeholder="Search books, subjects, notes...">
     <button class="filter-icon-btn" onclick="toggleFilters()">⇅</button>
   </div>
 
   <!-- FILTER PANEL -->
   <div id="filterPanel" class="filter-panel hidden">
     <label>Max Price: ₹<span id="priceValue">1000</span></label>
-    <input
-      type="range"
-      id="priceSlider"
-      min="0"
-      max="2000"
-      value="1000"
-      oninput="priceValue.innerText=this.value"
-    />
+    <input type="range" id="priceSlider" min="0" max="2000" value="1000" oninput="priceValue.innerText=this.value">
     <div class="filter-actions">
       <button onclick="applyFilters()" class="primary-btn">Apply</button>
       <button onclick="clearFilters()" class="clear-btn">Clear</button>
@@ -61,11 +45,28 @@
 
   <!-- LISTINGS GRID - LOADED BY app.js -->
   <div id="listings" class="product-grid">
-    <!-- Products rendered here by renderProducts() -->
-  </div>
+      <div class="product-card" onclick="openProduct('2')">
+        <img src="http://localhost:5000/uploads/1767170756311.jpg" alt="naru" onerror="this.src='/uploads/demo.jpg'">
+        <div class="product-info">
+          <div class="product-title">naru</div>
+          <div class="product-price">₹120</div>
+          <span class="badge">sell</span>
+        </div>
+      </div>
+    
+      <div class="product-card" onclick="openProduct('1')">
+        <img src="http://localhost:5000/uploads/1766861530248.jpg" alt="new one" onerror="this.src='/uploads/demo.jpg'">
+        <div class="product-info">
+          <div class="product-title">new one</div>
+          <div class="product-price">₹100</div>
+          <span class="badge">sell</span>
+        </div>
+      </div>
+    </div>
 </main>
 
 <script src="./js/app.js"></script>
 
-</body>
-</html>
+
+
+</body></html>

@@ -13,7 +13,7 @@ function checkAuth() {
   
   if (token) {
     navActions.innerHTML = `
-      <a href="chat.html">Chat</a>
+ 
       <a href="add-product.html">Add Item</a>
       <a href="my-products.html">My Products</a>
       <a href="#" onclick="logout()">Logout</a>
