@@ -6,24 +6,54 @@
   <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
-
 <div class="auth-wrapper">
   <div class="auth-container">
     <h1>Academic Exchange</h1>
     <p class="subtitle">Login to continue</p>
-
     <div class="form-card">
       <input id="loginEmail" placeholder="Email">
       <input id="loginPassword" type="password" placeholder="Password">
       <button class="primary-btn" onclick="login()">Login</button>
     </div>
-
-    <p class="switch-text">
-      New user? <a href="register.html">Create Account</a>
-    </p>
+    <p class="switch-text">New user? <a href="register.html">Create Account</a></p>
   </div>
 </div>
 
-<script src="./js/auth.js"></script>
+<!-- ✅ INLINE LOGIN - NO FILE ISSUES! -->
+<script>
+const API_URL = "http://localhost:5000";
+
+function login() {
+  console.log("Login clicked! ✅");  // DEBUG
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  
+  if (!email || !password) {
+    alert('Fill email & password');
+    return;
+  }
+  
+  fetch(`${API_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email, password})
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log('Login response:', data);  // DEBUG
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('userName', email.split('@')[0]);
+      window.location.href = 'index.html';  // ✅ SUCCESS!
+    } else {
+      alert(data.message || 'Login failed');
+    }
+  })
+  .catch(err => {
+    console.error('Error:', err);
+    alert('Server error - check localhost:5000');
+  });
+}
+</script>
 </body>
 </html>
