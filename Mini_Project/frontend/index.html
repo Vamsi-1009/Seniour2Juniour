@@ -5,6 +5,153 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Academic Exchange</title>
   <link rel="stylesheet" href="./css/style.css">
+  <style>
+    /* ✅ PROFILE DROPDOWN CSS */
+    .profile-container { 
+      position: relative; 
+      margin-left: auto; 
+      z-index: 1001; 
+    }
+    
+    .profile-btn { 
+      background: rgba(255,255,255,0.1); 
+      border: none; 
+      color: #fff; 
+      padding: 0.6rem 1rem; 
+      border-radius: 20px; 
+      cursor: pointer; 
+      font-size: 0.95rem; 
+      display: flex; 
+      align-items: center; 
+      gap: 8px;
+      transition: all 0.2s; 
+      position: relative; 
+      z-index: 1002;
+    }
+    
+    .profile-btn:hover { 
+      background: rgba(255,255,255,0.2); 
+      transform: translateY(-1px); 
+    }
+    
+    .profile-dropdown {
+      position: absolute; 
+      top: 100%; 
+      right: 0; 
+      background: #fff; 
+      border-radius: 8px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15); 
+      min-width: 160px; 
+      opacity: 0; 
+      visibility: hidden;
+      transform: translateY(-10px); 
+      transition: all 0.2s; 
+      z-index: 1003;
+      margin-top: 8px;
+    }
+    
+    .profile-dropdown.show { 
+      opacity: 1; 
+      visibility: visible; 
+      transform: translateY(0); 
+    }
+    
+    .profile-dropdown a { 
+      display: block; 
+      color: #333; 
+      padding: 0.8rem 1rem; 
+      text-decoration: none; 
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .profile-dropdown a:last-child { 
+      border-bottom: none; 
+    }
+    
+    .profile-dropdown a:hover { 
+      background: #f8f9ff; 
+      color: #2874f0;
+    }
+    
+    /* ✅ FILTER PANEL CSS */
+    .welcome-left { 
+      font-size: 0.9rem; 
+      opacity: 0.9; 
+    }
+    
+    .filter-icon-btn { 
+      background: #f8f9ff; 
+      border: none; 
+      padding: 0.8rem; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-size: 1.1rem; 
+      color: #666; 
+      transition: all 0.2s;
+    }
+    
+    .filter-icon-btn:hover { 
+      background: #e8e9ff; 
+      transform: scale(1.05); 
+    }
+    
+    .filter-panel.hidden { 
+      display: none; 
+    }
+    
+    .filter-panel { 
+      background: white; 
+      padding: 1.5rem; 
+      border-radius: 12px; 
+      margin: 1rem 0; 
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+      animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown { 
+      from { opacity: 0; transform: translateY(-10px); } 
+      to { opacity: 1; transform: translateY(0); } 
+    }
+    
+    .filter-actions { 
+      display: flex; 
+      gap: 12px; 
+      margin-top: 1rem; 
+    }
+    
+    .primary-btn { 
+      background: #2874f0; 
+      color: white; 
+      padding: 0.7rem 1.5rem; 
+      border: none; 
+      border-radius: 6px; 
+      cursor: pointer;
+      font-weight: 500;
+    }
+    
+    .primary-btn:hover {
+      background: #1a5bb8;
+    }
+    
+    .clear-btn { 
+      background: #f0f0f0; 
+      color: #666; 
+      padding: 0.7rem 1.5rem; 
+      border: none; 
+      border-radius: 6px; 
+      cursor: pointer;
+      font-weight: 500;
+    }
+    
+    .clear-btn:hover {
+      background: #e0e0e0;
+    }
+    
+    #priceValue { 
+      font-weight: bold; 
+      color: #2874f0; 
+    }
+  </style>
 </head>
 <body>
 
@@ -16,29 +163,19 @@
   }
 </script>
 
-<!-- NAVBAR WITH USERNAME + PROFILE DROPDOWN -->
 <header class="navbar">
-  <!-- Welcome Message with Username (LEFT) -->
-  <div class="welcome-section">
-    <span class="welcome-text">Welcome, </span>
-    <span class="user-name-left" id="userNameLeft">User</span>
-  </div>
-
-  <!-- Logo (CENTER) -->
+  <div id="welcome-user" class="welcome-left"></div>
   <div class="logo">Academic Exchange</div>
   
-  <!-- Profile Dropdown (RIGHT) -->
-  <div class="profile-dropdown">
-    <button class="profile-btn" onclick="toggleDropdown()">
-      <span class="profile-icon">👤</span>
-      <span class="profile-name" id="userName">User</span>
-      <span class="dropdown-arrow">▼</span>
+  <!-- Profile Dropdown - RIGHT CORNER -->
+  <div class="profile-container">
+    <button class="profile-btn" onclick="toggleProfileDropdown()">
+      👤 <span id="profileName">User</span> ▼
     </button>
-    
-    <div class="dropdown-menu" id="dropdownMenu">
-      <a href="add-product.html" class="dropdown-item">➕ Add Item</a>
-      <a href="my-products.html" class="dropdown-item">📦 My Products</a>
-      <a href="#" onclick="logout()" class="dropdown-item logout-item">🚪 Logout</a>
+    <div class="profile-dropdown" id="profileDropdown">
+      <a href="add-product.html">➕ Add Item</a>
+      <a href="my-products.html">📦 My Products</a>
+      <a href="#" onclick="logout(); return false;">🚪 Logout</a>
     </div>
   </div>
 </header>
@@ -48,93 +185,116 @@
 
   <!-- TOP SEARCH + FILTER ICON -->
   <div class="top-filter-bar">
-    <input type="text" id="searchInput" class="big-search" placeholder="Search books, subjects, notes...">
-    <button class="filter-icon-btn" onclick="toggleFilters()">⇅</button>
+    <input
+      type="text"
+      id="searchInput"
+      class="big-search"
+      placeholder="Search books, subjects, notes..."
+    />
+    <button class="filter-icon-btn" id="filterToggle" onclick="toggleFilters()">⇅</button>
   </div>
 
   <!-- FILTER PANEL -->
   <div id="filterPanel" class="filter-panel hidden">
     <label>Max Price: ₹<span id="priceValue">1000</span></label>
-    <input type="range" id="priceSlider" min="0" max="2000" value="1000" oninput="priceValue.innerText=this.value">
+    <input
+      type="range"
+      id="priceSlider"
+      min="0"
+      max="2000"
+      value="1000"
+    />
     <div class="filter-actions">
-      <button onclick="applyFilters()" class="primary-btn">Apply</button>
-      <button onclick="clearFilters()" class="clear-btn">Clear</button>
+      <button class="primary-btn" onclick="applyFilters()">✅ Apply</button>
+      <button class="clear-btn" onclick="clearFilters()">🔄 Clear</button>
     </div>
   </div>
 
-  <!-- LISTINGS GRID - LOADED BY app.js -->
+  <!-- LISTINGS GRID -->
   <div id="listings" class="product-grid">
-      <div class="product-card" onclick="openProduct('2')">
-        <img src="http://localhost:5000/uploads/1767170756311.jpg" alt="naru" onerror="this.src='/uploads/demo.jpg'">
-        <div class="product-info">
-          <div class="product-title">naru</div>
-          <div class="product-price">₹120</div>
-          <span class="badge">sell</span>
-        </div>
-      </div>
-    
-      <div class="product-card" onclick="openProduct('1')">
-        <img src="http://localhost:5000/uploads/1766861530248.jpg" alt="new one" onerror="this.src='/uploads/demo.jpg'">
-        <div class="product-info">
-          <div class="product-title">new one</div>
-          <div class="product-price">₹100</div>
-          <span class="badge">sell</span>
-        </div>
-      </div>
-    </div>
+    <!-- Products rendered here by app.js -->
+  </div>
 </main>
 
-<script src="./js/app.js"></script>
-
+<!-- ✅ PROFILE DROPDOWN FUNCTION -->
 <script>
-  // ========== PROFILE DROPDOWN FUNCTIONALITY ==========
-
-  // Toggle dropdown menu
-  function toggleDropdown() {
-    const menu = document.getElementById('dropdownMenu');
-    const btn = document.querySelector('.profile-btn');
-    
-    menu.classList.toggle('show');
-    btn.classList.toggle('active');
+function toggleProfileDropdown() {
+  const dropdown = document.getElementById('profileDropdown');
+  if (dropdown) {
+    dropdown.classList.toggle('show');
   }
+  console.log('✅ Profile dropdown toggled');
+}
 
-  // Close dropdown when clicking outside
-  document.addEventListener('click', function(event) {
-    const profile = document.querySelector('.profile-dropdown');
-    if (profile && !profile.contains(event.target)) {
-      document.getElementById('dropdownMenu').classList.remove('show');
-      document.querySelector('.profile-btn').classList.remove('active');
-    }
-  });
-
-  // Set user name in profile button AND welcome section
-  function setUserProfile() {
-    const userName = localStorage.getItem('userName') || 'User';
-    
-    // Set username in right corner (profile dropdown)
-    const userNameEl = document.getElementById('userName');
-    if (userNameEl) {
-      userNameEl.textContent = userName;
-    }
-
-    // Set username in left corner (welcome message)
-    const userNameLeftEl = document.getElementById('userNameLeft');
-    if (userNameLeftEl) {
-      userNameLeftEl.textContent = userName;
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+  const dropdown = document.getElementById('profileDropdown');
+  const profileBtn = document.querySelector('.profile-btn');
+  
+  if (dropdown && profileBtn) {
+    if (!profileBtn.contains(event.target) && !dropdown.contains(event.target)) {
+      dropdown.classList.remove('show');
     }
   }
+});
 
-  // Logout function
-  function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userName');
-    window.location.href = 'login.html';
+document.addEventListener('DOMContentLoaded', function() {
+  // ❌ DON'T CALL checkAuth() HERE - it runs too early
+  
+  // ✅ ONLY LOAD PRODUCTS + FILTERS
+  if (typeof loadProducts === 'function') {
+    loadProducts();
   }
+  
+  // Filter button
+  const filterToggle = document.getElementById('filterToggle');
+  if (filterToggle) {
+    filterToggle.addEventListener('click', function() {
+      document.getElementById('filterPanel').classList.toggle('hidden');
+    });
+  }
+  
+  // Search input
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      const query = this.value.toLowerCase();
+      // Filter logic here if needed
+    });
+  }
+});
 
-  // Run on page load
-  window.addEventListener('DOMContentLoaded', setUserProfile);
+
+// ✅ FILTER FUNCTIONS
+function toggleFilters() {
+  const panel = document.getElementById('filterPanel');
+  if (panel) {
+    panel.classList.toggle('hidden');
+  }
+}
+
+function applyFilters() {
+  const maxPrice = parseInt(document.getElementById('priceSlider').value || 1000);
+  console.log('Filters applied! Max price: ₹' + maxPrice);
+  document.getElementById('filterPanel').classList.add('hidden');
+}
+
+function clearFilters() {
+  document.getElementById('priceSlider').value = 1000;
+  document.getElementById('priceValue').textContent = '1000';
+  console.log('Filters cleared!');
+  document.getElementById('filterPanel').classList.add('hidden');
+}
+
+// ✅ LOGOUT FUNCTION
+function logout() {
+  localStorage.clear();
+  window.location.href = 'login.html';
+}
 </script>
+
+<!-- ✅ LOAD APP.JS -->
+<script src="./js/app.js"></script>
 
 </body>
 </html>
