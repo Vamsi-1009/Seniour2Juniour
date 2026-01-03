@@ -6,17 +6,107 @@
   <title>Product Details - Academic Exchange</title>
   <link rel="stylesheet" href="./css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <style>
+    /* ✅ PROFILE DROPDOWN CSS */
+    .profile-container { 
+      position: relative; 
+      margin-left: auto; 
+      z-index: 1001; 
+    }
+    
+    .profile-btn { 
+      background: rgba(255,255,255,0.1); 
+      border: none; 
+      color: #fff; 
+      padding: 0.6rem 1rem; 
+      border-radius: 20px; 
+      cursor: pointer; 
+      font-size: 0.95rem; 
+      display: flex; 
+      align-items: center; 
+      gap: 8px;
+      transition: all 0.2s; 
+      position: relative; 
+      z-index: 1002;
+    }
+    
+    .profile-btn:hover { 
+      background: rgba(255,255,255,0.2); 
+      transform: translateY(-1px); 
+    }
+    
+    .profile-dropdown {
+      position: absolute; 
+      top: 100%; 
+      right: 0; 
+      background: #fff; 
+      border-radius: 8px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15); 
+      min-width: 160px; 
+      opacity: 0; 
+      visibility: hidden;
+      transform: translateY(-10px); 
+      transition: all 0.2s; 
+      z-index: 1003;
+      margin-top: 8px;
+    }
+    
+    .profile-dropdown.show { 
+      opacity: 1; 
+      visibility: visible; 
+      transform: translateY(0); 
+    }
+    
+    .profile-dropdown a { 
+      display: block; 
+      color: #333; 
+      padding: 0.8rem 1rem; 
+      text-decoration: none; 
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .profile-dropdown a:last-child { 
+      border-bottom: none; 
+    }
+    
+    .profile-dropdown a:hover { 
+      background: #f8f9ff; 
+      color: #2874f0;
+    }
+
+    .welcome-left { 
+      font-size: 0.9rem; 
+      opacity: 0.9; 
+    }
+  </style>
 </head>
 <body>
 
-<!-- ✅ NAVBAR -->
+<script>
+  // ✅ CHECK AUTH BEFORE PAGE RENDERS
+  const token = localStorage.getItem("token");
+  if (!token) {
+    window.location.href = "login.html";
+  }
+</script>
+
+<!-- ✅ NAVBAR WITH PROFILE DROPDOWN -->
 <header class="navbar">
+  <div id="welcome-user" class="welcome-left"></div>
   <div class="logo">Academic Exchange</div>
-  <div class="nav-actions">
-    <a href="index.html">Home</a>
-    <a href="my-products.html">My Products</a>
-    <a href="chat.html">Chat</a>
-    <a href="#" onclick="logout()">Logout</a>
+  
+  <!-- Profile Dropdown - RIGHT CORNER -->
+  <div class="profile-container">
+    <button class="profile-btn" onclick="toggleProfileDropdown()">
+      👤 <span id="profileName">User</span> ▼
+    </button>
+    <div class="profile-dropdown" id="profileDropdown">
+      <a href="index.html">🏠 Home</a>
+      <a href="add-product.html">➕ Add Item</a>
+      <a href="my-products.html">📦 My Products</a>
+      <a href="chat.html">💬 Chat</a>
+      <a href="#" onclick="logout(); return false;">🚪 Logout</a>
+    </div>
   </div>
 </header>
 
@@ -60,7 +150,7 @@
         </div>
       </div>
 
-      <!-- ✅ CHAT BUTTON (Calls openChat in product.js) -->
+      <!-- ✅ CHAT BUTTON -->
       <div class="action-buttons">
         <button onclick="openChat()" class="primary-btn chat-btn">
           <i class="fa-solid fa-comments"></i> Chat with Seller
@@ -71,9 +161,47 @@
   </div>
 </main>
 
-<!-- ✅ SCRIPTS -->
-<!-- Replace YOUR_GOOGLE_MAPS_KEY with your actual API Key -->
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY&callback=initMap" async defer></script>
+<!-- ✅ PROFILE DROPDOWN SCRIPT -->
+<script>
+function toggleProfileDropdown() {
+  const dropdown = document.getElementById('profileDropdown');
+  if (dropdown) {
+    dropdown.classList.toggle('show');
+  }
+}
+
+document.addEventListener('click', function(event) {
+  const dropdown = document.getElementById('profileDropdown');
+  const profileBtn = document.querySelector('.profile-btn');
+  
+  if (dropdown && profileBtn) {
+    if (!profileBtn.contains(event.target) && !dropdown.contains(event.target)) {
+      dropdown.classList.remove('show');
+    }
+  }
+});
+
+function logout() {
+  localStorage.clear();
+  window.location.href = 'login.html';
+}
+
+function updateUsername() {
+  let username = localStorage.getItem("username") || 'User';
+  
+  const welcomeEl = document.getElementById('welcome-user');
+  const profileNameEl = document.getElementById('profileName');
+  
+  if (welcomeEl) welcomeEl.textContent = `Welcome, ${username}`;
+  if (profileNameEl) profileNameEl.textContent = username;
+}
+
+window.addEventListener('load', function() {
+  updateUsername();
+});
+</script>
+
+<!-- ✅ PRODUCT PAGE SCRIPTS -->
 <script src="./js/product.js"></script>
 
 </body>

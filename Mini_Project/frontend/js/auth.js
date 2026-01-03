@@ -1,133 +1,105 @@
-✅ UPDATED auth.js - Fixed Version
-
 const API_URL = "http://localhost:5000";
-
-/* ================== LOGIN ================== */
 
 function login() {
   const email = document.getElementById("loginEmail").value;
   const password = document.getElementById("loginPassword").value;
   
-  if (!email || !password) {
-    alert("Please fill all fields");
-    return;
-  }
-
   fetch(`${API_URL}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password })
   })
-  .then(r => r.json())
-  .then(data => {
-    console.log("Login Response:", data); // Debug
-    
-    if (data.token) {
-      // ✅ Save token AND user info
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("userName", data.email.split("@")[0]); // Save username
-      localStorage.setItem("userRole", data.role || "user");
+  .then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  })
+  .then(d => {
+    if (d.token) {
+      // ✅ STORE BOTH TOKEN + USERNAME
+      localStorage.setItem("token", d.token);
       
-      // Redirect based on role
-      if (data.role === "admin") {
-        window.location.href = "admin.html";
-      } else {
-        window.location.href = "index.html";
-      }
+      // ✅ GET USERNAME FROM RESPONSE - TRY ALL POSSIBLE FIELDS
+      let username = 'User';
+      if (d.user?.name) username = d.user.name;
+      else if (d.user?.username) username = d.user.username;
+      else if (d.name) username = d.name;
+      else if (d.username) username = d.username;
+      
+      localStorage.setItem("username", username);
+      
+      console.log('✅ Login success. Token + Username stored:', username);
+      window.location.href = "index.html";
     } else {
-      alert(data.message || "Login failed");
+      alert(d.message || "Login failed");
     }
   })
-  .catch(err => {
-    console.error("Login Error:", err);
-    alert("Error: Unable to connect to server. Make sure backend is running on http://localhost:5000");
+  .catch(error => {
+    console.error('❌ Login error:', error);
+    alert("Network error or server offline");
   });
 }
 
-/* ================== REGISTER ================== */
-
-function register() {
-  const name = document.getElementById("regName").value;
-  const email = document.getElementById("regEmail").value;
-  const phone = document.getElementById("regPhone").value;
-  const password = document.getElementById("regPassword").value;
-  
-  if (!name || !email || !phone || !password) {
-    alert("Please fill all fields");
-    return;
-  }
-
-  if (!validateEmail()) return;
-  if (!validatePhone()) return;
-
-  fetch(`${API_URL}/api/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, phone, password })
-  })
-  .then(r => r.json())
-  .then(data => {
-    console.log("Register Response:", data);
-    alert(data.message);
-    
-    if (data.message && data.message.includes("registered")) {
-      window.location.href = "login.html";
-    }
-  })
-  .catch(err => {
-    console.error("Register Error:", err);
-    alert("Error: Unable to connect to server");
-  });
-}
-
-/* ================== EMAIL VALIDATION ================== */
-
+// Rest of your auth.js code...
 function validateEmail() {
   const email = document.getElementById("regEmail").value;
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const emailError = document.getElementById("emailError");
-  
   if (!regex.test(email)) {
-    emailError.innerText = "Invalid email format";
+    document.getElementById("emailError").innerText = "Invalid email format";
     return false;
   }
-  
-  emailError.innerText = "";
+  document.getElementById("emailError").innerText = "";
   return true;
 }
-
-/* ================== PHONE VALIDATION ================== */
 
 function validatePhone() {
-  const regPhone = document.getElementById("regPhone");
-  const phoneError = document.getElementById("phoneError");
-  
-  regPhone.value = regPhone.value.replace(/\D/g, "");
-  
-  if (regPhone.value.length !== 10) {
-    phoneError.innerText = "Phone must be 10 digits";
+  const phone = document.getElementById("regPhone");
+  phone.value = phone.value.replace(/\D/g, "");
+  if (phone.value.length !== 10) {
+    document.getElementById("phoneError").innerText = "Phone must be 10 digits";
     return false;
   }
-  
-  phoneError.innerText = "";
+  document.getElementById("phoneError").innerText = "";
   return true;
 }
-
-/* ================== PASSWORD STRENGTH ================== */
 
 function updateStrength() {
   const pass = document.getElementById("regPassword").value;
-  const strengthMeter = document.getElementById("strengthMeter");
-  const strengthText = document.getElementById("strengthText");
-  
   let strength = 0;
   if (pass.length >= 6) strength++;
   if (/[A-Z]/.test(pass)) strength++;
   if (/[0-9]/.test(pass)) strength++;
   if (/[@$!%*?&]/.test(pass)) strength++;
   
-  if (strengthMeter) strengthMeter.value = strength;
-  
+  document.getElementById("strengthMeter").value = strength;
   const text = ["Very Weak", "Weak", "Okay", "Good", "Strong"];
-  if (strengthText) strengthText.innerText = text[strength];
+  document.getElementById("strengthText").innerText = text[strength];
+}
+
+function register() {
+  if (!validateEmail() || !validatePhone()) {
+    alert("Fix errors before submitting");
+    return;
+  }
+  
+  fetch(`${API_URL}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: document.getElementById("regName").value,
+      email: document.getElementById("regEmail").value,
+      phone: document.getElementById("regPhone").value,
+      password: document.getElementById("regPassword").value
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    alert(d.message);
+    if (d.message.includes("success")) {
+      window.location.href = "login.html";
+    }
+  })
+  .catch(error => {
+    console.error('Register error:', error);
+    alert("Registration failed");
+  });
 }
