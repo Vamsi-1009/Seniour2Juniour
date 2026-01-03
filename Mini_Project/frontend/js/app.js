@@ -2,6 +2,30 @@ const API_URL = "http://localhost:5000";
 let allProducts = [];
 let userLocation = null;
 
+// ✅ UPDATE USERNAME DISPLAY FUNCTION
+function updateUsernameDisplay() {
+  const username = localStorage.getItem("username") || 'User';
+  console.log('📍 updateUsernameDisplay called with username:', username);
+  
+  const welcomeEl = document.getElementById('welcome-user');
+  const profileNameEl = document.getElementById('profileName');
+  
+  if (welcomeEl) {
+    welcomeEl.textContent = `Welcome, ${username}`;
+    console.log('✅ welcome-user updated:', welcomeEl.textContent);
+  }
+  
+  if (profileNameEl) {
+    profileNameEl.textContent = username;
+    console.log('✅ profileName updated:', profileNameEl.textContent);
+  }
+}
+
+// ✅ CALL IMMEDIATELY ON PAGE LOAD
+document.addEventListener('DOMContentLoaded', updateUsernameDisplay);
+window.addEventListener('load', updateUsernameDisplay);
+
+
 function logout() {
   localStorage.clear();
   window.location.href = 'login.html';
