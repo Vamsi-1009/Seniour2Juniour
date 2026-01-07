@@ -2,21 +2,18 @@ const express = require('express');
 const router = express.Router();
 const listingController = require('../controllers/listingController');
 const authMiddleware = require('../middleware/authMiddleware');
+const upload = require('../middleware/uploadMiddleware');
 
+// 1. GET ALL
+router.get('/', listingController.getAllListings); 
 
-const upload = require('../middleware/uploadMiddleware'); // Import it
-
-// Update the POST route to use upload.single('image')
+// 2. CREATE (POST)
 router.post('/', authMiddleware, upload.single('image'), listingController.createListing);
 
-// Public Route: Anyone can see books
-router.get('/', listingController.getListings);
+// 3. UPDATE (PUT) - ✅ NEW
+router.put('/:id', authMiddleware, upload.single('image'), listingController.updateListing);
 
-// Protected Route: Only logged-in users can add books
-// We put 'authMiddleware' before the controller
-router.post('/', authMiddleware, listingController.createListing);
-
-// Add this line at the bottom, before module.exports
+// 4. DELETE
 router.delete('/:id', authMiddleware, listingController.deleteListing);
 
 module.exports = router;

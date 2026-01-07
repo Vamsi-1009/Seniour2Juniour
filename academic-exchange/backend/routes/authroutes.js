@@ -1,10 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const authMiddleware = require('../middleware/authMiddleware');
 
-// Ensure these functions exist in your controller
+// 1. Register & Login
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 
-// IMPORTANT: This line must be here!
+// 2. GET ALL USERS (This was missing! Fixes "Loading...")
+router.get('/users', authMiddleware, authController.getAllUsers);
+
+// 3. DELETE USER (Fixes the delete button)
+router.delete('/users/:id', authMiddleware, authController.deleteUser);
+
 module.exports = router;
