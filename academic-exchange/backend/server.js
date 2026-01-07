@@ -128,4 +128,7 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// Find your server.listen line and change it to this:
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server is live for mobile at http://172.20.10.2:${PORT}`);
+});

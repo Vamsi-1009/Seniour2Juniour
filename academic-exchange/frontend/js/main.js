@@ -1,9 +1,9 @@
-const API_URL = "http://localhost:5000/api/auth";
-const LISTINGS_URL = "http://localhost:5000/api/listings";
+const API_URL = "http://172.20.10.2:5000/api/auth";
+const LISTINGS_URL = "http://172.20.10.2:5000/api/listings";
 
 let allBooks = []; 
 let socket = null; 
-let currentChatRoom = null;
+let currentChatRoom = null; 
 let currentUserId = null;
 
 // ✅ AUTO-CONNECT ON PAGE LOAD
@@ -92,7 +92,7 @@ function initSocket(userId) {
     if (socket) return; 
 
     currentUserId = parseInt(userId);
-    socket = io("http://localhost:5000");
+    socket = io("http://172.20.10.2:5000");
 
     socket.on('connect', () => console.log("⚡ Connected to Chat System"));
 
@@ -200,8 +200,8 @@ function appendMessage(text, isMe) {
     const chatContainer = document.getElementById('chat-messages');
     const div = document.createElement('div');
     div.className = isMe 
-        ? "self-end bg-blue-600 text-white px-3 py-1 rounded-lg rounded-br-none max-w-[80%] text-sm break-words"
-        : "self-start bg-gray-200 text-gray-800 px-3 py-1 rounded-lg rounded-bl-none max-w-[80%] text-sm break-words";
+        ? "self-end bg-gradient-to-br from-indigo-500 to-blue-600 text-white px-5 py-3 rounded-[1.5rem] rounded-br-none shadow-md max-w-[85%] text-sm font-medium animate-slide-up"
+        : "self-start bg-white text-slate-700 px-5 py-3 rounded-[1.5rem] rounded-bl-none shadow-sm border border-slate-100 max-w-[85%] text-sm font-medium animate-slide-up";
     div.innerText = text;
     chatContainer.appendChild(div);
     scrollToBottom();
@@ -223,6 +223,11 @@ async function loadListings() {
         const response = await fetch(LISTINGS_URL);
         allBooks = await response.json();
         allBooks.sort((a, b) => b.id - a.id);
+        
+        // Reset Dashboard title for Home view
+        const titleEl = document.getElementById('dashboard-title');
+        if (titleEl) titleEl.innerText = ""; 
+        
         filterBooks();
     } catch (err) { console.error(err); }
 }
@@ -232,24 +237,44 @@ function filterBooks() {
     const container = document.getElementById('listings-container');
     const currentUser = localStorage.getItem('username'); 
 
-    let filtered = allBooks.filter(book => book.title.toLowerCase().includes(searchText));
+    let filtered = allBooks.filter(book => 
+        book.title.toLowerCase().includes(searchText) || 
+        book.username.toLowerCase().includes(searchText)
+    );
     container.innerHTML = '';
 
-    filtered.forEach(book => {
+    filtered.forEach((book, index) => {
         const img = book.image_url ? `http://localhost:5000${book.image_url}` : null;
-        const imgHTML = img ? `<img src="${img}" class="w-full h-48 object-cover rounded mb-2">` : `<div class="w-full h-48 bg-gray-200 rounded mb-2 flex items-center justify-center text-gray-400">No Image</div>`;
+        const imgHTML = img ? `<img src="${img}" class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500">` : `<div class="w-full h-48 bg-slate-100 flex items-center justify-center text-slate-400">No Image</div>`;
         
         const actionBtn = book.username === currentUser 
-            ? `<button onclick="startEdit(${book.id})" class="text-yellow-600 font-bold text-sm">✏️ Edit</button>`
-            : `<button onclick="openChat(${book.user_id}, '${book.username}')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 font-bold flex items-center gap-1">💬 Chat</button>`;
+            ? `<button onclick="startEdit(${book.id})" class="text-indigo-600 font-bold text-sm hover:underline">✏️ Edit Product</button>`
+            : `<button onclick="openChat(${book.user_id}, '${book.username}')" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-md active:scale-95">💬 Chat</button>`;
 
         container.innerHTML += `
-            <div class="bg-white p-4 rounded shadow border hover:shadow-lg transition">
-                ${imgHTML}
-                <h4 class="font-bold text-lg text-blue-900 truncate">${book.title}</h4>
-                <span class="text-green-700 font-bold">₹${book.price}</span>
-                <p class="text-xs text-gray-500 mt-1 mb-2">Seller: ${book.username}</p>
-                <div class="mt-4 pt-2 border-t flex justify-between items-center">${actionBtn}</div>
+            <div class="product-card group bg-white rounded-[2rem] p-4 border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-500 animate-fade-down" style="animation-delay: ${index * 0.05}s">
+                <div class="relative overflow-hidden rounded-[1.5rem] mb-5 aspect-[4/3] shadow-inner bg-slate-50">
+                    ${imgHTML}
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                </div>
+                
+                <div class="px-2">
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="font-bold text-slate-800 text-xl tracking-tight leading-tight truncate w-2/3">${book.title}</h4>
+                        <span class="text-indigo-600 font-black text-xl">₹${book.price}</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-2 mb-6">
+                        <div class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                            ${book.username.charAt(0).toUpperCase()}
+                        </div>
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-widest">${book.username}</span>
+                    </div>
+        
+                    <div class="pt-4 border-t border-slate-50 flex justify-between items-center">
+                        ${actionBtn}
+                    </div>
+                </div>
             </div>`;
     });
 }
@@ -268,7 +293,6 @@ function showAdminDashboard() {
     loadAdminData();
 }
 
-// ✅ FIXED loadAdminData to show images correctly
 async function loadAdminData() {
     const token = localStorage.getItem('token');
     try {
@@ -278,7 +302,14 @@ async function loadAdminData() {
             document.getElementById('stat-total-users').innerText = users.length;
             const table = document.getElementById('admin-users-table');
             table.innerHTML = '';
-            users.forEach(u => table.innerHTML += `<tr class="border-b"><td class="p-2">#${u.id}</td><td class="p-2 font-bold">${u.username}</td><td class="p-2 text-right"><button onclick="deleteUser(${u.id})" class="text-red-500 font-bold">🗑</button></td></tr>`);
+            users.forEach(u => table.innerHTML += `
+                <tr class="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                    <td class="p-4 text-slate-400 font-mono text-xs">#${u.id}</td>
+                    <td class="p-4 font-bold text-slate-700">${u.username}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="deleteUser(${u.id})" class="text-red-400 hover:text-red-600 font-bold p-2 hover:bg-red-50 rounded-lg transition-all">🗑</button>
+                    </td>
+                </tr>`);
         }
     } catch(e) {}
     try {
@@ -287,60 +318,88 @@ async function loadAdminData() {
         document.getElementById('stat-total-books').innerText = books.length;
         const container = document.getElementById('admin-listings-container');
         container.innerHTML = '';
-        books.forEach(b => {
+        books.forEach((b, index) => {
             const img = b.image_url ? `http://localhost:5000${b.image_url}` : null;
-            const imgHTML = img ? `<img src="${img}" class="h-32 w-full object-cover rounded mb-2">` : `<div class="h-32 bg-gray-200 mb-2 flex items-center justify-center text-gray-400 text-xs">No Image</div>`;
+            const imgHTML = img ? `<img src="${img}" class="h-32 w-full object-cover rounded-xl mb-3">` : `<div class="h-32 bg-slate-100 mb-3 flex items-center justify-center text-slate-400 text-[10px] rounded-xl font-bold uppercase tracking-widest">No Image</div>`;
             
             container.innerHTML += `
-            <div class="bg-white p-4 border rounded shadow">
+            <div class="bg-white p-5 border border-slate-100 rounded-3xl shadow-sm animate-fade-down" style="animation-delay: ${index * 0.05}s">
                 ${imgHTML}
-                <h4 class="font-bold text-blue-900 truncate">${b.title}</h4>
-                <p class="text-xs text-gray-500 mb-2">Seller: ${b.username}</p>
-                <button onclick="deleteListing(${b.id})" class="w-full bg-red-500 text-white py-1 rounded mt-2 font-bold hover:bg-red-600 transition">Force Delete</button>
+                <h4 class="font-black text-slate-800 truncate text-sm uppercase tracking-tight">${b.title}</h4>
+                <p class="text-[10px] text-slate-400 font-bold mb-4 uppercase">Seller: ${b.username}</p>
+                <button onclick="deleteListing(${b.id})" class="w-full bg-red-50 text-red-500 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all">Force Delete</button>
             </div>`;
         });
     } catch(e) {}
 }
 
 function toggleSection(s) {
-    document.getElementById('admin-section-users').className = s === 'users' ? 'block bg-white p-4' : 'hidden';
-    document.getElementById('admin-section-books').className = s === 'books' ? 'block' : 'hidden';
+    document.getElementById('admin-section-users').className = s === 'users' ? 'block bg-white p-4 animate-fade-down' : 'hidden';
+    document.getElementById('admin-section-books').className = s === 'books' ? 'block animate-fade-down' : 'hidden';
 }
 
 async function deleteUser(id) {
-    if(!confirm("Delete User?")) return;
+    if(!confirm("Are you sure you want to remove this user?")) return;
     await fetch(`${API_URL}/users/${id}`, { method: 'DELETE', headers: { 'Authorization': localStorage.getItem('token') } });
     loadAdminData();
 }
 
 function showMyListings() {
     const currentUser = localStorage.getItem('username');
-    document.getElementById('dashboard-title').innerText = "📦 My Products";
+    const titleEl = document.getElementById('dashboard-title');
+    if (titleEl) titleEl.innerText = "📦 My Products";
+    
     const container = document.getElementById('listings-container');
     const myBooks = allBooks.filter(book => book.username === currentUser);
     container.innerHTML = '';
-    myBooks.forEach(book => {
+
+    if (myBooks.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full py-20 text-center animate-fade-down">
+                <p class="text-slate-400 font-bold">You haven't listed any products yet.</p>
+                <button onclick="toggleSellForm()" class="mt-4 text-blue-600 font-black uppercase text-xs hover:underline">Start Selling Now</button>
+            </div>
+        `;
+        return;
+    }
+
+    myBooks.forEach((book, index) => {
          const img = book.image_url ? `http://localhost:5000${book.image_url}` : '';
-         const imgHTML = img ? `<img src="${img}" class="w-full h-48 object-cover rounded mb-2">` : `<div class="w-full h-48 bg-gray-200 rounded mb-2 flex items-center justify-center text-gray-400">No Image</div>`;
+         const imgHTML = img ? `<img src="${img}" class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500">` : `<div class="w-full h-48 bg-slate-100 flex items-center justify-center text-slate-400 font-bold uppercase text-[10px]">No Image</div>`;
+         
          container.innerHTML += `
-         <div class="bg-blue-50 p-4 rounded border relative">
-            <span class="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">YOURS</span>
-            ${imgHTML}
-            <h4 class="font-bold text-blue-900 truncate">${book.title}</h4>
-            <div class="flex gap-2 mt-2">
-                <button onclick="startEdit(${book.id})" class="flex-1 bg-yellow-500 text-white py-1 rounded text-sm font-bold hover:bg-yellow-600 transition">✏️ Edit</button>
-                <button onclick="deleteListing(${book.id})" class="flex-1 bg-red-500 text-white py-1 rounded text-sm font-bold hover:bg-red-600 transition">🗑 Delete</button>
+         <div class="product-card group bg-blue-50/50 p-4 rounded-[2rem] border border-blue-100 relative animate-fade-down" style="animation-delay: ${index * 0.05}s">
+            <span class="absolute top-6 right-6 bg-blue-600 text-white text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg z-10">Your Listing</span>
+            <div class="rounded-2xl overflow-hidden mb-4 shadow-inner">
+                ${imgHTML}
+            </div>
+            <h4 class="font-black text-slate-800 text-lg truncate mb-4">${book.title}</h4>
+            <div class="flex gap-3">
+                <button onclick="startEdit(${book.id})" class="flex-1 bg-white text-indigo-600 border border-indigo-100 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm">Edit</button>
+                <button onclick="deleteListing(${book.id})" class="flex-1 bg-white text-red-500 border border-red-100 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-sm">Delete</button>
             </div>
          </div>`;
     });
 }
 
 async function deleteListing(id) {
-    if(!confirm("Delete?")) return;
-    await fetch(`${LISTINGS_URL}/${id}`, { method: 'DELETE', headers: { 'Authorization': localStorage.getItem('token') } });
-    if(localStorage.getItem('role') === 'admin') loadAdminData();
-    else if(document.getElementById('dashboard-title').innerText.includes("My")) showMyListings();
-    else loadListings();
+    if(!confirm("Permanently remove this listing?")) return;
+    await fetch(`${LISTINGS_URL}/${id}`, { 
+        method: 'DELETE', 
+        headers: { 'Authorization': localStorage.getItem('token') } 
+    });
+    
+    // Refresh the list we are currently looking at
+    if(localStorage.getItem('role') === 'admin') {
+        loadAdminData();
+    } else if(document.getElementById('dashboard-title').innerText.includes("My")) {
+        // We have to update allBooks first
+        const response = await fetch(LISTINGS_URL);
+        allBooks = await response.json();
+        showMyListings();
+    } else {
+        loadListings();
+    }
 }
 
 function startEdit(id) {
@@ -352,9 +411,11 @@ function startEdit(id) {
     document.getElementById('book-title').value = book.title;
     document.getElementById('book-price').value = book.price;
     document.getElementById('book-desc').value = book.description || '';
-    document.getElementById('form-title').innerText = "✏️ Edit Book Details";
-    document.getElementById('form-submit-btn').innerText = "Update Listing";
-    document.getElementById('form-submit-btn').className = "mt-4 bg-blue-600 text-white font-bold p-3 rounded w-full md:w-auto hover:bg-blue-700 shadow";
+    
+    document.getElementById('form-title').innerText = "✏️ Edit Product Details";
+    document.getElementById('form-submit-btn').innerText = "Update Product";
+    document.getElementById('form-submit-btn').className = "mt-8 bg-indigo-600 text-white font-black py-4 px-10 rounded-2xl shadow-lg hover:bg-indigo-700 transition-all";
+    
     form.scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -365,25 +426,39 @@ async function handleFormSubmit() {
     const desc = document.getElementById('book-desc').value;
     const fileInput = document.getElementById('book-image');
     const token = localStorage.getItem('token');
-    if (!title || !price) return alert("Fill required fields");
+    
+    if (!title || !price) return alert("Title and Price are required!");
+    
     const formData = new FormData();
     formData.append('title', title);
     formData.append('price', price);
     formData.append('description', desc);
     if (fileInput.files[0]) formData.append('image', fileInput.files[0]);
+    
     const url = id ? `${LISTINGS_URL}/${id}` : LISTINGS_URL;
     const method = id ? 'PUT' : 'POST';
+    
     try {
         const response = await fetch(url, {
             method: method,
             headers: { 'Authorization': token },
             body: formData 
         });
+        
         if (response.ok) {
-            alert(id ? "Updated!" : "Posted!");
+            alert(id ? "Product updated successfully!" : "Product listed for sale!");
             resetAndHideForm();
-            if (document.getElementById('dashboard-title').innerText.includes("My Products")) showMyListings();
-            else loadListings();
-        } else alert("Failed");
+            // Wait for refresh
+            const refreshRes = await fetch(LISTINGS_URL);
+            allBooks = await refreshRes.json();
+            
+            if (document.getElementById('dashboard-title').innerText.includes("My")) {
+                showMyListings();
+            } else {
+                loadListings();
+            }
+        } else {
+            alert("Action failed. Please try again.");
+        }
     } catch (err) { console.error(err); }
 }
