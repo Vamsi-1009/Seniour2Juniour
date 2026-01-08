@@ -224,7 +224,6 @@ async function loadListings() {
         allBooks = await response.json();
         allBooks.sort((a, b) => b.id - a.id);
         
-        // Reset Dashboard title for Home view
         const titleEl = document.getElementById('dashboard-title');
         if (titleEl) titleEl.innerText = ""; 
         
@@ -244,7 +243,7 @@ function filterBooks() {
     container.innerHTML = '';
 
     filtered.forEach((book, index) => {
-        const img = book.image_url ? `http://localhost:5000${book.image_url}` : null;
+        const img = book.image_url ? `http://172.20.10.2:5000${book.image_url}` : null;
         const imgHTML = img ? `<img src="${img}" class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500">` : `<div class="w-full h-48 bg-slate-100 flex items-center justify-center text-slate-400">No Image</div>`;
         
         const actionBtn = book.username === currentUser 
@@ -270,7 +269,7 @@ function filterBooks() {
                         </div>
                         <span class="text-xs font-semibold text-slate-400 uppercase tracking-widest">${book.username}</span>
                     </div>
-        
+
                     <div class="pt-4 border-t border-slate-50 flex justify-between items-center">
                         ${actionBtn}
                     </div>
@@ -302,14 +301,28 @@ async function loadAdminData() {
             document.getElementById('stat-total-users').innerText = users.length;
             const table = document.getElementById('admin-users-table');
             table.innerHTML = '';
-            users.forEach(u => table.innerHTML += `
-                <tr class="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                    <td class="p-4 text-slate-400 font-mono text-xs">#${u.id}</td>
-                    <td class="p-4 font-bold text-slate-700">${u.username}</td>
-                    <td class="p-4 text-right">
-                        <button onclick="deleteUser(${u.id})" class="text-red-400 hover:text-red-600 font-bold p-2 hover:bg-red-50 rounded-lg transition-all">🗑</button>
-                    </td>
-                </tr>`);
+            
+            users.forEach(u => {
+                // ✅ Badge differentiation based on role
+                const isLocalAdmin = u.role === 'admin';
+                const roleBadge = isLocalAdmin 
+                    ? `<span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border border-indigo-200">🛡️ Admin</span>`
+                    : `<span class="bg-slate-100 text-slate-500 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">👤 User</span>`;
+
+                table.innerHTML += `
+                    <tr class="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                        <td class="p-4 text-slate-400 font-mono text-xs">#${u.id}</td>
+                        <td class="p-4">
+                            <div class="flex items-center gap-3">
+                                <span class="font-bold text-slate-700">${u.username}</span>
+                                ${roleBadge}
+                            </div>
+                        </td>
+                        <td class="p-4 text-right">
+                            ${!isLocalAdmin ? `<button onclick="deleteUser(${u.id})" class="text-red-400 hover:text-red-600 font-bold p-2 hover:bg-red-50 rounded-lg transition-all">🗑</button>` : '<span class="text-xs text-slate-300 italic">Protected</span>'}
+                        </td>
+                    </tr>`;
+            });
         }
     } catch(e) {}
     try {
@@ -319,7 +332,7 @@ async function loadAdminData() {
         const container = document.getElementById('admin-listings-container');
         container.innerHTML = '';
         books.forEach((b, index) => {
-            const img = b.image_url ? `http://localhost:5000${b.image_url}` : null;
+            const img = b.image_url ? `http://172.20.10.2:5000${b.image_url}` : null;
             const imgHTML = img ? `<img src="${img}" class="h-32 w-full object-cover rounded-xl mb-3">` : `<div class="h-32 bg-slate-100 mb-3 flex items-center justify-center text-slate-400 text-[10px] rounded-xl font-bold uppercase tracking-widest">No Image</div>`;
             
             container.innerHTML += `
@@ -364,7 +377,7 @@ function showMyListings() {
     }
 
     myBooks.forEach((book, index) => {
-         const img = book.image_url ? `http://localhost:5000${book.image_url}` : '';
+         const img = book.image_url ? `http://172.20.10.2:5000${book.image_url}` : '';
          const imgHTML = img ? `<img src="${img}" class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500">` : `<div class="w-full h-48 bg-slate-100 flex items-center justify-center text-slate-400 font-bold uppercase text-[10px]">No Image</div>`;
          
          container.innerHTML += `
@@ -389,11 +402,9 @@ async function deleteListing(id) {
         headers: { 'Authorization': localStorage.getItem('token') } 
     });
     
-    // Refresh the list we are currently looking at
     if(localStorage.getItem('role') === 'admin') {
         loadAdminData();
     } else if(document.getElementById('dashboard-title').innerText.includes("My")) {
-        // We have to update allBooks first
         const response = await fetch(LISTINGS_URL);
         allBooks = await response.json();
         showMyListings();
@@ -448,7 +459,6 @@ async function handleFormSubmit() {
         if (response.ok) {
             alert(id ? "Product updated successfully!" : "Product listed for sale!");
             resetAndHideForm();
-            // Wait for refresh
             const refreshRes = await fetch(LISTINGS_URL);
             allBooks = await refreshRes.json();
             
