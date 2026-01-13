@@ -9,6 +9,7 @@ let currentChatRoom = null;
 let currentUserId = null;
 let userLat = null;
 let userLng = null;
+let currentFilter = 'All';
 
 // ✅ AUTO-CONNECT
 document.addEventListener('DOMContentLoaded', () => {
@@ -78,23 +79,17 @@ function logout() {
 }
 
 // --- 📍 LOCATION LOGIC ---
-
-// 1. Helper to get position as a Promise (Auto-called on submit)
 function getPosition() {
     return new Promise((resolve) => {
-        if (!navigator.geolocation) {
-            resolve(null);
-            return;
-        }
+        if (!navigator.geolocation) { resolve(null); return; }
         navigator.geolocation.getCurrentPosition(
             (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
-            () => resolve(null), // If denied, resolve null
+            () => resolve(null), 
             { enableHighAccuracy: true, timeout: 5000 }
         );
     });
 }
 
-// 2. Initialize Location (For Buying/Viewing)
 function initUserLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((position) => {
@@ -106,14 +101,11 @@ function initUserLocation() {
     }
 }
 
-// 3. Helper: Calculate Distance in KM
 function getDistanceKm(lat1, lon1, lat2, lon2) {
     const R = 6371; 
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c; 
 }
@@ -132,18 +124,36 @@ async function loadListings() {
     } catch (e) { console.error(e); }
 }
 
+// ✅ NEW: Filter Logic
+function filterByBranch(category) {
+    currentFilter = category;
+    
+    // Highlight active button (Optional UI polish)
+    document.querySelectorAll('.branch-chip').forEach(btn => {
+        if (btn.innerText.includes(category) || (category === 'All' && btn.innerText === 'All')) {
+            btn.classList.remove('bg-white', 'text-slate-500', 'border');
+            btn.classList.add('bg-indigo-600', 'text-white');
+        } else {
+            btn.classList.add('bg-white', 'text-slate-500', 'border');
+            btn.classList.remove('bg-indigo-600', 'text-white');
+        }
+    });
+
+    filterBooks();
+}
+
 function filterBooks() {
     const term = document.getElementById('search-box').value.toLowerCase();
     const rangeKm = document.getElementById('range-slider').value;
     document.getElementById('range-val').innerText = `${rangeKm} km`;
 
-    const cont = document.getElementById('listings-container');
-    const user = localStorage.getItem('username'); 
+    // 1. Filter by Branch
+    let filtered = currentFilter === 'All' ? allBooks : allBooks.filter(b => b.branch === currentFilter);
+
+    // 2. Filter by Search Text
+    filtered = filtered.filter(b => b.title.toLowerCase().includes(term) || b.username.toLowerCase().includes(term));
     
-    // 1. Text Search Filter
-    let filtered = allBooks.filter(b => b.title.toLowerCase().includes(term) || b.username.toLowerCase().includes(term));
-    
-    // 2. Location Filter & Sort
+    // 3. Filter by Location
     if (userLat && userLng) {
         filtered.forEach(book => {
             if (book.lat && book.lng) {
@@ -156,39 +166,59 @@ function filterBooks() {
         filtered.sort((a, b) => a.distance - b.distance);
     }
 
+    renderListings(filtered);
+}
+
+function renderListings(books) {
+    const cont = document.getElementById('listings-container');
     cont.innerHTML = '';
     
-    if (filtered.length === 0) {
-        cont.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">No products found within range.</div>`;
+    if (books.length === 0) {
+        cont.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">No products found.</div>`;
         return;
     }
 
-    filtered.forEach((b, i) => {
-        const img = b.image_url ? `${BASE_URL}${b.image_url}` : null;
-        const imgHTML = img ? `<img src="${img}" class="w-full h-48 object-cover">` : `<div class="w-full h-48 bg-gray-100 flex items-center justify-center text-xs text-gray-400">No Image</div>`;
+    const user = localStorage.getItem('username'); 
+
+    books.forEach((b, i) => {
+        // ✅ Local Image Handling
+        let imgSrc = "https://via.placeholder.com/300?text=No+Image";
+        if (b.image_url) {
+            const cleanPath = b.image_url.replace(/\\/g, '/').replace(/^\//, '');
+            imgSrc = `${BASE_URL}/${cleanPath}`;
+        }
         
+        // Badges
         let distBadge = '';
         if (b.distance && b.distance !== Infinity) {
             const distDisplay = b.distance < 1 ? `${(b.distance * 1000).toFixed(0)}m` : `${b.distance.toFixed(1)} km`;
-            distBadge = `<span class="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">📍 ${distDisplay} away</span>`;
+            distBadge = `<span class="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 absolute top-2 right-2 shadow-sm">📍 ${distDisplay}</span>`;
         }
 
-        const btn = b.username === user 
-            ? `<button onclick="startEdit(${b.id})" class="text-indigo-600 font-bold text-xs">Edit</button>` 
-            : `<button onclick="openChat(${b.user_id}, '${b.username}')" class="bg-indigo-600 text-white px-3 py-1 rounded text-xs">Chat</button>`;
+        const conditionBadge = b.condition ? `<span class="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-1 rounded-full border border-blue-100">${b.condition}</span>` : '';
+        const exchangeBadge = b.is_exchange ? `<span class="bg-purple-50 text-purple-600 text-[10px] font-bold px-2 py-1 rounded-full border border-purple-100">🔄 Swap</span>` : '';
+        const branchBadge = b.branch ? `<span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">${b.branch}</span>` : '';
+
+        const actionBtn = b.username === user 
+            ? `<button onclick="startEdit(${b.id})" class="text-indigo-600 font-bold text-xs bg-indigo-50 px-3 py-2 rounded-lg hover:bg-indigo-100 transition">Edit</button>` 
+            : `<button onclick="openChat(${b.user_id}, '${b.username}')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-indigo-700 transition">Chat</button>`;
 
         cont.innerHTML += `
             <div class="product-card bg-white p-4 rounded-2xl border animate-fade-down" style="animation-delay: ${i*0.05}s">
                 <div class="overflow-hidden rounded-xl mb-3 relative">
-                    ${imgHTML}
-                    ${distBadge ? `<div class="absolute top-2 right-2">${distBadge}</div>` : ''}
+                    <img src="${imgSrc}" class="w-full h-48 object-cover">
+                    ${distBadge}
+                    <div class="absolute top-2 left-2 flex gap-1">${conditionBadge} ${exchangeBadge}</div>
                 </div>
-                <div class="flex justify-between items-start">
+                <div class="flex justify-between items-start mb-1">
                     <h4 class="font-bold truncate w-2/3">${b.title}</h4>
                     <span class="text-indigo-600 font-bold text-sm">₹${b.price}</span>
                 </div>
-                <p class="text-[10px] text-gray-400 uppercase mt-1">Seller: ${b.username}</p>
-                <div class="mt-2 pt-2 border-t flex justify-between items-center">${btn}</div>
+                <div class="flex justify-between items-center mb-2">
+                    ${branchBadge}
+                    <p class="text-[10px] text-gray-400 uppercase">Seller: ${b.username}</p>
+                </div>
+                <div class="mt-2 pt-2 border-t flex justify-between items-center">${actionBtn}</div>
             </div>`;
     });
 }
@@ -287,9 +317,13 @@ function appendMessage(text, isMe) {
     const c = document.getElementById('chat-messages');
     if(!c) return;
     const d = document.createElement('div');
-    d.className = isMe ? "self-end bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm" : "self-start bg-white text-slate-700 px-4 py-2 rounded-xl border text-sm";
+    d.className = isMe ? "self-end bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm mb-2 max-w-[80%]" : "self-start bg-white text-slate-700 px-4 py-2 rounded-xl border text-sm mb-2 max-w-[80%]";
     d.innerText = text;
-    c.appendChild(d);
+    // Wrapper for alignment
+    const wrapper = document.createElement('div');
+    wrapper.className = isMe ? "flex justify-end" : "flex justify-start";
+    wrapper.appendChild(d);
+    c.appendChild(wrapper);
     scrollToBottom();
 }
 
@@ -300,7 +334,14 @@ function toggleProfileMenu() { document.getElementById('profile-menu').classList
 function showRegister() { document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.remove('hidden'); }
 function showLogin() { document.getElementById('register-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden'); }
 function toggleSellForm() { document.getElementById('sell-book-section').classList.toggle('hidden'); }
-function resetAndHideForm() { document.getElementById('sell-book-section').classList.add('hidden'); document.getElementById('edit-book-id').value = ''; }
+function resetAndHideForm() { 
+    document.getElementById('sell-book-section').classList.add('hidden'); 
+    document.getElementById('edit-book-id').value = ''; 
+    // Clear other fields
+    document.getElementById('book-title').value = '';
+    document.getElementById('book-price').value = '';
+    document.getElementById('book-desc').value = '';
+}
 
 // --- ADMIN ---
 function showAdminDashboard() {
@@ -358,16 +399,17 @@ async function loadAdminData() {
             c.innerHTML = '';
             books.forEach((b, index) => {
                 // Image Logic
-                const adminImg = b.image_url ? `${BASE_URL}${b.image_url}` : null;
-                const adminImgHTML = adminImg 
-                    ? `<img src="${adminImg}" class="w-full h-32 object-cover rounded-xl mb-3 border border-slate-100">` 
-                    : `<div class="h-32 bg-slate-50 flex items-center justify-center text-[10px] text-slate-400 font-black uppercase tracking-widest rounded-xl mb-3 border border-slate-100">No Image</div>`;
+                let adminImg = "https://via.placeholder.com/300?text=No+Image";
+                if (b.image_url) {
+                    const cleanPath = b.image_url.replace(/\\/g, '/').replace(/^\//, '');
+                    adminImg = `${BASE_URL}/${cleanPath}`;
+                }
+                const adminImgHTML = `<img src="${adminImg}" class="w-full h-32 object-cover rounded-xl mb-3 border border-slate-100">`;
 
-                // ✅ LOCATION LOGIC: Generate Map Link
+                // Location Logic
                 let locationBadge = `<span class="text-[10px] text-slate-300 font-bold flex items-center gap-1">🚫 No Loc</span>`;
                 
                 if (b.lat && b.lng) {
-                    // Opens Google Maps in a new tab with the coordinates
                     const mapLink = `https://www.google.com/maps?q=${b.lat},${b.lng}`;
                     locationBadge = `
                         <a href="${mapLink}" target="_blank" class="bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors flex items-center gap-1">
@@ -423,8 +465,12 @@ function showMyListings() {
     c.innerHTML = '';
     if (my.length === 0) { c.innerHTML = '<div class="col-span-full py-10 text-center text-gray-400">You haven\'t listed any products.</div>'; return; }
     my.forEach((b,i) => {
-        const img = b.image_url ? `${BASE_URL}${b.image_url}` : '';
-        const imgHTML = img ? `<img src="${img}" class="w-full h-48 object-cover">` : '<div class="h-48 bg-gray-100 flex items-center justify-center">No Image</div>';
+        let img = "https://via.placeholder.com/300?text=No+Image";
+        if (b.image_url) {
+            const cleanPath = b.image_url.replace(/\\/g, '/').replace(/^\//, '');
+            img = `${BASE_URL}/${cleanPath}`;
+        }
+        const imgHTML = `<img src="${img}" class="w-full h-48 object-cover">`;
         c.innerHTML += `<div class="product-card bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 animate-fade-down"><div class="overflow-hidden rounded-xl mb-3">${imgHTML}</div><h4 class="font-bold truncate">${b.title}</h4><div class="flex gap-2 mt-3"><button onclick="startEdit(${b.id})" class="flex-1 bg-white text-indigo-600 rounded-xl py-2 text-xs font-bold border border-indigo-100 shadow-sm hover:bg-indigo-600 hover:text-white transition-all">Edit</button><button onclick="deleteListing(${b.id})" class="flex-1 bg-white text-red-500 rounded-xl py-2 text-xs font-bold border border-red-100 shadow-sm hover:bg-red-500 hover:text-white transition-all">Delete</button></div></div>`;
     });
 }
@@ -433,7 +479,21 @@ function startEdit(id) {
     const b = allBooks.find(book => book.id === id);
     if(!b) return;
     const f = document.getElementById('sell-book-section');
-    if(f) { f.classList.remove('hidden'); document.getElementById('edit-book-id').value = b.id; document.getElementById('book-title').value = b.title; document.getElementById('book-price').value = b.price; document.getElementById('book-desc').value = b.description||''; document.getElementById('form-submit-btn').innerText="Update Listing"; f.scrollIntoView({behavior:'smooth'}); }
+    if(f) { 
+        f.classList.remove('hidden'); 
+        document.getElementById('edit-book-id').value = b.id; 
+        document.getElementById('book-title').value = b.title; 
+        document.getElementById('book-price').value = b.price; 
+        document.getElementById('book-desc').value = b.description||''; 
+        
+        // Populate new fields if they exist
+        if(b.branch) document.getElementById('book-branch').value = b.branch;
+        if(b.condition) document.getElementById('book-condition').value = b.condition;
+        document.getElementById('book-exchange').checked = b.is_exchange === 1;
+
+        document.getElementById('form-submit-btn').innerText="Update Listing"; 
+        f.scrollIntoView({behavior:'smooth'}); 
+    }
 }
 
 // ✅ NEW SUBMIT: Auto-capture location inside this function
@@ -442,9 +502,12 @@ async function handleFormSubmit() {
     const title = document.getElementById('book-title').value;
     const price = document.getElementById('book-price').value;
     const desc = document.getElementById('book-desc').value;
+    const branch = document.getElementById('book-branch').value;
+    const condition = document.getElementById('book-condition').value;
+    const isExchange = document.getElementById('book-exchange').checked ? 1 : 0;
     const file = document.getElementById('book-image').files[0];
     
-    if(!title || !price) return alert("Product Title and Price are required.");
+    if(!title || !price || !branch || !condition) return alert("Product Title, Price, Category, and Condition are required.");
     
     // 🌍 AUTO-CAPTURE LOCATION
     const btn = document.getElementById('form-submit-btn');
@@ -458,6 +521,9 @@ async function handleFormSubmit() {
     fd.append('title', title); 
     fd.append('price', price); 
     fd.append('description', desc);
+    fd.append('branch', branch);
+    fd.append('condition', condition);
+    fd.append('is_exchange', isExchange);
     
     if(coords) {
         fd.append('lat', coords.lat);
@@ -476,6 +542,9 @@ async function handleFormSubmit() {
             alert(id ? "Product updated successfully!" : "Product listed successfully!"); 
             resetAndHideForm(); 
             loadListings(); 
+        } else {
+            const err = await res.json();
+            alert("Error: " + err.message);
         }
     } catch(e) { 
         console.error("Form Submit Error:", e);

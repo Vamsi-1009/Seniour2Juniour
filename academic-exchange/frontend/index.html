@@ -23,6 +23,9 @@
         #chat-messages::-webkit-scrollbar, #inbox-list::-webkit-scrollbar { width: 5px; }
         #chat-messages::-webkit-scrollbar-thumb, #inbox-list::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
         .glass-modal { backdrop-filter: blur(12px); background-color: rgba(255, 255, 255, 0.85); }
+        /* Hide Scrollbar for Chips */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col items-center pt-8 p-4 font-sans selection:bg-indigo-200 overflow-x-hidden">
@@ -84,11 +87,46 @@
             <div id="sell-book-section" class="hidden bg-white/80 p-10 rounded-[3rem] mb-12 border border-indigo-100 shadow-2xl animate-slide-up">
                 <h3 id="form-title" class="font-black text-3xl text-indigo-900 mb-8">List Your Item</h3>
                 <input type="hidden" id="edit-book-id">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <input type="file" id="book-image" class="w-full p-4 bg-white border rounded-2xl">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <input type="file" id="book-image" class="w-full p-4 bg-white border rounded-2xl text-slate-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                     <input type="text" id="book-title" placeholder="Product Name" class="w-full p-5 bg-white border rounded-2xl font-bold">
+                    
+                    <select id="book-branch" class="w-full p-5 bg-white border rounded-2xl font-bold text-slate-600 outline-none cursor-pointer">
+                        <option value="" disabled selected>Select Category</option>
+                        <optgroup label="Engineering">
+                            <option value="CSE">CSE (Computer Science)</option>
+                            <option value="ECE">ECE (Electronics)</option>
+                            <option value="Mech">Mechanical</option>
+                            <option value="Civil">Civil</option>
+                        </optgroup>
+                        <optgroup label="Medical">
+                            <option value="MBBS">MBBS</option>
+                            <option value="BDS">BDS</option>
+                        </optgroup>
+                        <optgroup label="School & Inter">
+                            <option value="School">School (1-10)</option>
+                            <option value="Inter">Intermediate (11-12)</option>
+                        </optgroup>
+                        <option value="Other">Other</option>
+                    </select>
+
+                    <select id="book-condition" class="w-full p-5 bg-white border rounded-2xl font-bold text-slate-600 outline-none cursor-pointer">
+                        <option value="" disabled selected>Item Condition</option>
+                        <option value="New">✨ Brand New</option>
+                        <option value="Like New">👍 Like New</option>
+                        <option value="Good">📖 Good</option>
+                        <option value="Used">🖍️ Heavily Used</option>
+                    </select>
+
                     <input type="number" id="book-price" placeholder="Price (₹)" class="w-full p-5 bg-white border rounded-2xl font-bold">
-                    <input type="text" id="book-desc" placeholder="Description" class="w-full p-5 bg-white border rounded-2xl font-bold">
+                    
+                    <div class="flex items-center gap-3 bg-white p-5 border rounded-2xl">
+                        <input type="checkbox" id="book-exchange" class="w-5 h-5 accent-indigo-600 cursor-pointer">
+                        <label for="book-exchange" class="font-bold text-slate-600 text-sm cursor-pointer">Open to Exchange (Swap)</label>
+                    </div>
+
+                    <input type="text" id="book-desc" placeholder="Description" class="w-full p-5 bg-white border rounded-2xl font-bold md:col-span-2">
                 </div>
                 <button id="form-submit-btn" onclick="handleFormSubmit()" class="mt-10 bg-indigo-600 text-white font-black py-5 px-12 rounded-2xl uppercase text-xs">Publish Listing</button>
             </div>
@@ -108,7 +146,15 @@
                 </div>
             </div>
 
-            <input type="text" id="search-box" onkeyup="filterBooks()" placeholder="Search..." class="w-full p-5 bg-slate-50 border border-slate-100 rounded-[2rem] mb-12 font-bold outline-none focus:ring-4 focus:ring-indigo-500/10">
+            <div class="flex gap-3 overflow-x-auto pb-4 mb-6 scrollbar-hide pl-1">
+                <button onclick="filterByBranch('All')" class="branch-chip bg-indigo-600 text-white px-5 py-2 rounded-full font-bold text-xs whitespace-nowrap shadow-md transition-all">All</button>
+                <button onclick="filterByBranch('CSE')" class="branch-chip bg-white text-slate-500 border border-slate-200 px-5 py-2 rounded-full font-bold text-xs whitespace-nowrap hover:bg-indigo-50 transition-all">💻 CSE</button>
+                <button onclick="filterByBranch('ECE')" class="branch-chip bg-white text-slate-500 border border-slate-200 px-5 py-2 rounded-full font-bold text-xs whitespace-nowrap hover:bg-indigo-50 transition-all">🔌 ECE</button>
+                <button onclick="filterByBranch('MBBS')" class="branch-chip bg-white text-slate-500 border border-slate-200 px-5 py-2 rounded-full font-bold text-xs whitespace-nowrap hover:bg-indigo-50 transition-all">🩺 MBBS</button>
+                <button onclick="filterByBranch('School')" class="branch-chip bg-white text-slate-500 border border-slate-200 px-5 py-2 rounded-full font-bold text-xs whitespace-nowrap hover:bg-indigo-50 transition-all">🎒 School</button>
+            </div>
+
+            <input type="text" id="search-box" onkeyup="filterBooks()" placeholder="Search for books, authors..." class="w-full p-5 bg-slate-50 border border-slate-100 rounded-[2rem] mb-12 font-bold outline-none focus:ring-4 focus:ring-indigo-500/10">
 
             <div id="listings-container" class="grid grid-cols-1 md:grid-cols-3 gap-10"></div>
         </div>
