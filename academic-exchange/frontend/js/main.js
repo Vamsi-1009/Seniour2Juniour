@@ -11,16 +11,70 @@ let userLat = null;
 let userLng = null;
 let currentFilter = 'All';
 
-// ✅ AUTO-CONNECT
+// ✅ DATA: Filter Hierarchy (The Drill-Down Map)
+const filterTree = {
+    "ROOT": [
+        { label: "All", value: "All", color: "indigo" },
+        { label: "🎒 School", value: "School", color: "rose" },
+        { label: "🏫 Intermediate", expand: "INTER_GROUPS", color: "orange" },
+        { label: "⚙️ Engineering", expand: "ENG_BRANCHES", color: "blue" },
+        { label: "🩺 Medical", expand: "MED_BRANCHES", color: "emerald" },
+        { label: "⚖️ Law", expand: "LAW_BRANCHES", color: "amber" }
+    ],
+    "INTER_GROUPS": [
+        { label: "⬅ Back", goBack: "ROOT", color: "slate" },
+        { label: "MPC (Maths)", expand: "INTER_MPC", color: "orange" },
+        { label: "BiPC (Bio)", expand: "INTER_BIPC", color: "orange" },
+        { label: "CEC (Commerce)", expand: "INTER_CEC", color: "orange" }
+    ],
+    "INTER_MPC": [
+        { label: "⬅ Back", goBack: "INTER_GROUPS", color: "slate" },
+        { label: "1st Year", value: "Inter-MPC-1", color: "indigo" },
+        { label: "2nd Year", value: "Inter-MPC-2", color: "indigo" }
+    ],
+    "INTER_BIPC": [
+        { label: "⬅ Back", goBack: "INTER_GROUPS", color: "slate" },
+        { label: "1st Year", value: "Inter-BiPC-1", color: "indigo" },
+        { label: "2nd Year", value: "Inter-BiPC-2", color: "indigo" }
+    ],
+    "INTER_CEC": [
+        { label: "⬅ Back", goBack: "INTER_GROUPS", color: "slate" },
+        { label: "1st Year", value: "Inter-CEC-1", color: "indigo" },
+        { label: "2nd Year", value: "Inter-CEC-2", color: "indigo" }
+    ],
+    "ENG_BRANCHES": [
+        { label: "⬅ Back", goBack: "ROOT", color: "slate" },
+        { label: "CSE", value: "Eng-CSE", color: "blue" },
+        { label: "ECE", value: "Eng-ECE", color: "blue" },
+        { label: "EEE", value: "Eng-EEE", color: "blue" },
+        { label: "Mech", value: "Eng-Mech", color: "blue" },
+        { label: "Civil", value: "Eng-Civil", color: "blue" },
+        { label: "IT", value: "Eng-IT", color: "blue" }
+    ],
+    "MED_BRANCHES": [
+        { label: "⬅ Back", goBack: "ROOT", color: "slate" },
+        { label: "MBBS", value: "Med-MBBS", color: "emerald" },
+        { label: "BDS", value: "Med-BDS", color: "emerald" },
+        { label: "Pharmacy", value: "Med-Pharm", color: "emerald" }
+    ],
+    "LAW_BRANCHES": [
+        { label: "⬅ Back", goBack: "ROOT", color: "slate" },
+        { label: "LLB (3 Yrs)", value: "Law-LLB", color: "amber" },
+        { label: "BA LLB (5 Yrs)", value: "Law-BA-LLB", color: "amber" }
+    ]
+};
+
+// --- INIT ---
 document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('token');
-    const username = localStorage.getItem('username');
-    const userId = localStorage.getItem('userId');
-
-    if (token && username && userId) {
-        if (localStorage.getItem('role') === 'admin') showAdminDashboard();
+    if (token) {
+        const username = localStorage.getItem('username');
+        const role = localStorage.getItem('role');
+        const uid = localStorage.getItem('userId');
+        
+        initSocket(uid);
+        if (role === 'admin') showAdminDashboard();
         else showDashboard(username);
-        initSocket(userId);
     }
 });
 
@@ -28,87 +82,28 @@ document.addEventListener('DOMContentLoaded', () => {
 async function login() {
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
-
     try {
-        const response = await fetch(`${API_URL}/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
+        const response = await fetch(`${API_URL}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
         const data = await response.json();
-
         if (response.ok) {
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('username', data.user.username);
-            localStorage.setItem('role', data.user.role); 
-            localStorage.setItem('userId', data.user.id);
+            localStorage.setItem('token', data.token); localStorage.setItem('username', data.user.username); localStorage.setItem('role', data.user.role); localStorage.setItem('userId', data.user.id);
             initSocket(data.user.id);
-            if (data.user.role === 'admin') showAdminDashboard();
-            else showDashboard(data.user.username);
-        } else {
-            alert(data.message || "Login failed");
-        }
-    } catch (err) { 
-        console.error("Login Error:", err);
-        alert("Cannot connect to server."); 
-    }
+            if (data.user.role === 'admin') showAdminDashboard(); else showDashboard(data.user.username);
+        } else { alert(data.message || "Login failed"); }
+    } catch (err) { console.error(err); alert("Cannot connect to server."); }
 }
 
 async function register() {
     const username = document.getElementById('reg-username').value;
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-password').value;
-
-    if (!username || !email || !password) return alert("Fill all fields.");
-
     try {
-        const response = await fetch(`${API_URL}/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password })
-        });
-        if (response.ok) { alert("Success! Login now."); showLogin(); }
-        else { const d = await response.json(); alert(d.message || "Error"); }
+        const response = await fetch(`${API_URL}/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, email, password }) });
+        if (response.ok) { alert("Success! Login now."); showLogin(); } else { const d = await response.json(); alert(d.message || "Error"); }
     } catch (err) { console.error(err); }
 }
 
-function logout() {
-    if(socket) socket.disconnect();
-    localStorage.clear();
-    window.location.reload();
-}
-
-// --- 📍 LOCATION LOGIC ---
-function getPosition() {
-    return new Promise((resolve) => {
-        if (!navigator.geolocation) { resolve(null); return; }
-        navigator.geolocation.getCurrentPosition(
-            (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
-            () => resolve(null), 
-            { enableHighAccuracy: true, timeout: 5000 }
-        );
-    });
-}
-
-function initUserLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition((position) => {
-            userLat = position.coords.latitude;
-            userLng = position.coords.longitude;
-            document.getElementById('location-bar').classList.remove('hidden');
-            filterBooks();
-        });
-    }
-}
-
-function getDistanceKm(lat1, lon1, lat2, lon2) {
-    const R = 6371; 
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c; 
-}
+function logout() { if(socket) socket.disconnect(); localStorage.clear(); window.location.reload(); }
 
 // --- LISTINGS ---
 async function loadListings() {
@@ -120,50 +115,161 @@ async function loadListings() {
         if(document.getElementById('dashboard-title')) document.getElementById('dashboard-title').innerText = ""; 
         
         initUserLocation();
-        filterByBranch('All');
+        renderFilters("ROOT"); // Start at top level
+        filterBooks('All');
     } catch (e) { console.error(e); }
 }
 
-// ✅ NEW: Filter Logic
-function filterByBranch(category) {
-    currentFilter = category;
+// ✅ NEW: PROFILE FUNCTIONS
+async function showProfileSettings() {
+    // 1. Hide other sections
+    document.getElementById('sell-book-section').classList.add('hidden');
+    document.getElementById('dashboard-title').innerText = "Profile Settings";
     
-    // Highlight active button (Optional UI polish)
-    document.querySelectorAll('.branch-chip').forEach(btn => {
-        const btnText = btn.innerText.trim();
-        // Simple check if button text contains the category (e.g. "CSE" inside "💻 CSE")
-        if (btnText.includes(category) || (category === 'All' && btnText === 'All')) {
-            btn.className = "branch-chip bg-indigo-600 text-white px-5 py-2 rounded-full font-bold text-xs whitespace-nowrap shadow-md transition-all";
-        } else {
-            btn.className = "branch-chip bg-white text-slate-500 border border-slate-200 px-5 py-2 rounded-full font-bold text-xs whitespace-nowrap hover:bg-indigo-50 transition-all";
-        }
-    });
-
-    filterBooks();
+    // 2. Fetch current data from server
+    try {
+        const res = await fetch(`${BASE_URL}/api/profile`, {
+            headers: { 'Authorization': localStorage.getItem('token') }
+        });
+        const user = await res.json();
+        
+        // 3. Populate form
+        document.getElementById('profile-username').value = user.username;
+        document.getElementById('profile-email').value = user.email;
+        
+        // 4. Show section
+        const p = document.getElementById('profile-section');
+        p.classList.remove('hidden');
+        p.scrollIntoView({ behavior: 'smooth' });
+    } catch (e) {
+        console.error(e);
+        alert("Failed to load profile.");
+    }
 }
 
-function filterBooks() {
+function hideProfileSettings() {
+    document.getElementById('profile-section').classList.add('hidden');
+}
+
+async function updateProfile() {
+    const username = document.getElementById('profile-username').value;
+    const email = document.getElementById('profile-email').value;
+    const password = document.getElementById('profile-password').value;
+
+    if (!username || !email) return alert("Name and Email are required.");
+
+    try {
+        const res = await fetch(`${BASE_URL}/api/profile`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': localStorage.getItem('token')
+            },
+            body: JSON.stringify({ username, email, password })
+        });
+
+        if (res.ok) {
+            alert("Profile updated successfully!");
+            // Update local storage name if changed
+            localStorage.setItem('username', username);
+            document.getElementById('user-display').innerText = `Welcome, ${username}!`;
+            hideProfileSettings();
+        } else {
+            const data = await res.json();
+            alert("Error: " + data.message);
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Failed to update profile.");
+    }
+}
+
+// ✅ NEW: DYNAMIC FILTER RENDERER
+function renderFilters(levelKey) {
+    const container = document.getElementById('filter-container');
+    container.innerHTML = ''; // Clear existing buttons
+    
+    const buttons = filterTree[levelKey] || filterTree["ROOT"];
+
+    buttons.forEach(btn => {
+        const el = document.createElement('button');
+        
+        // Styling based on color defined in tree
+        const baseClass = `px-6 py-3 rounded-2xl font-bold text-xs whitespace-nowrap transition-all shadow-sm border`;
+        let colorClass = "";
+        
+        if(btn.color === 'indigo') colorClass = "bg-indigo-600 text-white border-transparent shadow-md";
+        else if(btn.color === 'slate') colorClass = "bg-slate-800 text-white border-transparent"; // Back button
+        else colorClass = `bg-white text-slate-600 border-slate-200 hover:bg-${btn.color}-50 hover:text-${btn.color}-600 hover:border-${btn.color}-200`;
+
+        el.className = `${baseClass} ${colorClass}`;
+        el.innerText = btn.label;
+
+        // Click Logic
+        el.onclick = () => {
+            if (btn.goBack) {
+                renderFilters(btn.goBack); // Go up a level
+            } else if (btn.expand) {
+                renderFilters(btn.expand); // Go down a level
+            } else {
+                // Leaf node: actually filter
+                filterBooks(btn.value);
+                // Visual feedback: make other buttons look inactive
+                Array.from(container.children).forEach(c => c.classList.add('opacity-50'));
+                el.classList.remove('opacity-50');
+                el.classList.add('ring-2', 'ring-offset-2', 'ring-indigo-500');
+            }
+        };
+        container.appendChild(el);
+    });
+}
+
+// ✅ UPDATED: FILTER & SORT LOGIC
+function filterBooks(categoryValue) {
+    if(categoryValue) currentFilter = categoryValue;
+    
     const term = document.getElementById('search-box').value.toLowerCase();
     const rangeKm = document.getElementById('range-slider').value;
+    const sortMode = document.getElementById('sort-dropdown').value; // ✅ GET SORT MODE
+
     document.getElementById('range-val').innerText = `${rangeKm} km`;
 
-    // 1. Filter by Branch
-    let filtered = currentFilter === 'All' ? allBooks : allBooks.filter(b => b.branch === currentFilter);
+    // 1. FILTER LOGIC
+    let filtered = allBooks.filter(b => {
+        const branch = (b.branch || '').toLowerCase();
+        const filter = currentFilter.toLowerCase();
+        
+        if (currentFilter === 'All') return true;
+        
+        // Handle "School" group (School-6, School-7 matches 'School')
+        if (['School'].includes(currentFilter)) {
+            return branch.startsWith(filter);
+        }
+        
+        // Exact match for specific branches (e.g., Inter-MPC-1)
+        return branch === filter;
+    });
 
-    // 2. Filter by Search Text
+    // 2. Search Text
     filtered = filtered.filter(b => b.title.toLowerCase().includes(term) || b.username.toLowerCase().includes(term));
     
-    // 3. Filter by Location
+    // 3. Location
     if (userLat && userLng) {
         filtered.forEach(book => {
-            if (book.lat && book.lng) {
-                book.distance = getDistanceKm(userLat, userLng, book.lat, book.lng);
-            } else {
-                book.distance = Infinity; 
-            }
+            if (book.lat && book.lng) book.distance = getDistanceKm(userLat, userLng, book.lat, book.lng);
+            else book.distance = Infinity; 
         });
         filtered = filtered.filter(b => b.distance <= rangeKm || b.distance === Infinity);
-        filtered.sort((a, b) => a.distance - b.distance);
+    }
+
+    // ✅ 4. SORTING LOGIC
+    if (sortMode === 'PriceLow') {
+        filtered.sort((a, b) => a.price - b.price);
+    } else if (sortMode === 'PriceHigh') {
+        filtered.sort((a, b) => b.price - a.price);
+    } else {
+        // Default: Newest First (Higher ID = Newer)
+        filtered.sort((a, b) => b.id - a.id); 
     }
 
     renderListings(filtered);
@@ -174,21 +280,19 @@ function renderListings(books) {
     cont.innerHTML = '';
     
     if (books.length === 0) {
-        cont.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">No products found.</div>`;
+        cont.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">No products found. Try a different category!</div>`;
         return;
     }
 
     const user = localStorage.getItem('username'); 
 
     books.forEach((b, i) => {
-        // ✅ Local Image Handling
         let imgSrc = "https://via.placeholder.com/300?text=No+Image";
         if (b.image_url) {
             const cleanPath = b.image_url.replace(/\\/g, '/').replace(/^\//, '');
             imgSrc = `${BASE_URL}/${cleanPath}`;
         }
         
-        // Badges
         let distBadge = '';
         if (b.distance && b.distance !== Infinity) {
             const distDisplay = b.distance < 1 ? `${(b.distance * 1000).toFixed(0)}m` : `${b.distance.toFixed(1)} km`;
@@ -197,7 +301,10 @@ function renderListings(books) {
 
         const conditionBadge = b.condition ? `<span class="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-1 rounded-full border border-blue-100">${b.condition}</span>` : '';
         const exchangeBadge = b.is_exchange ? `<span class="bg-purple-50 text-purple-600 text-[10px] font-bold px-2 py-1 rounded-full border border-purple-100">🔄 Swap</span>` : '';
-        const branchBadge = b.branch ? `<span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">${b.branch}</span>` : '';
+        
+        // Clean up Branch Name for Display
+        let displayBranch = b.branch ? b.branch.replace(/^(Eng-|Inter-|Med-|Law-|School-)/, '') : 'General';
+        const branchBadge = `<span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">${displayBranch}</span>`;
 
         const actionBtn = b.username === user 
             ? `<button onclick="startEdit(${b.id})" class="text-indigo-600 font-bold text-xs bg-indigo-50 px-3 py-2 rounded-lg hover:bg-indigo-100 transition">Edit</button>` 
@@ -208,7 +315,7 @@ function renderListings(books) {
                 <div class="overflow-hidden rounded-xl mb-3 relative">
                     <img src="${imgSrc}" class="w-full h-48 object-cover">
                     ${distBadge}
-                    <div class="absolute top-2 left-2 flex gap-1">${conditionBadge} ${exchangeBadge}</div>
+                    <div class="absolute top-2 left-2 flex gap-1 flex-wrap pr-10">${conditionBadge} ${exchangeBadge}</div>
                 </div>
                 <div class="flex justify-between items-start mb-1">
                     <h4 class="font-bold truncate w-2/3">${b.title}</h4>
@@ -231,7 +338,6 @@ function showDashboard(u) {
     loadListings();
 }
 
-// --- FORM HANDLING ---
 function startEdit(id) {
     const b = allBooks.find(book => book.id === id);
     if(!b) return;
@@ -242,32 +348,27 @@ function startEdit(id) {
         document.getElementById('book-title').value = b.title; 
         document.getElementById('book-price').value = b.price; 
         document.getElementById('book-desc').value = b.description||''; 
-        
-        // ✅ Pre-fill Dropdowns and Checkbox
         if(b.branch) document.getElementById('book-branch').value = b.branch;
         if(b.condition) document.getElementById('book-condition').value = b.condition;
         document.getElementById('book-exchange').checked = b.is_exchange === 1;
-
         document.getElementById('form-submit-btn').innerText="Update Listing"; 
+        document.getElementById('book-image').value = "";
         f.scrollIntoView({behavior:'smooth'}); 
     }
 }
 
-// ✅ NEW SUBMIT: Sends Category, Condition, and Swap Status
 async function handleFormSubmit() {
     const id = document.getElementById('edit-book-id').value;
     const title = document.getElementById('book-title').value;
     const price = document.getElementById('book-price').value;
     const desc = document.getElementById('book-desc').value;
-    
-    // New Fields
     const branch = document.getElementById('book-branch').value;
     const condition = document.getElementById('book-condition').value;
     const isExchange = document.getElementById('book-exchange').checked ? 1 : 0;
-    
     const file = document.getElementById('book-image').files[0];
     
-    if(!title || !price || !branch || !condition) return alert("Product Title, Price, Category, and Condition are required.");
+    if (!id && !file) return alert("Please upload an image for new listings.");
+    if(!title || !price || !branch || !condition) return alert("Please fill all details.");
     
     const btn = document.getElementById('form-submit-btn');
     const prevText = btn.innerText;
@@ -275,7 +376,6 @@ async function handleFormSubmit() {
     btn.disabled = true;
 
     const coords = await getPosition(); 
-
     const fd = new FormData();
     fd.append('title', title); 
     fd.append('price', price); 
@@ -283,35 +383,20 @@ async function handleFormSubmit() {
     fd.append('branch', branch);
     fd.append('condition', condition);
     fd.append('is_exchange', isExchange);
-    
-    if(coords) {
-        fd.append('lat', coords.lat);
-        fd.append('lng', coords.lng);
-    }
-    
+    if(coords) { fd.append('lat', coords.lat); fd.append('lng', coords.lng); }
     if(file) fd.append('image', file);
     
     try {
-        const res = await fetch(id ? `${LISTINGS_URL}/${id}` : LISTINGS_URL, { 
-            method: id ? 'PUT' : 'POST', 
-            headers: {'Authorization': localStorage.getItem('token')}, 
-            body: fd 
-        });
+        const url = id ? `${LISTINGS_URL}/${id}` : LISTINGS_URL;
+        const method = id ? 'PUT' : 'POST'; 
+        const res = await fetch(url, { method: method, headers: {'Authorization': localStorage.getItem('token')}, body: fd });
         if(res.ok) { 
-            alert(id ? "Product updated successfully!" : "Product listed successfully!"); 
+            alert(id ? "Product updated!" : "Product listed!"); 
             resetAndHideForm(); 
             loadListings(); 
-        } else {
-            const err = await res.json();
-            alert("Error: " + err.message);
-        }
-    } catch(e) { 
-        console.error("Form Submit Error:", e);
-        alert("Failed to submit listing. Check server connection.");
-    } finally {
-        btn.innerText = prevText;
-        btn.disabled = false;
-    }
+        } else { const err = await res.json(); alert("Error: " + err.message); }
+    } catch(e) { console.error(e); alert("Server Connection Failed"); } 
+    finally { btn.innerText = prevText; btn.disabled = false; }
 }
 
 function resetAndHideForm() { 
@@ -320,62 +405,136 @@ function resetAndHideForm() {
     document.getElementById('book-title').value = ''; 
     document.getElementById('book-price').value = ''; 
     document.getElementById('book-desc').value = ''; 
+    document.getElementById('book-image').value = '';
+    document.getElementById('form-submit-btn').innerText = "Publish Listing";
 }
 
-// --- SOCKET & CHAT ---
-function initSocket(userId) {
-    if (socket) return; 
-    currentUserId = parseInt(userId);
-    socket = io(BASE_URL); 
-    socket.on('connect', () => console.log("⚡ Chat Connected"));
-    socket.on('receive_message', (data) => {
-        const chatBox = document.getElementById('chat-box');
-        if (chatBox && !chatBox.classList.contains('hidden') && currentChatRoom === data.room) { appendMessage(data.content, data.sender_id === currentUserId); } 
-        else if (data.sender_id !== currentUserId) { showToastNotification(data.sender_id, data.sender_name, data.content); }
-    });
-    socket.on('load_history', (messages) => { const c = document.getElementById('chat-messages'); if(c) { c.innerHTML = ''; messages.forEach(msg => appendMessage(msg.content, msg.sender_id === currentUserId)); scrollToBottom(); } });
-    socket.on('inbox_data', (chats) => {
-        const c = document.getElementById('inbox-list');
-        if(!c) return; c.innerHTML = '';
-        if (!chats || chats.length === 0) { c.innerHTML = '<p class="text-center text-gray-400 mt-10 text-xs">No messages.</p>'; return; }
-        chats.forEach(chat => { c.innerHTML += `<div onclick="openChat(${chat.otherId}, '${chat.name}'); closeInbox();" class="bg-white p-4 mb-3 rounded-2xl shadow-sm border-l-4 border-indigo-500 cursor-pointer"><h4 class="font-bold text-sm">${chat.name}</h4><p class="text-xs text-gray-500 truncate">${chat.lastMsg}</p></div>`; });
-    });
+// --- LOCATION / SOCKET (Unchanged logic) ---
+function getPosition(){return new Promise((r)=>{if(!navigator.geolocation){r(null);return;}navigator.geolocation.getCurrentPosition((p)=>r({lat:p.coords.latitude,lng:p.coords.longitude}),()=>r(null),{enableHighAccuracy:true,timeout:5000});});}
+function initUserLocation(){if(navigator.geolocation){navigator.geolocation.getCurrentPosition((p)=>{userLat=p.coords.latitude;userLng=p.coords.longitude;document.getElementById('location-bar').classList.remove('hidden');filterBooks();});}}
+function getDistanceKm(lat1,lon1,lat2,lon2){const R=6371;const dLat=(lat2-lat1)*Math.PI/180;const dLon=(lon2-lon1)*Math.PI/180;const a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));return R*c;}
+function initSocket(u){if(socket)return;currentUserId=parseInt(u);socket=io(BASE_URL);socket.on('receive_message',(d)=>{if(document.getElementById('chat-box')&&!document.getElementById('chat-box').classList.contains('hidden')&&currentChatRoom===d.room){appendMessage(d.content,d.sender_id===currentUserId);}else if(d.sender_id!==currentUserId){showToastNotification(d.sender_id,d.sender_name,d.content);}});socket.on('load_history',(m)=>{document.getElementById('chat-messages').innerHTML='';m.forEach(x=>appendMessage(x.content,x.sender_id===currentUserId));scrollToBottom();});socket.on('inbox_data',(c)=>{const l=document.getElementById('inbox-list');if(!l)return;l.innerHTML='';c.forEach(x=>{l.innerHTML+=`<div onclick="openChat(${x.otherId},'${x.name}');closeInbox();" class="bg-white p-4 mb-3 rounded-2xl shadow-sm border-l-4 border-indigo-500 cursor-pointer"><h4 class="font-bold text-sm">${x.name}</h4><p class="text-xs text-gray-500 truncate">${x.lastMsg}</p></div>`;});});}
+function openInbox(){const u=localStorage.getItem('userId');if(!u)return alert("Login");if(!socket)initSocket(u);document.getElementById('inbox-modal').classList.remove('hidden');socket.emit('get_inbox',u);}
+function closeInbox(){document.getElementById('inbox-modal').classList.add('hidden');}
+function openChat(rid,rname){if(!currentUserId)currentUserId=parseInt(localStorage.getItem('userId'));if(currentUserId===rid)return alert("Self chat error");currentChatRoom=`chat_${[currentUserId,rid].sort((a,b)=>a-b).join('_')}`;document.getElementById('chat-box').classList.remove('hidden');document.getElementById('chat-with-name').innerText=rname;document.getElementById('chat-messages').innerHTML='';socket.emit('join_room',{room:currentChatRoom});}
+function sendChatMessage(){const i=document.getElementById('chat-input');const m=i.value.trim();if(!m)return;socket.emit('send_message',{room:currentChatRoom,sender_id:currentUserId,sender_name:localStorage.getItem('username'),content:m});i.value='';}
+function appendMessage(t,me){const d=document.createElement('div');d.className=me?"self-end bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm mb-2 max-w-[80%]":"self-start bg-white text-slate-700 px-4 py-2 rounded-xl border text-sm mb-2 max-w-[80%]";d.innerText=t;const w=document.createElement('div');w.className=me?"flex justify-end":"flex justify-start";w.appendChild(d);document.getElementById('chat-messages').appendChild(w);scrollToBottom();}
+function scrollToBottom(){const c=document.getElementById('chat-messages');if(c)c.scrollTop=c.scrollHeight;}
+function toggleChatWindow(){document.getElementById('chat-box').classList.toggle('hidden');}
+function toggleProfileMenu(){document.getElementById('profile-menu').classList.toggle('hidden');}
+function showRegister(){document.getElementById('login-form').classList.add('hidden');document.getElementById('register-form').classList.remove('hidden');}
+function showLogin(){document.getElementById('register-form').classList.add('hidden');document.getElementById('login-form').classList.remove('hidden');}
+function toggleSellForm(){document.getElementById('sell-book-section').classList.toggle('hidden');}
+function showAdminDashboard(){document.getElementById('login-form').classList.add('hidden');document.getElementById('admin-dashboard').classList.remove('hidden');loadAdminData();}
+function showMyListings(){const u=localStorage.getItem('username');const c=document.getElementById('listings-container');const m=allBooks.filter(b=>b.username===u);c.innerHTML='';m.forEach((b,i)=>{let img=b.image_url?`${BASE_URL}/${b.image_url.replace(/\\/g,'/').replace(/^\//,'')}`:"";c.innerHTML+=`<div class="product-card bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100"><img src="${img}" class="w-full h-48 object-cover rounded-xl"><h4 class="font-bold mt-2">${b.title}</h4><div class="flex gap-2 mt-2"><button onclick="startEdit(${b.id})" class="text-xs font-bold text-indigo-600">Edit</button><button onclick="deleteListing(${b.id})" class="text-xs font-bold text-red-500">Delete</button></div></div>`;});}
+async function deleteListing(id){if(confirm("Delete?")){await fetch(`${LISTINGS_URL}/${id}`,{method:'DELETE',headers:{'Authorization':localStorage.getItem('token')}});loadListings();}}
+function closeToast(){document.getElementById('msg-toast').classList.add('hidden');}
+function showToastNotification(id,name,msg){document.getElementById('msg-toast').classList.remove('hidden');document.getElementById('toast-sender').innerText=name;document.getElementById('toast-preview').innerText=msg;document.getElementById('toast-reply-btn').onclick=()=>{openChat(id,name);closeToast();};setTimeout(closeToast,5000);}
+
+// ✅ ADMIN DASHBOARD LOGIC
+async function loadAdminData() {
+    try {
+        const token = localStorage.getItem('token');
+        
+        // 1. Fetch Users & Listings
+        const [resUsers, resBooks] = await Promise.all([
+            fetch(`${BASE_URL}/api/auth/users`, { headers: { 'Authorization': token } }),
+            fetch(LISTINGS_URL, { headers: { 'Authorization': token } })
+        ]);
+
+        const users = await resUsers.json();
+        const books = await resBooks.json();
+
+        // 2. Update Stats
+        document.getElementById('stat-total-users').innerText = users.length || 0;
+        document.getElementById('stat-total-books').innerText = books.length || 0;
+
+        // 3. Render Users Table
+        const userTable = document.getElementById('admin-users-table');
+        userTable.innerHTML = `
+            <tr class="text-xs text-slate-400 border-b">
+                <th class="pb-3 pl-4">ID</th>
+                <th class="pb-3">NAME</th>
+                <th class="pb-3">EMAIL</th>
+                <th class="pb-3">ROLE</th>
+                <th class="pb-3">ACTION</th>
+            </tr>`;
+        
+        users.forEach(u => {
+            const roleBadge = u.role === 'admin' 
+                ? `<span class="bg-purple-100 text-purple-700 px-2 py-1 rounded text-[10px] font-bold">ADMIN</span>` 
+                : `<span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[10px] font-bold">USER</span>`;
+            
+            // Don't allow deleting yourself
+            const deleteBtn = u.email === 'admin@example.com' 
+                ? `<span class="text-gray-300 text-xs">Protected</span>` 
+                : `<button onclick="adminDeleteUser(${u.id})" class="text-red-500 hover:underline text-xs font-bold">Remove</button>`;
+
+            userTable.innerHTML += `
+                <tr class="border-b last:border-0 hover:bg-slate-50 transition">
+                    <td class="py-4 pl-4 text-slate-500 font-mono text-xs">#${u.id}</td>
+                    <td class="py-4 font-bold text-sm text-slate-700">${u.username}</td>
+                    <td class="py-4 text-sm text-slate-600">${u.email}</td>
+                    <td class="py-4">${roleBadge}</td>
+                    <td class="py-4">${deleteBtn}</td>
+                </tr>`;
+        });
+
+        // 4. Render Listings Grid
+        const booksContainer = document.getElementById('admin-listings-container');
+        booksContainer.innerHTML = '';
+        books.forEach(b => {
+            let img = b.image_url ? `${BASE_URL}/${b.image_url.replace(/\\/g, '/').replace(/^\//, '')}` : "https://via.placeholder.com/150";
+            booksContainer.innerHTML += `
+                <div class="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <img src="${img}" class="w-16 h-16 rounded-lg object-cover">
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-bold text-sm truncate">${b.title}</h4>
+                        <p class="text-xs text-slate-500">By: ${b.username}</p>
+                    </div>
+                    <button onclick="adminDeleteListing(${b.id})" class="bg-red-50 text-red-500 p-2 rounded-lg hover:bg-red-500 hover:text-white transition">🗑</button>
+                </div>`;
+        });
+
+        // Open the Users tab by default
+        toggleSection('users');
+
+    } catch (e) {
+        console.error("Admin Load Error:", e);
+        alert("Failed to load admin data.");
+    }
 }
-function openInbox() { const uid = localStorage.getItem('userId'); const modal = document.getElementById('inbox-modal'); if (!uid) return alert("Login first"); if (!socket) initSocket(uid); if(modal) { modal.classList.remove('hidden'); socket.emit('get_inbox', uid); } }
-function closeInbox() { const m = document.getElementById('inbox-modal'); if(m) m.classList.add('hidden'); }
-function openChat(rid, rname) {
-    if (!currentUserId) currentUserId = parseInt(localStorage.getItem('userId'));
-    if (currentUserId === rid) return alert("Cannot chat with self");
-    const uids = [currentUserId, rid].sort((a,b) => a-b);
-    currentChatRoom = `chat_${uids[0]}_${uids[1]}`;
-    const cb = document.getElementById('chat-box');
-    if(cb) { cb.classList.remove('hidden'); document.getElementById('chat-with-name').innerText = rname; document.getElementById('chat-messages').innerHTML = '<p class="text-center text-xs mt-2">Loading...</p>'; socket.emit('join_room', { room: currentChatRoom }); }
+
+// Helper: Toggle between Users and Listings tabs
+function toggleSection(section) {
+    document.getElementById('admin-section-users').classList.add('hidden');
+    document.getElementById('admin-section-books').classList.add('hidden');
+    
+    document.getElementById(`admin-section-${section}`).classList.remove('hidden');
 }
-function sendChatMessage() { const inp = document.getElementById('chat-input'); const msg = inp.value.trim(); if (!msg || !socket) return; socket.emit('send_message', { room: currentChatRoom, sender_id: currentUserId, sender_name: localStorage.getItem('username'), content: msg }); inp.value = ''; }
-function showToastNotification(sid, sname, msg) { const t = document.getElementById('msg-toast'); if(!t) return; document.getElementById('toast-sender').innerText = `From: ${sname}`; document.getElementById('toast-preview').innerText = msg; document.getElementById('toast-reply-btn').onclick = function() { openChat(sid, sname); closeToast(); }; t.classList.remove('hidden'); setTimeout(() => closeToast(), 5000); }
-function appendMessage(text, isMe) { const c = document.getElementById('chat-messages'); if(!c) return; const d = document.createElement('div'); d.className = isMe ? "self-end bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm" : "self-start bg-white text-slate-700 px-4 py-2 rounded-xl border text-sm"; d.innerText = text; c.appendChild(d); scrollToBottom(); }
-function scrollToBottom() { const c = document.getElementById('chat-messages'); if(c) c.scrollTop = c.scrollHeight; }
-function closeToast() { const t = document.getElementById('msg-toast'); if(t) t.classList.add('hidden'); }
-function toggleChatWindow() { document.getElementById('chat-box').classList.toggle('hidden'); }
-function toggleProfileMenu() { document.getElementById('profile-menu').classList.toggle('hidden'); }
-function showRegister() { document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.remove('hidden'); }
-function showLogin() { document.getElementById('register-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden'); }
-function toggleSellForm() { document.getElementById('sell-book-section').classList.toggle('hidden'); }
-function showAdminDashboard() { document.getElementById('login-form').classList.add('hidden'); document.getElementById('admin-dashboard').classList.remove('hidden'); loadAdminData(); }
-function showMyListings() {
-    const u = localStorage.getItem('username');
-    const t = document.getElementById('dashboard-title'); if(t) t.innerText = "📦 My Products";
-    const c = document.getElementById('listings-container');
-    const my = allBooks.filter(b => b.username === u);
-    c.innerHTML = '';
-    if (my.length === 0) { c.innerHTML = '<div class="col-span-full py-10 text-center text-gray-400">You haven\'t listed any products.</div>'; return; }
-    my.forEach((b,i) => {
-        let img = "https://via.placeholder.com/300?text=No+Image";
-        if (b.image_url) { const cleanPath = b.image_url.replace(/\\/g, '/').replace(/^\//, ''); img = `${BASE_URL}/${cleanPath}`; }
-        const imgHTML = `<img src="${img}" class="w-full h-48 object-cover">`;
-        c.innerHTML += `<div class="product-card bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 animate-fade-down"><div class="overflow-hidden rounded-xl mb-3">${imgHTML}</div><h4 class="font-bold truncate">${b.title}</h4><div class="flex gap-2 mt-3"><button onclick="startEdit(${b.id})" class="flex-1 bg-white text-indigo-600 rounded-xl py-2 text-xs font-bold border border-indigo-100 shadow-sm hover:bg-indigo-600 hover:text-white transition-all">Edit</button><button onclick="deleteListing(${b.id})" class="flex-1 bg-white text-red-500 rounded-xl py-2 text-xs font-bold border border-red-100 shadow-sm hover:bg-red-500 hover:text-white transition-all">Delete</button></div></div>`;
-    });
+
+// Helper: Delete User
+async function adminDeleteUser(id) {
+    if(!confirm("Are you sure? This will delete the user AND their listings.")) return;
+    try {
+        const res = await fetch(`${BASE_URL}/api/auth/users/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': localStorage.getItem('token') }
+        });
+        if(res.ok) { loadAdminData(); } 
+        else { alert("Failed to delete user"); }
+    } catch(e) { console.error(e); }
 }
-async function deleteListing(id) { if(confirm("Delete this?")) { await fetch(`${LISTINGS_URL}/${id}`, { method: 'DELETE', headers: { 'Authorization': localStorage.getItem('token') } }); loadListings(); } }
-async function loadAdminData() { /* Admin Code (simplified for brevity as it was correct in your paste) */ } 
-// Note: If you need the full admin code block again, let me know, but the logic in your pasted file was already good!
+
+// Helper: Delete Listing
+async function adminDeleteListing(id) {
+    if(!confirm("Delete this listing permanently?")) return;
+    try {
+        const res = await fetch(`${LISTINGS_URL}/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': localStorage.getItem('token') }
+        });
+        if(res.ok) { loadAdminData(); }
+        else { alert("Failed to delete listing"); }
+    } catch(e) { console.error(e); }
+}
