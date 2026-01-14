@@ -1,5 +1,8 @@
 const jwt = require('jsonwebtoken');
 
+// ✅ CRITICAL FIX: This matches server.js and authController.js
+const SECRET_KEY = process.env.JWT_SECRET;
+
 module.exports = (req, res, next) => {
     // 1. Get Token from Header
     const token = req.header('Authorization');
@@ -9,18 +12,14 @@ module.exports = (req, res, next) => {
     }
 
     try {
-        // ✅ FIX: USE THE EXACT SAME KEY AS THE CONTROLLER
-        const decoded = jwt.verify(token, 'my_super_secret_key_123');
+        // 2. Verify using the CORRECT key
+        const decoded = jwt.verify(token, SECRET_KEY);
 
         // 3. Attach User to Request
         req.user = decoded; 
         next();
     } catch (err) {
-        console.log("------------------------------------------------");
-        console.log("1. Received Token:", token);
-        console.log("2. Using Key: my_super_secret_key_123"); 
-        console.log("3. Verification Failed:", err.message);
-        console.log("------------------------------------------------");
+        // console.log("Verification Failed:", err.message); // Optional debug
         res.status(401).json({ message: 'Token is not valid' });
     }
 };
