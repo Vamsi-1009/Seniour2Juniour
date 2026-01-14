@@ -7,7 +7,7 @@ const { Server } = require('socket.io');
 const connectDB = require('./config/db');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
-const fs = require('fs'); // To manage folders
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -18,23 +18,19 @@ app.use(cors());
 app.use(express.json());
 
 // ✅ LOCAL STORAGE SETUP
-// 1. Create 'uploads' folder if it doesn't exist
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)){
     fs.mkdirSync(uploadDir);
 }
 
-// 2. Tell Server to show these files to the public
 app.use('/uploads', express.static(uploadDir));
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// 3. Configure Multer to save to Disk
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'uploads/');
     },
     filename: (req, file, cb) => {
-        // Unique name: timestamp-filename.jpg
         cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_'));
     }
 });
@@ -69,7 +65,7 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req,
     // ✅ Phase 1: Capturing new fields
     const { title, price, description, branch, condition, is_exchange } = req.body;
     
-    // ✅ Save Local Path (e.g. "uploads/123-book.jpg")
+    // ✅ Save Local Path
     const imageUrl = req.file ? `uploads/${req.file.filename}` : null; 
 
     try {
@@ -90,7 +86,7 @@ app.delete('/api/listings/:id', authenticateToken, async (req, res) => {
         if (!listing) return res.status(404).json({ message: "Not found" });
         if (listing.user_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: "Unauthorized" });
         
-        // Optional: Delete local file
+        // Delete local file to save space
         if (listing.image_url) {
             const filePath = path.join(__dirname, listing.image_url);
             if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
@@ -108,12 +104,12 @@ async function initDB() {
     await db.exec(`CREATE TABLE IF NOT EXISTS listings (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, title TEXT, price REAL, description TEXT, image_url TEXT, FOREIGN KEY(user_id) REFERENCES users(id))`);
     await db.exec(`CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT, sender_id INTEGER, sender_name TEXT, content TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
     
-    // ✅ Add new columns if they don't exist
+    // ✅ Phase 1: Add new columns if they don't exist
     const newColumns = ['branch TEXT', 'condition TEXT', 'is_exchange INTEGER'];
     for (const sql of newColumns) {
         try { await db.exec(`ALTER TABLE listings ADD COLUMN ${sql}`); } catch (e) {}
     }
-    console.log("✅ Database Ready (Local Storage + Phase 1 Features)");
+    console.log("✅ Database Ready (Phase 1 Active)");
 }
 initDB();
 
