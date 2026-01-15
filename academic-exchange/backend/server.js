@@ -8,61 +8,65 @@ const connectDB = require('./config/db');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const fs = require('fs');
-const bcrypt = require('bcrypt'); // ✅ Needed for password updates
+const bcrypt = require('bcrypt');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+
+// ✅ ALLOW ALL ORIGINS (Important for Render)
+const io = new Server(server, { 
+    cors: { origin: "*" } 
+});
+
 const SECRET_KEY = process.env.JWT_SECRET;
 
 app.use(cors());
 app.use(express.json());
 
-// ✅ LOCAL STORAGE SETUP
+// ✅ 1. SETUP UPLOADS FOLDER (Prevents Crashes)
 const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)){ fs.mkdirSync(uploadDir); }
+if (!fs.existsSync(uploadDir)){ 
+    fs.mkdirSync(uploadDir); 
+    console.log("📂 Created 'uploads' folder successfully.");
+}
 
 app.use('/uploads', express.static(uploadDir));
+// Serve Frontend Files
 app.use(express.static(path.join(__dirname, '../frontend')));
 
+// ✅ 2. IMAGE STORAGE ENGINE
 const storage = multer.diskStorage({
     destination: (req, file, cb) => { cb(null, 'uploads/'); },
-    filename: (req, file, cb) => { cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_')); }
+    filename: (req, file, cb) => { 
+        // Unique filename: Date + Original Name (stripped of spaces)
+        cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_')); 
+    }
 });
 const upload = multer({ storage });
 
-// Routes
+// ✅ 3. ROUTES
 app.use('/api/auth', require('./routes/auth_routes'));
 app.use('/api/users', require('./routes/user_routes'));
 
-// 🔍 DEBUGGING MIDDLEWARE
+// ✅ 4. AUTH MIDDLEWARE (With Debugging)
 const authenticateToken = (req, res, next) => {
     const token = req.header('Authorization');
     
-    // Log what the server received
-    console.log("------------------------------------------------");
-    console.log("🔍 [DEBUG] Auth Check:");
-    console.log("   - Received Token:", token ? token.substring(0, 15) + "..." : "NULL/EMPTY");
+    // Debug Log (Optional: Remove in production if too noisy)
+    // console.log("🔍 Auth Check: Token received."); 
 
-    if (!token) {
-        console.log("   - ❌ Result: No token provided.");
-        return res.status(401).json({ message: "Access Denied: No Token" });
-    }
+    if (!token) return res.status(401).json({ message: "Access Denied: No Token" });
 
     jwt.verify(token, SECRET_KEY, (err, user) => {
-        if (err) {
-            console.log("   - ❌ Verification Error:", err.message);
-            // This will tell us if it's "jwt expired", "jwt malformed", etc.
-            return res.status(403).json({ message: "Invalid Token: " + err.message });
-        }
-        
-        console.log("   - ✅ Success! User:", user.username);
+        if (err) return res.status(403).json({ message: "Invalid Token" });
         req.user = user;
         next();
     });
 };
 
 // --- LISTINGS ROUTES ---
+
+// GET ALL LISTINGS
 app.get('/api/listings', async (req, res) => {
     try {
         const db = await connectDB();
@@ -71,6 +75,7 @@ app.get('/api/listings', async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// CREATE LISTING
 app.post('/api/listings', authenticateToken, upload.single('image'), async (req, res) => {
     const { title, price, description, branch, condition, is_exchange } = req.body;
     const imageUrl = req.file ? `uploads/${req.file.filename}` : null; 
@@ -84,17 +89,26 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req,
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// UPDATE LISTING (With Auto-Delete Old Image)
 app.put('/api/listings/:id', authenticateToken, upload.single('image'), async (req, res) => {
     const { title, price, description, branch, condition, is_exchange } = req.body;
     const { id } = req.params;
     try {
         const db = await connectDB();
         const listing = await db.get("SELECT * FROM listings WHERE id = ?", [id]);
+        
         if (!listing) return res.status(404).json({ message: "Listing not found" });
         if (listing.user_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: "Unauthorized" });
 
         let imageUrl = listing.image_url;
-        if (req.file) imageUrl = `uploads/${req.file.filename}`;
+        
+        // ✨ NEW: If uploading a new image, delete the old one to save space
+        if (req.file) {
+            imageUrl = `uploads/${req.file.filename}`;
+            if (listing.image_url && fs.existsSync(path.join(__dirname, listing.image_url))) {
+                try { fs.unlinkSync(path.join(__dirname, listing.image_url)); } catch(e) { console.log("Old image cleanup failed"); }
+            }
+        }
 
         await db.run(
             `UPDATE listings SET title=?, price=?, description=?, image_url=?, branch=?, condition=?, is_exchange=? WHERE id=?`,
@@ -104,21 +118,26 @@ app.put('/api/listings/:id', authenticateToken, upload.single('image'), async (r
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// DELETE LISTING
 app.delete('/api/listings/:id', authenticateToken, async (req, res) => {
     try {
         const db = await connectDB();
         const listing = await db.get("SELECT * FROM listings WHERE id = ?", [req.params.id]);
+        
         if (!listing) return res.status(404).json({ message: "Not found" });
         if (listing.user_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: "Unauthorized" });
+
+        // Delete the image file
         if (listing.image_url && fs.existsSync(path.join(__dirname, listing.image_url))) {
             fs.unlinkSync(path.join(__dirname, listing.image_url));
         }
+        
         await db.run("DELETE FROM listings WHERE id = ?", [req.params.id]);
         res.json({ message: "Listing deleted" });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// ✅ NEW: PROFILE ROUTES (Get & Update)
+// --- PROFILE ROUTES ---
 app.get('/api/profile', authenticateToken, async (req, res) => {
     try {
         const db = await connectDB();
@@ -140,35 +159,50 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
         res.json({ message: "Profile updated successfully" });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
+
+// ✅ 5. DATABASE INITIALIZATION
 async function initDB() {
     const db = await connectDB();
     
-    // 1. Create Tables
+    // Create Tables
     await db.exec(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, email TEXT UNIQUE, password_hash TEXT, role TEXT DEFAULT 'user')`);
     await db.exec(`CREATE TABLE IF NOT EXISTS listings (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, title TEXT, price REAL, description TEXT, image_url TEXT, FOREIGN KEY(user_id) REFERENCES users(id))`);
     await db.exec(`CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT, sender_id INTEGER, sender_name TEXT, content TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-    await db.exec(`CREATE TABLE IF NOT EXISTS wishlist (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, listing_id INTEGER, FOREIGN KEY(user_id) REFERENCES users(id), FOREIGN KEY(listing_id) REFERENCES listings(id))`);
 
-    // 2. Add Columns if missing
+    // Add Columns Safely
     const newColumns = ['branch TEXT', 'condition TEXT', 'is_exchange INTEGER'];
     for (const sql of newColumns) { try { await db.exec(`ALTER TABLE listings ADD COLUMN ${sql}`); } catch (e) {} }
 
-    // ✅ 3. CREATE DEFAULT ADMIN USER (admin@example.com / admin123)
+    // Admin Account
     const adminExists = await db.get("SELECT * FROM users WHERE email = 'admin@example.com'");
     if (!adminExists) {
         const hashedPassword = await bcrypt.hash("admin123", 10);
         await db.run("INSERT INTO users (username, email, password_hash, role) VALUES ('Super Admin', 'admin@example.com', ?, 'admin')", [hashedPassword]);
-        console.log("👑 Admin Account Created: admin@example.com / admin123");
+        console.log("👑 Admin Account Created");
     }
-
     console.log("✅ Database Ready");
 }
-
 initDB();
 
+// ✅ 6. SOCKET.IO (Chat)
 io.on('connection', (socket) => {
-    socket.on('join_room', async ({ room }) => { socket.join(room); const db = await connectDB(); const history = await db.all("SELECT * FROM messages WHERE room = ? ORDER BY id ASC", [room]); socket.emit('load_history', history); });
-    socket.on('send_message', async (data) => { const { room, sender_id, sender_name, content } = data; const db = await connectDB(); await db.run("INSERT INTO messages (room, sender_id, sender_name, content) VALUES (?, ?, ?, ?)", [room, sender_id, sender_name, content]); io.to(room).emit('receive_message', data); });
+    socket.on('join_room', async ({ room }) => { 
+        socket.join(room); 
+        const db = await connectDB(); 
+        const history = await db.all("SELECT * FROM messages WHERE room = ? ORDER BY id ASC", [room]); 
+        socket.emit('load_history', history); 
+    });
+    socket.on('send_message', async (data) => { 
+        const { room, sender_id, sender_name, content } = data; 
+        const db = await connectDB(); 
+        await db.run("INSERT INTO messages (room, sender_id, sender_name, content) VALUES (?, ?, ?, ?)", [room, sender_id, sender_name, content]); 
+        io.to(room).emit('receive_message', data); 
+    });
+});
+
+// ✅ 7. CATCH-ALL ROUTE (Serves Frontend for any other URL)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
 const PORT = process.env.PORT || 5000;
