@@ -2,7 +2,7 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 // 👇 WE ARE PASTING THE LINK DIRECTLY HERE TO FORCE IT TO WORK
-const connectionString = "postgresql://academic_db_vwin_user:5QC1JsqgMZWikfbCFcLJ54rayFIKfkuc@dpg-d5kd1u3e5dus73a6lqmg-a/academic_db_vwin"
+const connectionString = "postgresql://academic_db_v2_user:EC9B8KBtBH7CMa9ELENgWKQh3LnvfGM3@dpg-d5kecf4oud1c73ei1seg-a/academic_db_v2";
 
 const pool = new Pool({
     connectionString: connectionString,
