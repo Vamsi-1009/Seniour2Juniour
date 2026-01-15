@@ -32,7 +32,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Routes
-app.use('/api/auth', require('./routes/AuthRoutes'));
+app.use('/api/auth', require('./routes/auth_routes'));
 app.use('/api/users', require('./routes/userRoutes'));
 
 // 🔍 DEBUGGING MIDDLEWARE
