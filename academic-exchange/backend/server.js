@@ -23,11 +23,11 @@ const SECRET_KEY = process.env.JWT_SECRET;
 app.use(cors());
 app.use(express.json());
 
-// ✅ 1. SETUP UPLOADS FOLDER
-const uploadDir = path.join(__dirname, 'uploads');
+// ✅ 1. SETUP UPLOADS FOLDER (Safer for Render)
+const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)){ 
     fs.mkdirSync(uploadDir); 
-    console.log("📂 Created 'uploads' folder successfully.");
+    console.log("📂 Created root 'uploads' folder successfully at:", uploadDir);
 }
 
 app.use('/uploads', express.static(uploadDir));
@@ -36,7 +36,7 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 // ✅ 2. IMAGE STORAGE ENGINE
 const storage = multer.diskStorage({
     destination: (req, file, cb) => { 
-        // ✅ USE THE VARIABLE 'uploadDir' WE CREATED EARLIER
+        // ✅ USE THE VARIABLE 'uploadDir'
         cb(null, uploadDir); 
     },
     filename: (req, file, cb) => { 
@@ -100,8 +100,8 @@ app.put('/api/listings/:id', authenticateToken, upload.single('image'), async (r
         let imageUrl = listing.image_url;
         if (req.file) {
             imageUrl = `uploads/${req.file.filename}`;
-            if (listing.image_url && fs.existsSync(path.join(__dirname, listing.image_url))) {
-                try { fs.unlinkSync(path.join(__dirname, listing.image_url)); } catch(e) {}
+            if (listing.image_url && fs.existsSync(path.join(process.cwd(), listing.image_url))) {
+                try { fs.unlinkSync(path.join(process.cwd(), listing.image_url)); } catch(e) {}
             }
         }
 
@@ -122,8 +122,8 @@ app.delete('/api/listings/:id', authenticateToken, async (req, res) => {
         if (!listing) return res.status(404).json({ message: "Not found" });
         if (listing.user_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: "Unauthorized" });
 
-        if (listing.image_url && fs.existsSync(path.join(__dirname, listing.image_url))) {
-            try { fs.unlinkSync(path.join(__dirname, listing.image_url)); } catch(e) {}
+        if (listing.image_url && fs.existsSync(path.join(process.cwd(), listing.image_url))) {
+            try { fs.unlinkSync(path.join(process.cwd(), listing.image_url)); } catch(e) {}
         }
         
         await db.run("DELETE FROM listings WHERE id = ?", [req.params.id]);
@@ -173,19 +173,51 @@ async function initDB() {
 }
 initDB();
 
-// ✅ 6. SOCKET.IO
+// ✅ 6. SOCKET.IO (UPDATED WITH INBOX LOGIC)
 io.on('connection', (socket) => {
+    // 1. Join Room
     socket.on('join_room', async ({ room }) => { 
         socket.join(room); 
         const db = await connectDB(); 
         const history = await db.all("SELECT * FROM messages WHERE room = ? ORDER BY id ASC", [room]); 
         socket.emit('load_history', history); 
     });
+
+    // 2. Send Message
     socket.on('send_message', async (data) => { 
         const { room, sender_id, sender_name, content } = data; 
         const db = await connectDB(); 
         await db.run("INSERT INTO messages (room, sender_id, sender_name, content) VALUES (?, ?, ?, ?)", [room, sender_id, sender_name, content]); 
         io.to(room).emit('receive_message', data); 
+    });
+
+    // ✅ 3. GET INBOX (FIXED)
+    socket.on('get_inbox', async (userId) => {
+        const db = await connectDB();
+        // Find all messages where this user is involved
+        const msgs = await db.all("SELECT * FROM messages WHERE room LIKE ? OR room LIKE ? ORDER BY id DESC", [`%_${userId}`, `%_${userId}_%`]);
+        
+        const inbox = [];
+        const processedRooms = new Set();
+
+        for (const msg of msgs) {
+            if (processedRooms.has(msg.room)) continue;
+            
+            // Logic to find the "Other Person's" Name
+            const parts = msg.room.split('_'); 
+            const otherId = parseInt(parts[1]) == userId ? parseInt(parts[2]) : parseInt(parts[1]);
+
+            const user = await db.get("SELECT username FROM users WHERE id = ?", [otherId]);
+            if (user) {
+                inbox.push({
+                    otherId: otherId,
+                    name: user.username,
+                    lastMsg: msg.content
+                });
+            }
+            processedRooms.add(msg.room);
+        }
+        socket.emit('inbox_data', inbox);
     });
 });
 
