@@ -33,7 +33,7 @@ const upload = multer({ storage });
 
 // Routes
 app.use('/api/auth', require('./routes/auth_routes'));
-app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/users', require('./routes/user_routes'));
 
 // 🔍 DEBUGGING MIDDLEWARE
 const authenticateToken = (req, res, next) => {
