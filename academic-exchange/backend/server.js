@@ -35,7 +35,10 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 
 // ✅ 2. IMAGE STORAGE ENGINE
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => { cb(null, 'uploads/'); },
+    destination: (req, file, cb) => { 
+        // ✅ USE THE VARIABLE 'uploadDir' WE CREATED EARLIER
+        cb(null, uploadDir); 
+    },
     filename: (req, file, cb) => { 
         cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_')); 
     }
