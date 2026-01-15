@@ -1,7 +1,7 @@
 // ✅ AUTOMATIC IP CONFIGURATION
 const BASE_URL = window.location.origin;
 const API_URL = `${BASE_URL}/api/auth`;
-const LISTINGS_URL = `${BASE_URL}/api/listings`;
+const LISTINGS_URL = `${BASE_URL}/api/listings`; // Matches server.js
 
 let allBooks = []; 
 let socket = null; 
@@ -11,7 +11,7 @@ let userLat = null;
 let userLng = null;
 let currentFilter = 'All';
 
-// ✅ DATA: Filter Hierarchy (The Drill-Down Map)
+// ✅ DATA: Filter Hierarchy
 const filterTree = {
     "ROOT": [
         { label: "All", value: "All", color: "indigo" },
@@ -115,29 +115,25 @@ async function loadListings() {
         if(document.getElementById('dashboard-title')) document.getElementById('dashboard-title').innerText = ""; 
         
         initUserLocation();
-        renderFilters("ROOT"); // Start at top level
+        renderFilters("ROOT"); 
         filterBooks('All');
     } catch (e) { console.error(e); }
 }
 
-// ✅ NEW: PROFILE FUNCTIONS
+// ✅ PROFILE FUNCTIONS
 async function showProfileSettings() {
-    // 1. Hide other sections
     document.getElementById('sell-book-section').classList.add('hidden');
     document.getElementById('dashboard-title').innerText = "Profile Settings";
     
-    // 2. Fetch current data from server
     try {
         const res = await fetch(`${BASE_URL}/api/profile`, {
             headers: { 'Authorization': localStorage.getItem('token') }
         });
         const user = await res.json();
         
-        // 3. Populate form
         document.getElementById('profile-username').value = user.username;
         document.getElementById('profile-email').value = user.email;
         
-        // 4. Show section
         const p = document.getElementById('profile-section');
         p.classList.remove('hidden');
         p.scrollIntoView({ behavior: 'smooth' });
@@ -170,7 +166,6 @@ async function updateProfile() {
 
         if (res.ok) {
             alert("Profile updated successfully!");
-            // Update local storage name if changed
             localStorage.setItem('username', username);
             document.getElementById('user-display').innerText = `Welcome, ${username}!`;
             hideProfileSettings();
@@ -184,37 +179,32 @@ async function updateProfile() {
     }
 }
 
-// ✅ NEW: DYNAMIC FILTER RENDERER
+// ✅ FILTER RENDERER
 function renderFilters(levelKey) {
     const container = document.getElementById('filter-container');
-    container.innerHTML = ''; // Clear existing buttons
+    container.innerHTML = ''; 
     
     const buttons = filterTree[levelKey] || filterTree["ROOT"];
 
     buttons.forEach(btn => {
         const el = document.createElement('button');
-        
-        // Styling based on color defined in tree
         const baseClass = `px-6 py-3 rounded-2xl font-bold text-xs whitespace-nowrap transition-all shadow-sm border`;
         let colorClass = "";
         
         if(btn.color === 'indigo') colorClass = "bg-indigo-600 text-white border-transparent shadow-md";
-        else if(btn.color === 'slate') colorClass = "bg-slate-800 text-white border-transparent"; // Back button
+        else if(btn.color === 'slate') colorClass = "bg-slate-800 text-white border-transparent"; 
         else colorClass = `bg-white text-slate-600 border-slate-200 hover:bg-${btn.color}-50 hover:text-${btn.color}-600 hover:border-${btn.color}-200`;
 
         el.className = `${baseClass} ${colorClass}`;
         el.innerText = btn.label;
 
-        // Click Logic
         el.onclick = () => {
             if (btn.goBack) {
-                renderFilters(btn.goBack); // Go up a level
+                renderFilters(btn.goBack); 
             } else if (btn.expand) {
-                renderFilters(btn.expand); // Go down a level
+                renderFilters(btn.expand); 
             } else {
-                // Leaf node: actually filter
                 filterBooks(btn.value);
-                // Visual feedback: make other buttons look inactive
                 Array.from(container.children).forEach(c => c.classList.add('opacity-50'));
                 el.classList.remove('opacity-50');
                 el.classList.add('ring-2', 'ring-offset-2', 'ring-indigo-500');
@@ -224,36 +214,27 @@ function renderFilters(levelKey) {
     });
 }
 
-// ✅ UPDATED: FILTER & SORT LOGIC
+// ✅ FILTER & SORT LOGIC
 function filterBooks(categoryValue) {
     if(categoryValue) currentFilter = categoryValue;
     
     const term = document.getElementById('search-box').value.toLowerCase();
     const rangeKm = document.getElementById('range-slider').value;
-    const sortMode = document.getElementById('sort-dropdown').value; // ✅ GET SORT MODE
+    const sortMode = document.getElementById('sort-dropdown').value; 
 
     document.getElementById('range-val').innerText = `${rangeKm} km`;
 
-    // 1. FILTER LOGIC
     let filtered = allBooks.filter(b => {
         const branch = (b.branch || '').toLowerCase();
         const filter = currentFilter.toLowerCase();
         
         if (currentFilter === 'All') return true;
-        
-        // Handle "School" group (School-6, School-7 matches 'School')
-        if (['School'].includes(currentFilter)) {
-            return branch.startsWith(filter);
-        }
-        
-        // Exact match for specific branches (e.g., Inter-MPC-1)
+        if (['School'].includes(currentFilter)) return branch.startsWith(filter);
         return branch === filter;
     });
 
-    // 2. Search Text
     filtered = filtered.filter(b => b.title.toLowerCase().includes(term) || b.username.toLowerCase().includes(term));
     
-    // 3. Location
     if (userLat && userLng) {
         filtered.forEach(book => {
             if (book.lat && book.lng) book.distance = getDistanceKm(userLat, userLng, book.lat, book.lng);
@@ -262,13 +243,11 @@ function filterBooks(categoryValue) {
         filtered = filtered.filter(b => b.distance <= rangeKm || b.distance === Infinity);
     }
 
-    // ✅ 4. SORTING LOGIC
     if (sortMode === 'PriceLow') {
         filtered.sort((a, b) => a.price - b.price);
     } else if (sortMode === 'PriceHigh') {
         filtered.sort((a, b) => b.price - a.price);
     } else {
-        // Default: Newest First (Higher ID = Newer)
         filtered.sort((a, b) => b.id - a.id); 
     }
 
@@ -302,7 +281,6 @@ function renderListings(books) {
         const conditionBadge = b.condition ? `<span class="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-1 rounded-full border border-blue-100">${b.condition}</span>` : '';
         const exchangeBadge = b.is_exchange ? `<span class="bg-purple-50 text-purple-600 text-[10px] font-bold px-2 py-1 rounded-full border border-purple-100">🔄 Swap</span>` : '';
         
-        // Clean up Branch Name for Display
         let displayBranch = b.branch ? b.branch.replace(/^(Eng-|Inter-|Med-|Law-|School-)/, '') : 'General';
         const branchBadge = `<span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">${displayBranch}</span>`;
 
@@ -394,8 +372,14 @@ async function handleFormSubmit() {
             alert(id ? "Product updated!" : "Product listed!"); 
             resetAndHideForm(); 
             loadListings(); 
-        } else { const err = await res.json(); alert("Error: " + err.message); }
-    } catch(e) { console.error(e); alert("Server Connection Failed"); } 
+        } else { 
+            const err = await res.json(); 
+            alert("Error: " + err.message); 
+        }
+    } catch(e) { 
+        console.error(e); 
+        alert("Connection Error. Please check your internet or try again."); 
+    } 
     finally { btn.innerText = prevText; btn.disabled = false; }
 }
 
@@ -409,7 +393,7 @@ function resetAndHideForm() {
     document.getElementById('form-submit-btn').innerText = "Publish Listing";
 }
 
-// --- LOCATION / SOCKET (Unchanged logic) ---
+// --- LOCATION / SOCKET ---
 function getPosition(){return new Promise((r)=>{if(!navigator.geolocation){r(null);return;}navigator.geolocation.getCurrentPosition((p)=>r({lat:p.coords.latitude,lng:p.coords.longitude}),()=>r(null),{enableHighAccuracy:true,timeout:5000});});}
 function initUserLocation(){if(navigator.geolocation){navigator.geolocation.getCurrentPosition((p)=>{userLat=p.coords.latitude;userLng=p.coords.longitude;document.getElementById('location-bar').classList.remove('hidden');filterBooks();});}}
 function getDistanceKm(lat1,lon1,lat2,lon2){const R=6371;const dLat=(lat2-lat1)*Math.PI/180;const dLon=(lon2-lon1)*Math.PI/180;const a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));return R*c;}
@@ -436,9 +420,9 @@ async function loadAdminData() {
     try {
         const token = localStorage.getItem('token');
         
-        // 1. Fetch Users & Listings
+        // 1. Fetch Users & Listings (FIXED URL)
         const [resUsers, resBooks] = await Promise.all([
-            fetch(`${BASE_URL}/api/auth/users`, { headers: { 'Authorization': token } }),
+            fetch(`${BASE_URL}/api/users`, { headers: { 'Authorization': token } }), // ✅ Fixed URL mismatch
             fetch(LISTINGS_URL, { headers: { 'Authorization': token } })
         ]);
 
@@ -465,7 +449,6 @@ async function loadAdminData() {
                 ? `<span class="bg-purple-100 text-purple-700 px-2 py-1 rounded text-[10px] font-bold">ADMIN</span>` 
                 : `<span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[10px] font-bold">USER</span>`;
             
-            // Don't allow deleting yourself
             const deleteBtn = u.email === 'admin@example.com' 
                 ? `<span class="text-gray-300 text-xs">Protected</span>` 
                 : `<button onclick="adminDeleteUser(${u.id})" class="text-red-500 hover:underline text-xs font-bold">Remove</button>`;
@@ -496,7 +479,6 @@ async function loadAdminData() {
                 </div>`;
         });
 
-        // Open the Users tab by default
         toggleSection('users');
 
     } catch (e) {
@@ -505,19 +487,16 @@ async function loadAdminData() {
     }
 }
 
-// Helper: Toggle between Users and Listings tabs
 function toggleSection(section) {
     document.getElementById('admin-section-users').classList.add('hidden');
     document.getElementById('admin-section-books').classList.add('hidden');
-    
     document.getElementById(`admin-section-${section}`).classList.remove('hidden');
 }
 
-// Helper: Delete User
 async function adminDeleteUser(id) {
     if(!confirm("Are you sure? This will delete the user AND their listings.")) return;
     try {
-        const res = await fetch(`${BASE_URL}/api/auth/users/${id}`, {
+        const res = await fetch(`${BASE_URL}/api/users/${id}`, { // ✅ Fixed URL
             method: 'DELETE',
             headers: { 'Authorization': localStorage.getItem('token') }
         });
@@ -526,7 +505,6 @@ async function adminDeleteUser(id) {
     } catch(e) { console.error(e); }
 }
 
-// Helper: Delete Listing
 async function adminDeleteListing(id) {
     if(!confirm("Delete this listing permanently?")) return;
     try {
