@@ -1,16 +1,14 @@
-const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
-const path = require('path');
+const { Pool } = require('pg');
+require('dotenv').config();
 
-// ✅ Load environment variables from .env (inside backend folder)
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+// Connect to the Render Database using the URL you saved
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false // This is REQUIRED for Render to work
+    }
+});
 
-async function connectDB() {
-    return open({
-        // ✅ Points to 'academic-exchange/database.sqlite' (Root folder)
-        filename: path.join(__dirname, '../../database.sqlite'), 
-        driver: sqlite3.Database
-    });
-}
-
-module.exports = connectDB;
+module.exports = {
+    query: (text, params) => pool.query(text, params),
+};

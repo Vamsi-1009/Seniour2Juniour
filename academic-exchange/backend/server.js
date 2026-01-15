@@ -4,7 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
-const connectDB = require('./config/db');
+const db = require('./config/db'); // Import the new Postgres DB
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const fs = require('fs');
@@ -23,11 +23,11 @@ const SECRET_KEY = process.env.JWT_SECRET;
 app.use(cors());
 app.use(express.json());
 
-// ✅ 1. SETUP UPLOADS FOLDER (Safer for Render)
+// ✅ 1. SETUP UPLOADS FOLDER
 const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)){ 
     fs.mkdirSync(uploadDir); 
-    console.log("📂 Created root 'uploads' folder successfully at:", uploadDir);
+    console.log("📂 Created root 'uploads' folder at:", uploadDir);
 }
 
 app.use('/uploads', express.static(uploadDir));
@@ -35,10 +35,7 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 
 // ✅ 2. IMAGE STORAGE ENGINE
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => { 
-        // ✅ USE THE VARIABLE 'uploadDir'
-        cb(null, uploadDir); 
-    },
+    destination: (req, file, cb) => { cb(null, uploadDir); },
     filename: (req, file, cb) => { 
         cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_')); 
     }
@@ -61,14 +58,13 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// --- LISTINGS ROUTES ---
+// --- LISTINGS ROUTES (Updated for PostgreSQL) ---
 
 // GET ALL LISTINGS
 app.get('/api/listings', async (req, res) => {
     try {
-        const db = await connectDB();
-        const listings = await db.all(`SELECT listings.*, users.username FROM listings JOIN users ON listings.user_id = users.id`);
-        res.json(listings);
+        const { rows } = await db.query(`SELECT listings.*, users.username FROM listings JOIN users ON listings.user_id = users.id`);
+        res.json(rows);
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
@@ -77,9 +73,8 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req,
     const { title, price, description, branch, condition, is_exchange } = req.body;
     const imageUrl = req.file ? `uploads/${req.file.filename}` : null; 
     try {
-        const db = await connectDB();
-        await db.run(
-            `INSERT INTO listings (user_id, title, price, description, image_url, branch, condition, is_exchange) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        await db.query(
+            `INSERT INTO listings (user_id, title, price, description, image_url, branch, condition, is_exchange) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
             [req.user.id, title, price, description, imageUrl, branch, condition, is_exchange]
         );
         res.status(201).json({ message: "Listing created" });
@@ -91,8 +86,8 @@ app.put('/api/listings/:id', authenticateToken, upload.single('image'), async (r
     const { title, price, description, branch, condition, is_exchange } = req.body;
     const { id } = req.params;
     try {
-        const db = await connectDB();
-        const listing = await db.get("SELECT * FROM listings WHERE id = ?", [id]);
+        const { rows } = await db.query("SELECT * FROM listings WHERE id = $1", [id]);
+        const listing = rows[0];
         
         if (!listing) return res.status(404).json({ message: "Listing not found" });
         if (listing.user_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: "Unauthorized" });
@@ -105,8 +100,8 @@ app.put('/api/listings/:id', authenticateToken, upload.single('image'), async (r
             }
         }
 
-        await db.run(
-            `UPDATE listings SET title=?, price=?, description=?, image_url=?, branch=?, condition=?, is_exchange=? WHERE id=?`,
+        await db.query(
+            `UPDATE listings SET title=$1, price=$2, description=$3, image_url=$4, branch=$5, condition=$6, is_exchange=$7 WHERE id=$8`,
             [title, price, description, imageUrl, branch, condition, is_exchange, id]
         );
         res.json({ message: "Listing updated successfully" });
@@ -116,8 +111,8 @@ app.put('/api/listings/:id', authenticateToken, upload.single('image'), async (r
 // DELETE LISTING
 app.delete('/api/listings/:id', authenticateToken, async (req, res) => {
     try {
-        const db = await connectDB();
-        const listing = await db.get("SELECT * FROM listings WHERE id = ?", [req.params.id]);
+        const { rows } = await db.query("SELECT * FROM listings WHERE id = $1", [req.params.id]);
+        const listing = rows[0];
         
         if (!listing) return res.status(404).json({ message: "Not found" });
         if (listing.user_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: "Unauthorized" });
@@ -126,7 +121,7 @@ app.delete('/api/listings/:id', authenticateToken, async (req, res) => {
             try { fs.unlinkSync(path.join(process.cwd(), listing.image_url)); } catch(e) {}
         }
         
-        await db.run("DELETE FROM listings WHERE id = ?", [req.params.id]);
+        await db.query("DELETE FROM listings WHERE id = $1", [req.params.id]);
         res.json({ message: "Listing deleted" });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -134,84 +129,76 @@ app.delete('/api/listings/:id', authenticateToken, async (req, res) => {
 // --- PROFILE ROUTES ---
 app.get('/api/profile', authenticateToken, async (req, res) => {
     try {
-        const db = await connectDB();
-        const user = await db.get("SELECT id, username, email FROM users WHERE id = ?", [req.user.id]);
-        res.json(user);
+        const { rows } = await db.query("SELECT id, username, email FROM users WHERE id = $1", [req.user.id]);
+        res.json(rows[0]);
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 app.put('/api/profile', authenticateToken, async (req, res) => {
     const { username, email, password } = req.body;
     try {
-        const db = await connectDB();
         if (password) {
             const hashedPassword = await bcrypt.hash(password, 10);
-            await db.run("UPDATE users SET username = ?, email = ?, password_hash = ? WHERE id = ?", [username, email, hashedPassword, req.user.id]);
+            await db.query("UPDATE users SET username = $1, email = $2, password_hash = $3 WHERE id = $4", [username, email, hashedPassword, req.user.id]);
         } else {
-            await db.run("UPDATE users SET username = ?, email = ? WHERE id = ?", [username, email, req.user.id]);
+            await db.query("UPDATE users SET username = $1, email = $2 WHERE id = $3", [username, email, req.user.id]);
         }
         res.json({ message: "Profile updated successfully" });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// ✅ 5. DATABASE INIT
+// ✅ 5. DATABASE INIT (PostgreSQL Syntax)
 async function initDB() {
-    const db = await connectDB();
-    await db.exec(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, email TEXT UNIQUE, password_hash TEXT, role TEXT DEFAULT 'user')`);
-    await db.exec(`CREATE TABLE IF NOT EXISTS listings (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, title TEXT, price REAL, description TEXT, image_url TEXT, FOREIGN KEY(user_id) REFERENCES users(id))`);
-    await db.exec(`CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT, sender_id INTEGER, sender_name TEXT, content TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+    try {
+        await db.query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT, email TEXT UNIQUE, password_hash TEXT, role TEXT DEFAULT 'user')`);
+        await db.query(`CREATE TABLE IF NOT EXISTS listings (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), title TEXT, price REAL, description TEXT, image_url TEXT, branch TEXT, condition TEXT, is_exchange INTEGER)`);
+        await db.query(`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, room TEXT, sender_id INTEGER, sender_name TEXT, content TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
 
-    const newColumns = ['branch TEXT', 'condition TEXT', 'is_exchange INTEGER'];
-    for (const sql of newColumns) { try { await db.exec(`ALTER TABLE listings ADD COLUMN ${sql}`); } catch (e) {} }
-
-    const adminExists = await db.get("SELECT * FROM users WHERE email = 'admin@example.com'");
-    if (!adminExists) {
-        const hashedPassword = await bcrypt.hash("admin123", 10);
-        await db.run("INSERT INTO users (username, email, password_hash, role) VALUES ('Super Admin', 'admin@example.com', ?, 'admin')", [hashedPassword]);
+        // Check for Admin
+        const { rows } = await db.query("SELECT * FROM users WHERE email = 'admin@example.com'");
+        if (rows.length === 0) {
+            const hashedPassword = await bcrypt.hash("admin123", 10);
+            await db.query("INSERT INTO users (username, email, password_hash, role) VALUES ('Super Admin', 'admin@example.com', $1, 'admin')", [hashedPassword]);
+            console.log("👑 Admin Account Created");
+        }
+        console.log("✅ Database Tables Ready");
+    } catch (err) {
+        console.error("❌ Database Init Error:", err);
     }
-    console.log("✅ Database Ready");
 }
 initDB();
 
-// ✅ 6. SOCKET.IO (UPDATED WITH INBOX LOGIC)
+// ✅ 6. SOCKET.IO (PostgreSQL Syntax)
 io.on('connection', (socket) => {
-    // 1. Join Room
     socket.on('join_room', async ({ room }) => { 
         socket.join(room); 
-        const db = await connectDB(); 
-        const history = await db.all("SELECT * FROM messages WHERE room = ? ORDER BY id ASC", [room]); 
-        socket.emit('load_history', history); 
+        const { rows } = await db.query("SELECT * FROM messages WHERE room = $1 ORDER BY id ASC", [room]); 
+        socket.emit('load_history', rows); 
     });
 
-    // 2. Send Message
     socket.on('send_message', async (data) => { 
         const { room, sender_id, sender_name, content } = data; 
-        const db = await connectDB(); 
-        await db.run("INSERT INTO messages (room, sender_id, sender_name, content) VALUES (?, ?, ?, ?)", [room, sender_id, sender_name, content]); 
+        await db.query("INSERT INTO messages (room, sender_id, sender_name, content) VALUES ($1, $2, $3, $4)", [room, sender_id, sender_name, content]); 
         io.to(room).emit('receive_message', data); 
     });
 
-    // ✅ 3. GET INBOX (FIXED)
     socket.on('get_inbox', async (userId) => {
-        const db = await connectDB();
-        // Find all messages where this user is involved
-        const msgs = await db.all("SELECT * FROM messages WHERE room LIKE ? OR room LIKE ? ORDER BY id DESC", [`%_${userId}`, `%_${userId}_%`]);
+        const { rows } = await db.query("SELECT * FROM messages WHERE room LIKE $1 OR room LIKE $2 ORDER BY id DESC", [`%_${userId}`, `%_${userId}_%`]);
         
         const inbox = [];
         const processedRooms = new Set();
 
-        for (const msg of msgs) {
+        for (const msg of rows) {
             if (processedRooms.has(msg.room)) continue;
             
-            // Logic to find the "Other Person's" Name
             const parts = msg.room.split('_'); 
             const otherId = parseInt(parts[1]) == userId ? parseInt(parts[2]) : parseInt(parts[1]);
 
-            const user = await db.get("SELECT username FROM users WHERE id = ?", [otherId]);
-            if (user) {
+            const userRes = await db.query("SELECT username FROM users WHERE id = $1", [otherId]);
+            if (userRes.rows.length > 0) {
                 inbox.push({
                     otherId: otherId,
-                    name: user.username,
+                    name: userRes.rows[0].username,
                     lastMsg: msg.content
                 });
             }
@@ -221,10 +208,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// ✅ Add this simple check instead
-app.get('/ping', (req, res) => {
-    res.send('Server is awake!');
-});
+app.get('/ping', (req, res) => res.send('Server is awake!'));
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server running on port ${PORT}`));
