@@ -186,9 +186,9 @@ io.on('connection', (socket) => {
     });
 });
 
-// ✅ 7. CATCH-ALL ROUTE (FIXED: Uses Regex to avoid crashing)
-app.get(/(.*)/, (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+// ✅ Add this simple check instead
+app.get('/ping', (req, res) => {
+    res.send('Server is awake!');
 });
 
 const PORT = process.env.PORT || 5000;
