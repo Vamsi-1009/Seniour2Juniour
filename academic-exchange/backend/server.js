@@ -12,7 +12,6 @@ const fs = require('fs');
 const app = express();
 const server = http.createServer(app);
 
-// ✅ Allow Frontend to Connect
 const io = new Server(server, { 
     cors: { origin: "*" } 
 });
@@ -22,23 +21,27 @@ const SECRET_KEY = process.env.JWT_SECRET || "default_secret";
 app.use(cors());
 app.use(express.json());
 
-// ✅ Setup Uploads
+// ✅ 1. SETUP UPLOADS FOLDER
 const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 app.use('/uploads', express.static(uploadDir));
 
-// ✅ Storage Engine
+// ✅ 2. SERVE FRONTEND (This is the fix!)
+// This tells the server: "Look in the frontend folder for the website"
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// ✅ 3. STORAGE ENGINE
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_'))
 });
 const upload = multer({ storage });
 
-// ✅ ROUTES (This is where the error was!)
+// ✅ 4. API ROUTES
 app.use('/api/auth', require('./routes/auth_routes'));
 app.use('/api/users', require('./routes/user_routes'));
 
-// ✅ LISTING ROUTES
+// Listings Route
 app.get('/api/listings', async (req, res) => {
     try {
         const { rows } = await db.query(`SELECT listings.*, users.username FROM listings JOIN users ON listings.user_id = users.id`);
@@ -50,7 +53,6 @@ app.post('/api/listings', upload.single('image'), async (req, res) => {
     try {
         const { title, price, description, branch, condition, is_exchange } = req.body;
         const imageUrl = req.file ? `uploads/${req.file.filename}` : null;
-        // Assume user is ID 1 for now if token is missing to prevent crashes
         await db.query(
             `INSERT INTO listings (user_id, title, price, description, image_url, branch, condition, is_exchange) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
             [1, title, price, description, imageUrl, branch, condition, is_exchange]
@@ -59,7 +61,13 @@ app.post('/api/listings', upload.single('image'), async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// ✅ DATABASE INIT
+// ✅ 5. CATCH-ALL ROUTE (Fixes "Cannot GET /")
+// If the user goes to any page, give them the index.html file
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
+
+// ✅ 6. DATABASE INIT
 async function initDB() {
     try {
         await db.query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT, email TEXT UNIQUE, password_hash TEXT, role TEXT DEFAULT 'user')`);
@@ -70,5 +78,5 @@ async function initDB() {
 }
 initDB();
 
-const PORT = process.env.PORT || 10000; // Render uses port 10000
+const PORT = process.env.PORT || 10000;
 server.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server running on port ${PORT}`));
