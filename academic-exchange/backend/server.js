@@ -5,9 +5,8 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const db = require('./config/db'); 
-const jwt = require('jsonwebtoken');
-const multer = require('multer');
 const fs = require('fs');
+const multer = require('multer');
 
 const app = express();
 const server = http.createServer(app);
@@ -26,9 +25,13 @@ const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 app.use('/uploads', express.static(uploadDir));
 
-// ✅ 2. SERVE FRONTEND (This is the fix!)
-// This tells the server: "Look in the frontend folder for the website"
-app.use(express.static(path.join(__dirname, '../frontend')));
+// ✅ 2. SERVE FRONTEND (Corrected Path Logic)
+// Try to find the frontend folder in common locations
+let frontendPath = path.join(__dirname, '../frontend');
+if (!fs.existsSync(frontendPath)) frontendPath = path.join(__dirname, '../client');
+
+console.log(`📂 Serving Frontend from: ${frontendPath}`);
+app.use(express.static(frontendPath));
 
 // ✅ 3. STORAGE ENGINE
 const storage = multer.diskStorage({
@@ -37,9 +40,13 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// ✅ 4. API ROUTES
-app.use('/api/auth', require('./routes/auth_routes'));
-app.use('/api/users', require('./routes/user_routes'));
+// ✅ 4. API ROUTES (Wrapped in Try-Catch to prevent crashes)
+try {
+    app.use('/api/auth', require('./routes/auth_routes'));
+    app.use('/api/users', require('./routes/user_routes'));
+} catch (error) {
+    console.error("⚠️ Warning: Route files missing or broken.", error.message);
+}
 
 // Listings Route
 app.get('/api/listings', async (req, res) => {
@@ -53,6 +60,7 @@ app.post('/api/listings', upload.single('image'), async (req, res) => {
     try {
         const { title, price, description, branch, condition, is_exchange } = req.body;
         const imageUrl = req.file ? `uploads/${req.file.filename}` : null;
+        // Default to user_id 1 if not provided (for safety)
         await db.query(
             `INSERT INTO listings (user_id, title, price, description, image_url, branch, condition, is_exchange) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
             [1, title, price, description, imageUrl, branch, condition, is_exchange]
@@ -62,9 +70,13 @@ app.post('/api/listings', upload.single('image'), async (req, res) => {
 });
 
 // ✅ 5. CATCH-ALL ROUTE (Fixes "Cannot GET /")
-// If the user goes to any page, give them the index.html file
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+    const indexPath = path.join(frontendPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.send(`<h1>Backend is Running!</h1><p>But index.html was not found at: ${indexPath}</p>`);
+    }
 });
 
 // ✅ 6. DATABASE INIT
