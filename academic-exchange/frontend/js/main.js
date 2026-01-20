@@ -1,7 +1,9 @@
-// ✅ AUTOMATIC IP CONFIGURATION
-const BASE_URL = window.location.origin;
-const API_URL = `${BASE_URL}/api/auth`;
-const LISTINGS_URL = `${BASE_URL}/api/listings`; // Matches server.js
+// ✅ AUTOMATIC CONFIGURATION (Using Relative Paths for Stability)
+const BASE_URL = window.location.origin; // For Socket.io
+const API_AUTH = '/api/auth';
+const API_LISTINGS = '/api/listings';
+const API_USERS = '/api/users';
+const API_PROFILE = '/api/profile';
 
 let allBooks = []; 
 let socket = null; 
@@ -82,15 +84,43 @@ document.addEventListener('DOMContentLoaded', () => {
 async function login() {
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
+    
     try {
-        const response = await fetch(`${API_URL}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+        // ✅ UPDATED: Using Relative Path
+        const response = await fetch(`${API_AUTH}/login`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ email, password }) 
+        });
+        
         const data = await response.json();
+        
         if (response.ok) {
-            localStorage.setItem('token', data.token); localStorage.setItem('username', data.user.username); localStorage.setItem('role', data.user.role); localStorage.setItem('userId', data.user.id);
-            initSocket(data.user.id);
-            if (data.user.role === 'admin') showAdminDashboard(); else showDashboard(data.user.username);
-        } else { alert(data.message || "Login failed"); }
-    } catch (err) { console.error(err); alert("Cannot connect to server."); }
+            localStorage.setItem('token', data.token); 
+            // Fix: ensure we save the right fields from backend response
+            localStorage.setItem('username', data.username || data.user?.username); 
+            localStorage.setItem('role', data.role || data.user?.role); 
+            
+            // Handle User ID logic safely
+            let userId = data.id || data.user?.id;
+            if (!userId && data.token) {
+                try {
+                     const payload = JSON.parse(atob(data.token.split('.')[1]));
+                     userId = payload.id;
+                } catch(e) { console.error("Token parse error", e); }
+            }
+            localStorage.setItem('userId', userId);
+
+            initSocket(userId);
+            if (localStorage.getItem('role') === 'admin') showAdminDashboard(); 
+            else showDashboard(localStorage.getItem('username'));
+        } else { 
+            alert(data.message || "Login failed"); 
+        }
+    } catch (err) { 
+        console.error(err); 
+        alert("Cannot connect to server. Check console for details."); 
+    }
 }
 
 async function register() {
@@ -98,8 +128,13 @@ async function register() {
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-password').value;
     try {
-        const response = await fetch(`${API_URL}/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, email, password }) });
-        if (response.ok) { alert("Success! Login now."); showLogin(); } else { const d = await response.json(); alert(d.message || "Error"); }
+        const response = await fetch(`${API_AUTH}/register`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ username, email, password }) 
+        });
+        if (response.ok) { alert("Success! Login now."); showLogin(); } 
+        else { const d = await response.json(); alert(d.message || "Error"); }
     } catch (err) { console.error(err); }
 }
 
@@ -108,7 +143,7 @@ function logout() { if(socket) socket.disconnect(); localStorage.clear(); window
 // --- LISTINGS ---
 async function loadListings() {
     try {
-        const response = await fetch(LISTINGS_URL);
+        const response = await fetch(API_LISTINGS);
         allBooks = await response.json();
         allBooks.sort((a, b) => b.id - a.id);
         
@@ -126,7 +161,7 @@ async function showProfileSettings() {
     document.getElementById('dashboard-title').innerText = "Profile Settings";
     
     try {
-        const res = await fetch(`${BASE_URL}/api/profile`, {
+        const res = await fetch(API_PROFILE, {
             headers: { 'Authorization': localStorage.getItem('token') }
         });
         const user = await res.json();
@@ -155,7 +190,7 @@ async function updateProfile() {
     if (!username || !email) return alert("Name and Email are required.");
 
     try {
-        const res = await fetch(`${BASE_URL}/api/profile`, {
+        const res = await fetch(API_PROFILE, {
             method: 'PUT',
             headers: { 
                 'Content-Type': 'application/json',
@@ -268,8 +303,9 @@ function renderListings(books) {
     books.forEach((b, i) => {
         let imgSrc = "https://via.placeholder.com/300?text=No+Image";
         if (b.image_url) {
+            // Fix image paths relative to root
             const cleanPath = b.image_url.replace(/\\/g, '/').replace(/^\//, '');
-            imgSrc = `${BASE_URL}/${cleanPath}`;
+            imgSrc = `/${cleanPath}`; // Relative path for images too
         }
         
         let distBadge = '';
@@ -365,7 +401,7 @@ async function handleFormSubmit() {
     if(file) fd.append('image', file);
     
     try {
-        const url = id ? `${LISTINGS_URL}/${id}` : LISTINGS_URL;
+        const url = id ? `${API_LISTINGS}/${id}` : API_LISTINGS;
         const method = id ? 'PUT' : 'POST'; 
         const res = await fetch(url, { method: method, headers: {'Authorization': localStorage.getItem('token')}, body: fd });
         if(res.ok) { 
@@ -410,8 +446,8 @@ function showRegister(){document.getElementById('login-form').classList.add('hid
 function showLogin(){document.getElementById('register-form').classList.add('hidden');document.getElementById('login-form').classList.remove('hidden');}
 function toggleSellForm(){document.getElementById('sell-book-section').classList.toggle('hidden');}
 function showAdminDashboard(){document.getElementById('login-form').classList.add('hidden');document.getElementById('admin-dashboard').classList.remove('hidden');loadAdminData();}
-function showMyListings(){const u=localStorage.getItem('username');const c=document.getElementById('listings-container');const m=allBooks.filter(b=>b.username===u);c.innerHTML='';m.forEach((b,i)=>{let img=b.image_url?`${BASE_URL}/${b.image_url.replace(/\\/g,'/').replace(/^\//,'')}`:"";c.innerHTML+=`<div class="product-card bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100"><img src="${img}" class="w-full h-48 object-cover rounded-xl"><h4 class="font-bold mt-2">${b.title}</h4><div class="flex gap-2 mt-2"><button onclick="startEdit(${b.id})" class="text-xs font-bold text-indigo-600">Edit</button><button onclick="deleteListing(${b.id})" class="text-xs font-bold text-red-500">Delete</button></div></div>`;});}
-async function deleteListing(id){if(confirm("Delete?")){await fetch(`${LISTINGS_URL}/${id}`,{method:'DELETE',headers:{'Authorization':localStorage.getItem('token')}});loadListings();}}
+function showMyListings(){const u=localStorage.getItem('username');const c=document.getElementById('listings-container');const m=allBooks.filter(b=>b.username===u);c.innerHTML='';m.forEach((b,i)=>{let img=b.image_url?`/${b.image_url.replace(/\\/g,'/').replace(/^\//,'')}`:"";c.innerHTML+=`<div class="product-card bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100"><img src="${img}" class="w-full h-48 object-cover rounded-xl"><h4 class="font-bold mt-2">${b.title}</h4><div class="flex gap-2 mt-2"><button onclick="startEdit(${b.id})" class="text-xs font-bold text-indigo-600">Edit</button><button onclick="deleteListing(${b.id})" class="text-xs font-bold text-red-500">Delete</button></div></div>`;});}
+async function deleteListing(id){if(confirm("Delete?")){await fetch(`${API_LISTINGS}/${id}`,{method:'DELETE',headers:{'Authorization':localStorage.getItem('token')}});loadListings();}}
 function closeToast(){document.getElementById('msg-toast').classList.add('hidden');}
 function showToastNotification(id,name,msg){document.getElementById('msg-toast').classList.remove('hidden');document.getElementById('toast-sender').innerText=name;document.getElementById('toast-preview').innerText=msg;document.getElementById('toast-reply-btn').onclick=()=>{openChat(id,name);closeToast();};setTimeout(closeToast,5000);}
 
@@ -420,10 +456,10 @@ async function loadAdminData() {
     try {
         const token = localStorage.getItem('token');
         
-        // 1. Fetch Users & Listings (FIXED URL)
+        // 1. Fetch Users & Listings
         const [resUsers, resBooks] = await Promise.all([
-            fetch(`${BASE_URL}/api/users`, { headers: { 'Authorization': token } }), // ✅ Fixed URL mismatch
-            fetch(LISTINGS_URL, { headers: { 'Authorization': token } })
+            fetch(API_USERS, { headers: { 'Authorization': token } }), 
+            fetch(API_LISTINGS, { headers: { 'Authorization': token } })
         ]);
 
         const users = await resUsers.json();
@@ -467,7 +503,7 @@ async function loadAdminData() {
         const booksContainer = document.getElementById('admin-listings-container');
         booksContainer.innerHTML = '';
         books.forEach(b => {
-            let img = b.image_url ? `${BASE_URL}/${b.image_url.replace(/\\/g, '/').replace(/^\//, '')}` : "https://via.placeholder.com/150";
+            let img = b.image_url ? `/${b.image_url.replace(/\\/g, '/').replace(/^\//, '')}` : "https://via.placeholder.com/150";
             booksContainer.innerHTML += `
                 <div class="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                     <img src="${img}" class="w-16 h-16 rounded-lg object-cover">
@@ -496,7 +532,7 @@ function toggleSection(section) {
 async function adminDeleteUser(id) {
     if(!confirm("Are you sure? This will delete the user AND their listings.")) return;
     try {
-        const res = await fetch(`${BASE_URL}/api/users/${id}`, { // ✅ Fixed URL
+        const res = await fetch(`${API_USERS}/${id}`, { 
             method: 'DELETE',
             headers: { 'Authorization': localStorage.getItem('token') }
         });
@@ -508,7 +544,7 @@ async function adminDeleteUser(id) {
 async function adminDeleteListing(id) {
     if(!confirm("Delete this listing permanently?")) return;
     try {
-        const res = await fetch(`${LISTINGS_URL}/${id}`, {
+        const res = await fetch(`${API_LISTINGS}/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': localStorage.getItem('token') }
         });
