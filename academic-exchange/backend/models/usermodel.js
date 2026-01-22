@@ -1,29 +1,27 @@
-const connectDB = require('../config/db');
+const db = require('../config/db');
 
 class User {
     static async findByEmail(email) {
-        const db = await connectDB();
-        return db.get('SELECT * FROM users WHERE email = ?', [email]);
+        const { rows } = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+        return rows[0];
     }
 
     static async create(username, email, passwordHash) {
-        const db = await connectDB();
-        return db.run(
-            'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
+        return db.query(
+            'INSERT INTO users (username, email, password_hash, role) VALUES ($1, $2, $3, $4)',
             [username, email, passwordHash, 'user']
         );
     }
 
     // ✅ THIS FIXES THE "LOADING..." BUG
     static async findAll() {
-        const db = await connectDB();
-        return db.all('SELECT id, username, email, role FROM users');
+        const { rows } = await db.query('SELECT id, username, email, role FROM users');
+        return rows;
     }
 
     // ✅ THIS ALLOWS DELETING USERS
     static async delete(id) {
-        const db = await connectDB();
-        return db.run('DELETE FROM users WHERE id = ?', [id]);
+        return db.query('DELETE FROM users WHERE id = $1', [id]);
     }
 }
 
