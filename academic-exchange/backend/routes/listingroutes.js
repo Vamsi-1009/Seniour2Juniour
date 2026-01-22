@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const listingController = require('../controllers/listingController');
-const authMiddleware = require('../middleware/authMiddleware');
-const upload = require('../middleware/uploadMiddleware');
+const listingController = require('../controllers/listingcontroller');
+const authMiddleware = require('../middleware/auth_middleware');
+const upload = require('../middleware/uploadmiddleware');
 
 // 1. GET ALL
 router.get('/', listingController.getAllListings); 

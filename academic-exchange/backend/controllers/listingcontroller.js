@@ -1,4 +1,4 @@
-const Listing = require('../models/listingModel');
+const Listing = require('../models/listingmodel');
 
 exports.createListing = async (req, res) => {
     try {
