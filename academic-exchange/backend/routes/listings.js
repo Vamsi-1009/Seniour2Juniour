@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const pool = require('../config/db'); // Check this path matches your folder structure!
+const pool = require('../config/db'); 
 const authenticateToken = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
@@ -99,20 +99,31 @@ router.put('/:id/sold', authenticateToken, async (req, res) => {
     }
 });
 
-// DELETE LISTING
+// DELETE LISTING (FIXED: Deletes Messages & Wishlist first)
 router.delete('/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
+        
+        // 1. Check if item exists
         const checkOwner = await pool.query('SELECT user_id FROM listings WHERE listing_id = $1', [id]);
         if (checkOwner.rows.length === 0) return res.status(404).json("Not Found");
+
+        // 2. Permission Check (Owner OR Admin)
         if (checkOwner.rows[0].user_id !== req.user.user_id && req.user.role !== 'admin') {
             return res.status(403).json("Not Authorized");
         }
+
+        // 3. DELETE RELATED DATA FIRST (To fix foreign key error)
+        await pool.query('DELETE FROM messages WHERE listing_id = $1', [id]); // Delete chats
+        await pool.query('DELETE FROM wishlist WHERE listing_id = $1', [id]); // Delete likes
+
+        // 4. Delete the Listing
         await pool.query('DELETE FROM listings WHERE listing_id = $1', [id]);
+        
         res.json("Listing deleted");
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send("Server Error");
+        console.error("Delete Error:", err.message);
+        res.status(500).json({ error: err.message }); // Send actual error to frontend
     }
 });
 

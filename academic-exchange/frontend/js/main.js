@@ -481,6 +481,7 @@ async function editProfileDetails() {
 
 async function deleteListing(id) {
     if(!confirm("Are you sure you want to delete this listing?")) return;
+    
     try {
         const res = await fetch(`${API_URL}/listings/${id}`, {
             method: 'DELETE',
@@ -489,6 +490,7 @@ async function deleteListing(id) {
 
         if (res.ok) { 
             alert("Item Deleted"); 
+            // Check if we are currently in the Admin Modal
             const adminModal = document.getElementById('adminModal');
             if (adminModal && adminModal.style.display === 'flex') {
                 const isSoldView = document.getElementById('adminSectionTitle').innerText.includes('Sold');
@@ -498,7 +500,9 @@ async function deleteListing(id) {
             }
             fetchListings(); 
         } else {
-            alert("Failed to delete.");
+            // Updated to read error properly
+            const data = await res.json();
+            alert("Failed to delete: " + (data.error || "Unknown Error"));
         }
     } catch (err) { console.error(err); }
 }
