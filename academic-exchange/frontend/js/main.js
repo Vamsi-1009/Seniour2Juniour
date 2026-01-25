@@ -67,11 +67,14 @@ function timeAgo(dateString) {
     return "Just now";
 }
 
-// --- Geolocation ---
+// --- Geolocation (FIXED: Does not auto-filter) ---
 function detectUserLocation() {
     const locInput = document.getElementById('locationFilter');
     if (!navigator.geolocation) { alert("Geolocation not supported"); return; }
-    if(locInput.value.trim() === "") { locInput.placeholder = "Locating..."; }
+    
+    // Show loading indicator
+    const originalPlaceholder = locInput.placeholder;
+    locInput.placeholder = "Locating...";
     
     navigator.geolocation.getCurrentPosition(async (position) => {
         const lat = position.coords.latitude;
@@ -79,13 +82,24 @@ function detectUserLocation() {
         try {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
             const data = await res.json();
+            
+            // Get city name
             const city = data.address.city || data.address.town || data.address.village || data.address.county;
+            
             if (city) {
                 locInput.value = city;
-                filterCategory(currentCategory); 
+                // We do NOT call filterCategory() here. 
+                // This allows the user to see the location but keeps all items visible.
             }
-        } catch (err) { console.error(err); }
-    }, (err) => { alert("Location permission denied"); });
+            locInput.placeholder = originalPlaceholder;
+        } catch (err) { 
+            console.error(err); 
+            locInput.placeholder = "City/College";
+        }
+    }, (err) => { 
+        alert("Location permission denied"); 
+        locInput.placeholder = "City/College";
+    });
 }
 
 // --- Socket Listeners ---
@@ -561,7 +575,6 @@ async function handleAuth(e) {
             closeModal('loginModal'); 
             checkLoginState(); 
             fetchWishlistIds(); 
-            // Removed detectUserLocation() from here too
         } else {
             // Display error nicely
             const errDiv = document.getElementById('authError');
@@ -707,90 +720,3 @@ async function handleSellItem(e) {
         } catch (e) { alert('Error posting: ' + e.message); }
     }
 }
-
-// --- Chat Logic ---
-async function openChat(listingId, title) {
-    if (!localStorage.getItem('token')) return alert("Please login to chat.");
-    if (!socket) return alert("Chat server connecting...");
-
-    document.getElementById('chatTitle').innerText = `Chat: ${title}`;
-    currentRoom = listingId;
-    socket.emit('join_room', listingId);
-    
-    const win = document.getElementById('chatWindow');
-    win.innerHTML = '<p style="text-align:center;color:#ccc;">Loading history...</p>';
-    
-    try {
-        const res = await fetch(`${API_URL}/messages/${listingId}`);
-        const msgs = await res.json();
-        win.innerHTML = ''; 
-        msgs.forEach(m => {
-            const isMe = m.sender_id === currentUser; 
-            appendMessageToUI(m.content, isMe ? 'self' : 'other');
-        });
-    } catch (e) {
-        console.error("Error loading chat:", e);
-        win.innerHTML = '<p>No history yet.</p>';
-    }
-
-    openModal('chatModal');
-}
-
-function sendMessage() {
-    const input = document.getElementById('messageInput');
-    const msg = input.value;
-    if (!msg.trim()) return;
-    if (!socket) { alert("Socket not connected"); return; }
-
-    socket.emit('send_message', { 
-        room: currentRoom, 
-        author: currentUser, 
-        message: msg, 
-        time: new Date().toISOString() 
-    });
-
-    appendMessageToUI(msg, 'self');
-    input.value = "";
-}
-
-function appendMessageToUI(text, type) {
-    const win = document.getElementById('chatWindow');
-    const div = document.createElement('div');
-    div.style.textAlign = type === 'self' ? 'right' : 'left';
-    div.style.margin = '5px 0';
-    div.innerHTML = `<span style="background:${type==='self'?'#6c5ce7':'#555'}; color:white; padding:8px 12px; border-radius:15px; display:inline-block; max-width: 80%; word-wrap: break-word;">${text}</span>`;
-    win.appendChild(div);
-    win.scrollTop = win.scrollHeight;
-}
-
-// Window Exports
-window.openModal = (id) => {
-    const m = document.getElementById(id);
-    if(m) {
-        m.style.display = 'flex';
-        // Clear errors
-        if(document.getElementById('authError')) document.getElementById('authError').style.display='none';
-        if(document.getElementById('sellError')) document.getElementById('sellError').style.display='none';
-    }
-};
-window.closeModal = (id) => { const m = document.getElementById(id); if(m) m.style.display = 'none'; };
-window.sendMessage = sendMessage;
-window.logout = logout;
-window.openProfile = openProfile;
-window.uploadAvatar = uploadAvatar;
-window.deleteListing = deleteListing;
-window.markSold = markSold;
-window.toggleWishlist = toggleWishlist;
-window.openAdmin = openAdmin;
-window.adminShow = adminShow;
-window.banUser = banUser;
-window.editListing = editListing; 
-window.openSellModal = openSellModal; 
-window.viewListing = viewListing; 
-window.handleSort = handleSort;
-window.filterCategory = filterCategory;
-window.updateSubCategories = updateSubCategories;
-window.toggleAuthMode = toggleAuthMode; 
-window.handleAuth = handleAuth;
-window.detectUserLocation = detectUserLocation;
-window.editProfileDetails = editProfileDetails;
