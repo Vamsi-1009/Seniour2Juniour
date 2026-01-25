@@ -4,9 +4,8 @@ const API_URL = ''; // Empty string for relative path on production
 let socket = null;
 try {
     socket = io(API_URL);
-    console.log("Connected to Socket.io");
 } catch (e) {
-    console.warn("Socket.io not loaded. Chat will not work, but other features will.");
+    console.warn("Socket.io not loaded.");
 }
 
 // --- Global State ---
@@ -33,7 +32,6 @@ const subCategories = {
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("App Initialized");
     fetchListings();
     checkLoginState();
     setupEventListeners();
@@ -67,12 +65,11 @@ function timeAgo(dateString) {
     return "Just now";
 }
 
-// --- Geolocation (FIXED: Does not auto-filter) ---
+// --- Geolocation ---
 function detectUserLocation() {
     const locInput = document.getElementById('locationFilter');
     if (!navigator.geolocation) { alert("Geolocation not supported"); return; }
     
-    // Show loading indicator
     const originalPlaceholder = locInput.placeholder;
     locInput.placeholder = "Locating...";
     
@@ -82,14 +79,10 @@ function detectUserLocation() {
         try {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
             const data = await res.json();
-            
-            // Get city name
             const city = data.address.city || data.address.town || data.address.village || data.address.county;
-            
             if (city) {
                 locInput.value = city;
-                // We do NOT call filterCategory() here. 
-                // This allows the user to see the location but keeps all items visible.
+                // Note: We intentionally do NOT auto-filter here to prevent items from disappearing
             }
             locInput.placeholder = originalPlaceholder;
         } catch (err) { 
@@ -128,13 +121,10 @@ function setupEventListeners() {
     if (sellForm) sellForm.addEventListener('submit', handleSellItem);
 }
 
-// --- Helper: Handle Image Errors (Stops Flickering) ---
+// --- Helper: Handle Image Errors ---
 function handleImgError(img) {
-    // Prevent infinite loop if placeholder fails
     if (img.dataset.hasError) return; 
     img.dataset.hasError = true;
-    
-    // Set to a reliable static placeholder
     img.src = 'https://placehold.co/400x300/2d3436/FFF?text=Image+Deleted\n(Server+Reset)';
 }
 
@@ -153,11 +143,11 @@ function renderListings(listings) {
     grid.innerHTML = ''; 
 
     if (!listings || listings.length === 0) {
-        grid.innerHTML = '<p style="color:white; text-align:center; width:100%;">No listings found matching criteria.</p>';
+        grid.innerHTML = '<p style="color:white; text-align:center; width:100%; grid-column: 1 / -1;">No listings found matching criteria.</p>';
         return;
     }
 
-    listings.forEach(item => {
+    listings.forEach((item, index) => {
         if (item.status === 'sold') return;
 
         let imageUrl = 'https://placehold.co/400x300/2d3436/FFF?text=No+Image';
@@ -170,6 +160,8 @@ function renderListings(listings) {
 
         const card = document.createElement('div');
         card.className = 'listing-card';
+        // ADDED ANIMATION DELAY FOR "ATTRACTIVE" EFFECT
+        card.style.animationDelay = `${index * 0.1}s`; 
         card.style.position = 'relative';
         
         card.innerHTML = `
@@ -256,14 +248,11 @@ async function viewListing(id) {
 
         let images = item.images && item.images.length > 0 ? item.images : [];
         
-        // Initial Image Load
         if (images.length > 0) {
              mainImg.src = images[0].startsWith('http') ? images[0] : `${API_URL}${images[0]}`;
         } else {
              mainImg.src = 'https://placehold.co/400x300/2d3436/FFF?text=No+Image';
         }
-
-        // Attach Error Handler to prevent flickering
         mainImg.onerror = function() { handleImgError(this); };
 
         if (images.length > 1) {
@@ -277,7 +266,7 @@ async function viewListing(id) {
                 thumb.style.cursor = 'pointer';
                 thumb.style.objectFit = 'cover';
                 thumb.style.border = '2px solid transparent';
-                thumb.onerror = function() { handleImgError(this); }; // Handle thumb errors too
+                thumb.onerror = function() { handleImgError(this); };
                 
                 thumb.onclick = () => {
                     mainImg.src = src;
@@ -331,7 +320,6 @@ async function openAdmin() {
         document.getElementById('statListings').innerText = stats.total_listings;
         document.getElementById('statSold').innerText = stats.total_sold;
 
-        // Default view: Users
         adminShow('users');
         openModal('adminModal');
     } catch (err) { console.error(err); alert("Failed to load admin panel"); }
@@ -412,7 +400,6 @@ async function toggleWishlist(id, btn) {
 
 // --- Profile & Management ---
 async function openProfile() {
-    console.log("Opening Profile...");
     const token = localStorage.getItem('token');
     if (!token) return alert("Please login");
 
@@ -423,7 +410,6 @@ async function openProfile() {
         document.getElementById('profileName').innerText = data.user.name || "Student";
         document.getElementById('profileEmail').innerText = data.user.email;
         
-        // Base64 Fallback
         if (data.user.avatar) {
             document.getElementById('profileAvatar').src = `${API_URL}${data.user.avatar}`;
         } else {
@@ -494,7 +480,6 @@ async function editProfileDetails() {
 
 async function deleteListing(id) {
     if(!confirm("Are you sure you want to delete this listing?")) return;
-    
     try {
         const res = await fetch(`${API_URL}/listings/${id}`, {
             method: 'DELETE',
@@ -503,7 +488,6 @@ async function deleteListing(id) {
 
         if (res.ok) { 
             alert("Item Deleted"); 
-            // Check if we are currently in the Admin Modal
             const adminModal = document.getElementById('adminModal');
             if (adminModal && adminModal.style.display === 'flex') {
                 const isSoldView = document.getElementById('adminSectionTitle').innerText.includes('Sold');
@@ -513,7 +497,7 @@ async function deleteListing(id) {
             }
             fetchListings(); 
         } else {
-            alert("Failed to delete. Make sure you are an Admin.");
+            alert("Failed to delete.");
         }
     } catch (err) { console.error(err); }
 }
@@ -551,7 +535,7 @@ function toggleAuthMode(e) {
     const h2 = document.querySelector('#loginModal h2');
     const btn = document.querySelector('#loginModal button');
     const tog = document.getElementById('toggleRegister');
-    if (h2.innerText === 'Welcome Back') { h2.innerText='Create Account'; btn.innerText='Register'; tog.innerText='Login'; }
+    if (h2.innerText.includes('Welcome')) { h2.innerText='Create Account'; btn.innerText='Register'; tog.innerText='Login'; }
     else { h2.innerText='Welcome Back'; btn.innerText='Login'; tog.innerText='Register'; }
 }
 
@@ -559,7 +543,7 @@ async function handleAuth(e) {
     e.preventDefault();
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-    const isReg = document.querySelector('#loginModal h2').innerText === 'Create Account';
+    const isReg = document.querySelector('#loginModal h2').innerText.includes('Create');
     try {
         const res = await fetch(`${API_URL}/auth${isReg?'/register':'/login'}`, {
             method: 'POST',
@@ -570,13 +554,8 @@ async function handleAuth(e) {
         if (res.ok) { 
             localStorage.setItem('token', data.token); 
             localStorage.setItem('role', data.role); 
-            currentUser = parseJwt(data.token)?.user_id; 
-            alert('Success!'); 
-            closeModal('loginModal'); 
-            checkLoginState(); 
-            fetchWishlistIds(); 
+            location.reload(); 
         } else {
-            // Display error nicely
             const errDiv = document.getElementById('authError');
             if(errDiv) {
                 errDiv.style.display = 'block';
@@ -600,8 +579,7 @@ function logout() {
     localStorage.removeItem('token'); 
     localStorage.removeItem('role'); 
     currentUser=null; 
-    checkLoginState(); 
-    alert('Logged out'); 
+    location.reload(); 
 }
 
 // --- Utils Exports ---
@@ -631,11 +609,10 @@ function openSellModal() {
 }
 
 function editListing(id) {
-    const item = allListings.find(l => l.listing_id == id); // Use == for loose match
+    const item = allListings.find(l => l.listing_id == id);
     if (!item) return;
     
     isEditingId = id; 
-    
     document.getElementById('itemTitle').value = item.title;
     document.getElementById('itemDesc').value = item.description;
     document.getElementById('itemPrice').value = item.price;
@@ -663,7 +640,6 @@ async function handleSellItem(e) {
     e.preventDefault();
     const token = localStorage.getItem('token');
     
-    // Correct FormData construction
     const formData = new FormData();
     formData.append('title', document.getElementById('itemTitle').value);
     formData.append('description', document.getElementById('itemDesc').value);
@@ -720,3 +696,34 @@ async function handleSellItem(e) {
         } catch (e) { alert('Error posting: ' + e.message); }
     }
 }
+
+// --- Global Functions (Required for onclick in HTML) ---
+window.openModal = (id) => {
+    const m = document.getElementById(id);
+    if(m) {
+        m.style.display = 'flex';
+        if(document.getElementById('authError')) document.getElementById('authError').style.display='none';
+        if(document.getElementById('sellError')) document.getElementById('sellError').style.display='none';
+    }
+};
+window.closeModal = (id) => { const m = document.getElementById(id); if(m) m.style.display = 'none'; };
+window.sendMessage = sendMessage;
+window.logout = logout;
+window.openProfile = openProfile;
+window.uploadAvatar = uploadAvatar;
+window.deleteListing = deleteListing;
+window.markSold = markSold;
+window.toggleWishlist = toggleWishlist;
+window.openAdmin = openAdmin;
+window.adminShow = adminShow;
+window.banUser = banUser;
+window.editListing = editListing; 
+window.openSellModal = openSellModal; 
+window.viewListing = viewListing; 
+window.handleSort = handleSort;
+window.filterCategory = filterCategory;
+window.updateSubCategories = updateSubCategories;
+window.toggleAuthMode = toggleAuthMode; 
+window.handleAuth = handleAuth;
+window.detectUserLocation = detectUserLocation;
+window.editProfileDetails = editProfileDetails;
