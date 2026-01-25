@@ -7,7 +7,7 @@ try {
         socket = io(API_URL);
         console.log("Socket connected");
     } else {
-        console.warn("Socket.io script not loaded in HTML.");
+        console.warn("Socket.io script not loaded.");
     }
 } catch (e) {
     console.warn("Socket connection failed:", e);
@@ -21,7 +21,7 @@ let currentUser = null;
 let isEditingId = null; 
 let currentCategory = 'all'; 
 
-// --- 3. Helper Functions (Global) ---
+// --- 3. Helper Functions ---
 window.parseJwt = (token) => {
     try { return JSON.parse(atob(token.split('.')[1])); } catch (e) { return null; }
 };
@@ -76,13 +76,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load Data
     window.fetchListings();
 
-    // Attach Listeners Safely
+    // Attach Listeners
     const searchInput = document.getElementById('searchInput');
     if(searchInput) searchInput.addEventListener('input', () => window.filterCategory(currentCategory));
 
     const locInput = document.getElementById('locationFilter');
     if(locInput) locInput.addEventListener('input', () => window.filterCategory(currentCategory));
 
+    // Fix: Attach button listeners programmatically to ensure they work
     const toggleBtn = document.getElementById('toggleRegister');
     if(toggleBtn) toggleBtn.onclick = window.toggleAuthMode;
 
@@ -93,20 +94,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if(sellForm) sellForm.onsubmit = window.handleSellItem;
 });
 
-// --- 6. Core Logic (Auth & State) ---
+// --- 6. Core Logic (Attached to window) ---
 
 window.checkLoginState = () => {
     const nav = document.getElementById('navLinks');
     if (!nav) return;
     
     const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
+    const role = localStorage.getItem('role'); // Get role from storage
 
     if (token) {
-        // Only show Admin button if the stored role is 'admin'
-        const adminBtn = role === 'admin' 
-            ? `<button onclick="window.openAdmin()" class="btn-primary" style="background:#d63031; margin-right:10px;">Admin</button>` 
-            : '';
+        // ADMIN CHECK: Only show button if role is 'admin'
+        let adminBtn = '';
+        if (role === 'admin') {
+            adminBtn = `<button onclick="window.openAdmin()" class="btn-primary" style="background:#d63031; margin-right:10px;">Admin</button>`;
+        }
 
         nav.innerHTML = `
             ${adminBtn}
@@ -119,7 +121,7 @@ window.checkLoginState = () => {
 };
 
 window.logout = () => {
-    localStorage.clear(); // Clear token, role, and anything else
+    localStorage.clear();
     currentUser = null;
     location.reload();
 };
@@ -154,7 +156,7 @@ window.handleAuth = async (e) => {
         
         if (res.ok) {
             localStorage.setItem('token', data.token);
-            localStorage.setItem('role', data.role); // Save role for checkLoginState
+            localStorage.setItem('role', data.role); // Save role!
             location.reload();
         } else {
             const errDiv = document.getElementById('authError');
@@ -166,7 +168,119 @@ window.handleAuth = async (e) => {
     } catch (err) { alert("Connection Error: " + err.message); }
 };
 
-// --- Listings Logic ---
+// --- Sell / Post Item ---
+
+window.openSellModal = () => {
+    isEditingId = null;
+    document.getElementById('sellForm').reset();
+    document.querySelector('#sellModal h2').innerText = "Sell an Item";
+    document.querySelector('#sellModal button[type="submit"]').innerText = "Post Listing";
+    document.getElementById('imageUploadSection').style.display = 'block';
+    
+    document.getElementById('itemCategory').value = 'Engineering';
+    window.updateSubCategories();
+    
+    window.closeModal('profileModal');
+    window.openModal('sellModal');
+};
+
+window.updateSubCategories = () => {
+    const cat = document.getElementById('itemCategory').value;
+    const subSel = document.getElementById('itemSubCategory');
+    subSel.innerHTML = ''; 
+    if (subCategories[cat]) {
+        subCategories[cat].forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = sub; opt.innerText = sub; subSel.appendChild(opt);
+        });
+        subSel.parentElement.style.display = 'block'; 
+    } else {
+        subSel.parentElement.style.display = 'none'; 
+    }
+};
+
+window.handleSellItem = async (e) => {
+    e.preventDefault();
+    console.log("Submitting item...");
+    
+    const token = localStorage.getItem('token');
+    if (!token) return alert("Please login to post.");
+
+    const formData = new FormData();
+    formData.append('title', document.getElementById('itemTitle').value);
+    formData.append('description', document.getElementById('itemDesc').value);
+    formData.append('price', document.getElementById('itemPrice').value);
+    formData.append('location', document.getElementById('itemLocation').value);
+    formData.append('category', document.getElementById('itemCategory').value);
+    formData.append('subcategory', document.getElementById('itemSubCategory').value);
+    formData.append('condition', document.getElementById('itemCondition').value);
+
+    const files = document.getElementById('itemImages').files;
+    for (let i = 0; i < files.length; i++) {
+        formData.append('images', files[i]);
+    }
+
+    try {
+        let url = `${API_URL}/listings`;
+        let method = 'POST';
+        let headers = { 'Authorization': `Bearer ${token}` };
+        let body = formData;
+
+        // Logic for Edit vs Create
+        if (isEditingId) {
+            url = `${API_URL}/listings/${isEditingId}`;
+            method = 'PUT';
+            headers['Content-Type'] = 'application/json';
+            
+            const jsonData = {};
+            formData.forEach((value, key) => jsonData[key] = value);
+            delete jsonData.images; 
+            body = JSON.stringify(jsonData);
+        }
+
+        const res = await fetch(url, { method, headers, body });
+        
+        if (res.ok) {
+            alert(isEditingId ? 'Item Updated!' : 'Item Posted Successfully!');
+            window.closeModal('sellModal');
+            window.fetchListings();
+        } else {
+            const err = await res.json();
+            alert("Error: " + (err.message || err.error || "Failed to save"));
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Network Error: " + err.message);
+    }
+};
+
+window.editListing = (id) => {
+    const item = allListings.find(l => l.listing_id == id);
+    if (!item) return;
+    
+    isEditingId = id; 
+    document.getElementById('itemTitle').value = item.title;
+    document.getElementById('itemDesc').value = item.description;
+    document.getElementById('itemPrice').value = item.price;
+    document.getElementById('itemLocation').value = item.location || '';
+    document.getElementById('itemCondition').value = item.condition;
+    
+    const catSelect = document.getElementById('itemCategory');
+    catSelect.value = item.category;
+    window.updateSubCategories(); 
+    
+    const subSelect = document.getElementById('itemSubCategory');
+    if (item.subcategory) subSelect.value = item.subcategory;
+
+    document.getElementById('imageUploadSection').style.display = 'none'; 
+    document.querySelector('#sellModal h2').innerText = "Edit Item";
+    document.querySelector('#sellModal button[type="submit"]').innerText = "Update Listing";
+    
+    window.closeModal('profileModal');
+    window.openModal('sellModal');
+};
+
+// --- Listings Display ---
 
 window.fetchListings = async () => {
     try {
@@ -194,8 +308,6 @@ window.renderListings = (items) => {
 
         const heartColor = wishlistIds.includes(item.listing_id) ? '#ff7675' : 'white';
         const delay = index * 0.05;
-
-        // Escape title for onclick safely
         const safeTitle = item.title.replace(/'/g, "\\'");
 
         return `
@@ -242,117 +354,6 @@ window.filterCategory = (cat) => {
     window.renderListings(filtered);
 };
 
-// --- Sell / Post Item ---
-
-window.openSellModal = () => {
-    isEditingId = null;
-    document.getElementById('sellForm').reset();
-    document.querySelector('#sellModal h2').innerText = "Sell an Item";
-    document.querySelector('#sellModal button[type="submit"]').innerText = "Post Listing";
-    document.getElementById('imageUploadSection').style.display = 'block';
-    
-    // Default Values
-    document.getElementById('itemCategory').value = 'Engineering';
-    window.updateSubCategories();
-    
-    window.closeModal('profileModal');
-    window.openModal('sellModal');
-};
-
-window.updateSubCategories = () => {
-    const cat = document.getElementById('itemCategory').value;
-    const subSel = document.getElementById('itemSubCategory');
-    subSel.innerHTML = ''; 
-    if (subCategories[cat]) {
-        subCategories[cat].forEach(sub => {
-            const opt = document.createElement('option');
-            opt.value = sub; opt.innerText = sub; subSel.appendChild(opt);
-        });
-        subSel.parentElement.style.display = 'block'; 
-    } else {
-        subSel.parentElement.style.display = 'none'; 
-    }
-};
-
-window.handleSellItem = async (e) => {
-    e.preventDefault();
-    const token = localStorage.getItem('token');
-    if (!token) return alert("Please login to post.");
-
-    const formData = new FormData();
-    formData.append('title', document.getElementById('itemTitle').value);
-    formData.append('description', document.getElementById('itemDesc').value);
-    formData.append('price', document.getElementById('itemPrice').value);
-    formData.append('location', document.getElementById('itemLocation').value);
-    formData.append('category', document.getElementById('itemCategory').value);
-    formData.append('subcategory', document.getElementById('itemSubCategory').value);
-    formData.append('condition', document.getElementById('itemCondition').value);
-
-    const files = document.getElementById('itemImages').files;
-    for (let i = 0; i < files.length; i++) {
-        formData.append('images', files[i]);
-    }
-
-    try {
-        let url = `${API_URL}/listings`;
-        let method = 'POST';
-        let headers = { 'Authorization': `Bearer ${token}` };
-        let body = formData;
-
-        // If editing, switch to PUT and JSON body
-        if (isEditingId) {
-            url = `${API_URL}/listings/${isEditingId}`;
-            method = 'PUT';
-            headers['Content-Type'] = 'application/json';
-            
-            const jsonData = {};
-            formData.forEach((value, key) => jsonData[key] = value);
-            delete jsonData.images; // Don't allow image update on quick edit
-            body = JSON.stringify(jsonData);
-        }
-
-        const res = await fetch(url, { method, headers, body });
-        
-        if (res.ok) {
-            alert(isEditingId ? 'Item Updated!' : 'Item Posted Successfully!');
-            window.closeModal('sellModal');
-            window.fetchListings();
-        } else {
-            const err = await res.json();
-            alert("Error: " + (err.message || err.error || "Failed to save"));
-        }
-    } catch (err) {
-        console.error(err);
-        alert("Network Error: " + err.message);
-    }
-};
-
-window.editListing = (id) => {
-    const item = allListings.find(l => l.listing_id == id);
-    if (!item) return;
-    
-    isEditingId = id; 
-    document.getElementById('itemTitle').value = item.title;
-    document.getElementById('itemDesc').value = item.description;
-    document.getElementById('itemPrice').value = item.price;
-    document.getElementById('itemLocation').value = item.location || '';
-    document.getElementById('itemCondition').value = item.condition;
-    
-    const catSelect = document.getElementById('itemCategory');
-    catSelect.value = item.category;
-    window.updateSubCategories(); 
-    
-    const subSelect = document.getElementById('itemSubCategory');
-    if (item.subcategory) subSelect.value = item.subcategory;
-
-    document.getElementById('imageUploadSection').style.display = 'none'; 
-    document.querySelector('#sellModal h2').innerText = "Edit Item";
-    document.querySelector('#sellModal button[type="submit"]').innerText = "Update Listing";
-    
-    window.closeModal('profileModal');
-    window.openModal('sellModal');
-};
-
 // --- View Details ---
 
 window.viewListing = async (id) => {
@@ -372,7 +373,6 @@ window.viewListing = async (id) => {
         const thumbContainer = document.getElementById('detailThumbnails');
         thumbContainer.innerHTML = ''; 
 
-        // Image Logic
         let images = (item.images && item.images.length > 0) ? item.images : [];
         if (images.length > 0) {
              mainImg.src = images[0].startsWith('http') ? images[0] : `${API_URL}${images[0]}`;
@@ -381,7 +381,6 @@ window.viewListing = async (id) => {
         }
         mainImg.onerror = function() { window.handleImgError(this); };
 
-        // Thumbnails
         if (images.length > 1) {
             images.forEach(img => {
                 const src = img.startsWith('http') ? img : `${API_URL}${img}`;
@@ -604,7 +603,6 @@ window.deleteListing = async (id) => {
         });
         if (res.ok) { 
             alert("Item Deleted");
-            // Refresh specific view
             const adminModal = document.getElementById('adminModal');
             if (adminModal && adminModal.style.display === 'flex') {
                 window.adminShow('listings');
@@ -649,8 +647,6 @@ window.fetchWishlistIds = async () => {
     } catch (err) { console.error(err); }
 };
 
-window.detectUserLocation = () => { /* Logic integrated into listener */ };
-
 // --- Modals ---
 window.openModal = (id) => {
     const m = document.getElementById(id);
@@ -660,3 +656,4 @@ window.openModal = (id) => {
     }
 };
 window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; };
+window.detectUserLocation = () => { /* Logic integrated into listener */ };
