@@ -214,34 +214,34 @@ window.renderListings = (items) => {
     grid.innerHTML = items.map((item, index) => {
         if (item.status === 'sold') return ''; 
 
-        // Image URL Logic
         let imageUrl = (item.images && item.images.length > 0) 
             ? (item.images[0].startsWith('http') ? item.images[0] : `${API_URL}${item.images[0]}`)
             : 'https://placehold.co/400x300/2d3436/FFF?text=No+Image';
 
         const heartColor = wishlistIds.includes(item.listing_id) ? '#ff7675' : 'white';
-        const delay = index * 0.05;
+        const delay = index * 0.1; // Staggered animation
         const safeTitle = item.title.replace(/'/g, "\\'");
 
         return `
-        <div class="listing-card" style="animation-delay: ${delay}s; position: relative;">
-            <img src="${imageUrl}" class="card-img" 
-                 onerror="window.handleImgError(this)" 
+        <div class="card" style="animation-delay: ${delay}s">
+            <img src="${imageUrl}" onerror="window.handleImgError(this)" 
                  onclick="window.viewListing('${item.listing_id}')">
             
-            <button onclick="window.toggleWishlist('${item.listing_id}', this)" 
-                style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.5); border:none; border-radius:50%; width:30px; height:30px; color:${heartColor}; cursor:pointer; font-size:1.2rem;">
-                ♥
-            </button>
-            
             <div class="card-content">
-                <h3 onclick="window.viewListing('${item.listing_id}')" style="cursor:pointer">${item.title}</h3>
+                <div style="display:flex; justify-content:space-between; align-items:start;">
+                    <h3 onclick="window.viewListing('${item.listing_id}')" style="cursor:pointer">${item.title}</h3>
+                    <button onclick="window.toggleWishlist('${item.listing_id}', this)" 
+                        style="background:none; border:none; color:${heartColor}; cursor:pointer; font-size:1.2rem;">♥</button>
+                </div>
+                
                 <p class="price">₹${parseFloat(item.price).toFixed(2)}</p>
-                <div style="display:flex; justify-content:space-between; font-size:0.8rem; opacity:0.7; margin-top:5px;">
+                
+                <div class="meta">
                     <span>📍 ${item.location || 'Online'}</span>
                     <span>${window.timeAgo(item.created_at)}</span>
                 </div>
-                <button class="btn-primary" style="width:100%; margin-top:10px;" 
+
+                <button class="btn-primary" style="width:100%; margin-top:15px;" 
                     onclick="window.openChat('${item.listing_id}', '${safeTitle}')">Chat</button>
             </div>
         </div>`;

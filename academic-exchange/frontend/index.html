@@ -3,201 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Academic Exchange | Student Marketplace</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <title>Academic Exchange | Next Gen</title>
     <link rel="stylesheet" href="css/style.css">
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script> 
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 <body>
 
-    <div class="background-shapes">
-        <div class="shape shape-1"></div>
-        <div class="shape shape-2"></div>
-        <div class="shape shape-3"></div>
+    <div class="background-wrapper">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
     </div>
 
-    <nav class="glass-nav">
-        <div class="logo">🎓 Academic Exchange</div>
-        <div class="nav-controls" id="navLinks">
+    <nav>
+        <div class="logo">⚡ Academic Exchange</div>
+        <div id="navLinks" style="display:flex; gap:10px;">
             </div>
     </nav>
 
-    <div class="container">
+    <div class="hero">
+        <h1>Student Marketplace</h1>
+        <p style="color:#ccc;">Buy, Sell & Trade Gear on Campus</p>
         
-        <header class="hero-section">
-            <h1>Student-to-Student Marketplace</h1>
-            <p>Buy, sell, and trade resources within your campus.</p>
-            
-            <div class="search-bar-container glass-card">
-                <input type="text" id="searchInput" placeholder="Search for books, instruments...">
-                <div class="location-wrapper">
-                    <input type="text" id="locationFilter" placeholder="City/College">
-                    <span class="location-icon" onclick="window.detectUserLocation()">📍</span>
-                </div>
-            </div>
-        </header>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Find books, drafters, aprons...">
+            <input type="text" id="locationFilter" placeholder="City/College" style="width:30%; border-left:1px solid #444;">
+            <button onclick="window.detectUserLocation()">📍</button>
+        </div>
 
-        <div class="categories-scroll">
+        <div class="categories">
             <button class="filter-btn active" onclick="window.filterCategory('all')">All</button>
             <button class="filter-btn" onclick="window.filterCategory('Engineering')">Engineering</button>
             <button class="filter-btn" onclick="window.filterCategory('MBBS')">MBBS</button>
-            <button class="filter-btn" onclick="window.filterCategory('Law')">Law</button>
             <button class="filter-btn" onclick="window.filterCategory('Gadgets')">Gadgets</button>
             <button class="filter-btn" onclick="window.filterCategory('Notes')">Notes</button>
         </div>
-
-        <div style="text-align: right; margin: 20px 0;">
-            <select id="sortSelect" onchange="window.handleSort()" class="glass-input">
-                <option value="newest">Newest First</option>
-                <option value="price_low">Price: Low to High</option>
-                <option value="price_high">Price: High to Low</option>
-            </select>
-        </div>
-
-        <div id="listingsGrid" class="listings-grid">
-            </div>
     </div>
 
-    <button class="floating-sell-btn" onclick="window.openSellModal()">+ Sell Item</button>
+    <div id="listingsGrid" class="grid">
+        </div>
+
+    <button onclick="window.openSellModal()" 
+        style="position:fixed; bottom:30px; right:30px; background:var(--accent); color:#000; padding:15px 30px; border:none; border-radius:50px; font-weight:bold; font-size:1.1rem; cursor:pointer; box-shadow:0 0 20px rgba(0,184,148,0.5); transition:0.3s; z-index:90;">
+        + Sell Item
+    </button>
 
     <div id="loginModal" class="modal">
-        <div class="modal-content glass-card">
+        <div class="modal-content">
             <span class="close-btn" onclick="window.closeModal('loginModal')">&times;</span>
-            <h2>Welcome Back</h2>
+            <h2 style="margin-bottom:20px;">Welcome Back</h2>
             <form id="loginForm">
-                <input type="email" id="email" placeholder="Email" required class="glass-input">
-                <input type="password" id="password" placeholder="Password" required class="glass-input">
-                <button type="submit" class="btn-primary full-width">Login</button>
-                <p class="toggle-text" id="authError" style="color:#ff7675; display:none;"></p>
-                <p class="toggle-text">Need an account? <a href="#" id="toggleRegister">Register</a></p>
+                <input type="email" id="email" placeholder="Student Email" required>
+                <input type="password" id="password" placeholder="Password" required>
+                <button type="submit" class="btn-primary" style="width:100%;">Login</button>
+                <p id="authError" style="color:#ff7675; margin-top:10px; display:none;"></p>
+                <p style="margin-top:15px; color:#888; font-size:0.9rem;">
+                    New here? <a href="#" id="toggleRegister" style="color:var(--primary);">Create Account</a>
+                </p>
             </form>
         </div>
     </div>
 
     <div id="sellModal" class="modal">
-        <div class="modal-content glass-card">
+        <div class="modal-content">
             <span class="close-btn" onclick="window.closeModal('sellModal')">&times;</span>
-            <h2>Sell an Item</h2>
+            <h2 style="margin-bottom:20px;">Sell Item</h2>
             <form id="sellForm">
-                <input type="text" id="itemTitle" placeholder="Title" required class="glass-input">
-                <textarea id="itemDesc" placeholder="Description" required class="glass-input"></textarea>
-                <div class="row">
-                    <input type="number" id="itemPrice" placeholder="Price (₹)" required class="glass-input">
-                    <input type="text" id="itemLocation" placeholder="Location" required class="glass-input">
+                <input type="text" id="itemTitle" placeholder="Title (e.g., Drafter)" required>
+                <textarea id="itemDesc" placeholder="Description & Condition" rows="3" style="width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:12px; padding:15px; outline:none; margin-bottom:15px;"></textarea>
+                
+                <div style="display:flex; gap:10px;">
+                    <input type="number" id="itemPrice" placeholder="Price (₹)" required>
+                    <input type="text" id="itemLocation" placeholder="Location" required>
                 </div>
-                <div class="row">
-                    <select id="itemCategory" onchange="window.updateSubCategories()" class="glass-input">
+
+                <div style="display:flex; gap:10px;">
+                    <select id="itemCategory" onchange="window.updateSubCategories()">
                         <option value="Engineering">Engineering</option>
                         <option value="MBBS">MBBS</option>
                         <option value="Law">Law</option>
                         <option value="Gadgets">Gadgets</option>
-                        <option value="Other">Other</option>
                     </select>
-                    <select id="itemCondition" class="glass-input">
+                    <select id="itemCondition">
                         <option value="New">New</option>
                         <option value="Used">Used</option>
                     </select>
                 </div>
-                <div id="subCatContainer" style="margin-top: 10px;">
-                    <select id="itemSubCategory" class="glass-input"></select>
-                </div>
-                <div id="imageUploadSection" style="margin-top:15px;">
-                    <label>Upload Images (Max 5)</label>
-                    <input type="file" id="itemImages" multiple accept="image/*" class="glass-input">
-                </div>
-                <button type="submit" class="btn-primary full-width" style="margin-top:15px;">Post Listing</button>
+
+                <div id="subCatContainer">
+                    <select id="itemSubCategory"></select> </div>
+
+                <label style="display:block; margin:10px 0 5px; color:#888;">Upload Images</label>
+                <input type="file" id="itemImages" multiple accept="image/*">
+
+                <button type="submit" class="btn-primary" style="width:100%; margin-top:15px;">Post Listing</button>
             </form>
         </div>
     </div>
 
     <div id="detailsModal" class="modal">
-        <div class="modal-content glass-card large-modal">
+        <div class="modal-content" style="max-width:800px; display:flex; gap:20px; flex-wrap:wrap;">
             <span class="close-btn" onclick="window.closeModal('detailsModal')">&times;</span>
-            <div class="detail-layout">
-                <div class="detail-images">
-                    <img id="detailImage" src="" alt="Main">
-                    <div id="detailThumbnails" class="thumbnails"></div>
-                </div>
-                <div class="detail-info">
-                    <h2 id="detailTitle"></h2>
-                    <h3 id="detailPrice" class="price-tag"></h3>
-                    <div class="tags">
-                        <span id="detailCategory" class="badge"></span>
-                        <span id="detailSub" class="badge secondary"></span>
-                    </div>
-                    <p id="detailDesc"></p>
-                    <p id="detailLoc" class="location-text"></p>
-                    <div class="action-buttons">
-                        <button id="detailChatBtn" class="btn-primary">Chat with Seller</button>
-                        <button id="detailWishlistBtn" class="btn-secondary">♥</button>
-                    </div>
-                </div>
+            
+            <div style="flex:1; min-width:300px;">
+                <img id="detailImage" src="" style="width:100%; border-radius:15px; margin-bottom:10px;">
+                <div id="detailThumbnails" style="display:flex; gap:5px;"></div>
             </div>
-            <div class="related-section">
-                <h4>Similar Items</h4>
-                <div id="relatedGrid" class="related-grid"></div>
+
+            <div style="flex:1; min-width:300px; display:flex; flex-direction:column; justify-content:center;">
+                <h2 id="detailTitle" style="font-size:2rem; margin-bottom:5px;"></h2>
+                <h3 id="detailPrice" style="color:var(--accent); font-size:1.5rem; margin-bottom:15px;"></h3>
+                <div style="display:flex; gap:10px; margin-bottom:20px;">
+                    <span id="detailCategory" style="background:var(--primary); padding:5px 15px; border-radius:20px; font-size:0.8rem;"></span>
+                    <span id="detailSub" style="background:rgba(255,255,255,0.1); padding:5px 15px; border-radius:20px; font-size:0.8rem;"></span>
+                </div>
+                <p id="detailDesc" style="color:#ccc; margin-bottom:20px; line-height:1.6;"></p>
+                <p id="detailLoc" style="color:#888; font-size:0.9rem; margin-bottom:20px;">📍 Location</p>
+                
+                <div style="display:flex; gap:10px;">
+                    <button id="detailChatBtn" class="btn-primary" style="flex:1;">Chat with Seller</button>
+                    <button id="detailWishlistBtn" style="background:rgba(255,255,255,0.1); border:none; width:50px; border-radius:12px; color:white; font-size:1.5rem; cursor:pointer;">♥</button>
+                </div>
             </div>
         </div>
     </div>
 
     <div id="chatModal" class="modal">
-        <div class="modal-content glass-card">
+        <div class="modal-content" style="height:80vh; display:flex; flex-direction:column;">
             <span class="close-btn" onclick="window.closeModal('chatModal')">&times;</span>
-            <h3 id="chatTitle">Chat</h3>
-            <div id="chatWindow" class="chat-box"></div>
-            <div class="chat-input-area">
-                <input type="text" id="messageInput" placeholder="Type a message..." class="glass-input">
+            <h3 id="chatTitle" style="border-bottom:1px solid #333; padding-bottom:15px; margin-bottom:15px;">Chat</h3>
+            <div id="chatWindow" style="flex:1; overflow-y:auto; background:rgba(0,0,0,0.3); border-radius:10px; padding:15px; margin-bottom:15px;"></div>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="messageInput" placeholder="Type message..." style="margin:0;">
                 <button onclick="window.sendMessage()" class="btn-primary">Send</button>
             </div>
         </div>
     </div>
 
     <div id="adminModal" class="modal">
-        <div class="modal-content glass-card large-modal">
+        <div class="modal-content" style="max-width:700px;">
             <span class="close-btn" onclick="window.closeModal('adminModal')">&times;</span>
             <h2>Admin Dashboard</h2>
-            <div class="stats-row">
-                <div class="stat-card">
-                    <h3 id="statUsers">0</h3>
-                    <p>Users</p>
+            <div style="display:flex; gap:15px; margin:20px 0;">
+                <div style="flex:1; background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; text-align:center;">
+                    <h3 id="statUsers">0</h3><p>Users</p>
                 </div>
-                <div class="stat-card">
-                    <h3 id="statListings">0</h3>
-                    <p>Active</p>
+                <div style="flex:1; background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; text-align:center;">
+                    <h3 id="statListings">0</h3><p>Active</p>
                 </div>
-                <div class="stat-card">
-                    <h3 id="statSold">0</h3>
-                    <p>Sold</p>
+                <div style="flex:1; background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; text-align:center;">
+                    <h3 id="statSold">0</h3><p>Sold</p>
                 </div>
             </div>
-            <div class="admin-tabs">
-                <button onclick="window.adminShow('users')">Users</button>
-                <button onclick="window.adminShow('listings')">Listings</button>
-                <button onclick="window.adminShow('sold')">Sold</button>
-            </div>
-            <h3 id="adminSectionTitle" style="margin: 15px 0;">Manage</h3>
-            <div id="adminDynamicContent" class="admin-list"></div>
+            <div id="adminDynamicContent" style="max-height:400px; overflow-y:auto;"></div>
         </div>
     </div>
 
     <div id="profileModal" class="modal">
-        <div class="modal-content glass-card">
+        <div class="modal-content">
             <span class="close-btn" onclick="window.closeModal('profileModal')">&times;</span>
-            <div class="profile-header">
-                <img id="profileAvatar" src="" alt="Profile" class="avatar">
-                <div>
-                    <h2 id="profileName">Student Name</h2>
-                    <p id="profileEmail">student@email.com</p>
-                    <button onclick="window.editProfileDetails()" class="btn-small">Edit Name</button>
-                </div>
+            <div style="text-align:center; margin-bottom:20px;">
+                <img id="profileAvatar" src="" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">
+                <h2 id="profileName" style="margin-top:10px;">Student</h2>
+                <p id="profileEmail" style="color:#888;">email@test.com</p>
             </div>
-            <div style="margin-top: 15px;">
-                <label>Update Avatar</label>
-                <input type="file" id="avatarInput" onchange="window.uploadAvatar()" class="glass-input">
-            </div>
-            <hr class="divider">
             <h3>My Listings</h3>
-            <div id="myListingsGrid" class="my-listings-list"></div>
+            <div id="myListingsGrid" style="max-height:300px; overflow-y:auto; margin-top:10px;"></div>
         </div>
     </div>
 
