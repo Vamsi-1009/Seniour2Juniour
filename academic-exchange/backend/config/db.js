@@ -1,14 +1,11 @@
-const { Pool } = require('pg');
+const Pool = require('pg').Pool;
 require('dotenv').config();
 
-// The code will look for "DATABASE_URL" in your Render Dashboard.
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' || (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('render')) ? {
-        rejectUnauthorized: false
-    } : false
+    connectionString: process.env.DATABASE_URL, // Uses the URL you added to Render
+    ssl: {
+        rejectUnauthorized: false // Required for Render Cloud Database
+    }
 });
 
-module.exports = {
-    query: (text, params) => pool.query(text, params),
-};
+module.exports = pool;

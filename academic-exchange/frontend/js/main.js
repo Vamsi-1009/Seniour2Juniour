@@ -1,554 +1,790 @@
-// ✅ AUTOMATIC CONFIGURATION (Using Relative Paths for Stability)
-const BASE_URL = window.location.origin; // For Socket.io
-const API_AUTH = '/api/auth';
-const API_LISTINGS = '/api/listings';
-const API_USERS = '/api/users';
-const API_PROFILE = '/api/profile';
+const API_URL = ''; // Empty string for relative path on production
 
-let allBooks = []; 
-let socket = null; 
-let currentChatRoom = null; 
-let currentUserId = null;
-let userLat = null;
-let userLng = null;
-let currentFilter = 'All';
+// --- Safety Check for Socket.io ---
+let socket = null;
+try {
+    socket = io(API_URL);
+    console.log("Connected to Socket.io");
+} catch (e) {
+    console.warn("Socket.io not loaded. Chat will not work, but other features will.");
+}
 
-// ✅ DATA: Filter Hierarchy
-const filterTree = {
-    "ROOT": [
-        { label: "All", value: "All", color: "indigo" },
-        { label: "🎒 School", value: "School", color: "rose" },
-        { label: "🏫 Intermediate", expand: "INTER_GROUPS", color: "orange" },
-        { label: "⚙️ Engineering", expand: "ENG_BRANCHES", color: "blue" },
-        { label: "🩺 Medical", expand: "MED_BRANCHES", color: "emerald" },
-        { label: "⚖️ Law", expand: "LAW_BRANCHES", color: "amber" }
-    ],
-    "INTER_GROUPS": [
-        { label: "⬅ Back", goBack: "ROOT", color: "slate" },
-        { label: "MPC (Maths)", expand: "INTER_MPC", color: "orange" },
-        { label: "BiPC (Bio)", expand: "INTER_BIPC", color: "orange" },
-        { label: "CEC (Commerce)", expand: "INTER_CEC", color: "orange" }
-    ],
-    "INTER_MPC": [
-        { label: "⬅ Back", goBack: "INTER_GROUPS", color: "slate" },
-        { label: "1st Year", value: "Inter-MPC-1", color: "indigo" },
-        { label: "2nd Year", value: "Inter-MPC-2", color: "indigo" }
-    ],
-    "INTER_BIPC": [
-        { label: "⬅ Back", goBack: "INTER_GROUPS", color: "slate" },
-        { label: "1st Year", value: "Inter-BiPC-1", color: "indigo" },
-        { label: "2nd Year", value: "Inter-BiPC-2", color: "indigo" }
-    ],
-    "INTER_CEC": [
-        { label: "⬅ Back", goBack: "INTER_GROUPS", color: "slate" },
-        { label: "1st Year", value: "Inter-CEC-1", color: "indigo" },
-        { label: "2nd Year", value: "Inter-CEC-2", color: "indigo" }
-    ],
-    "ENG_BRANCHES": [
-        { label: "⬅ Back", goBack: "ROOT", color: "slate" },
-        { label: "CSE", value: "Eng-CSE", color: "blue" },
-        { label: "ECE", value: "Eng-ECE", color: "blue" },
-        { label: "EEE", value: "Eng-EEE", color: "blue" },
-        { label: "Mech", value: "Eng-Mech", color: "blue" },
-        { label: "Civil", value: "Eng-Civil", color: "blue" },
-        { label: "IT", value: "Eng-IT", color: "blue" }
-    ],
-    "MED_BRANCHES": [
-        { label: "⬅ Back", goBack: "ROOT", color: "slate" },
-        { label: "MBBS", value: "Med-MBBS", color: "emerald" },
-        { label: "BDS", value: "Med-BDS", color: "emerald" },
-        { label: "Pharmacy", value: "Med-Pharm", color: "emerald" }
-    ],
-    "LAW_BRANCHES": [
-        { label: "⬅ Back", goBack: "ROOT", color: "slate" },
-        { label: "LLB (3 Yrs)", value: "Law-LLB", color: "amber" },
-        { label: "BA LLB (5 Yrs)", value: "Law-BA-LLB", color: "amber" }
-    ]
+// --- Global State ---
+let allListings = [];
+let wishlistIds = [];
+let currentRoom = null;
+let currentUser = null;
+let isEditingId = null; 
+let currentCategory = 'all'; 
+
+// --- Sub-Category Data ---
+const subCategories = {
+    'Engineering': ['CSE', 'ECE', 'EEE', 'Mechanical', 'Civil', 'IT', 'Chemical', 'Aerospace', 'Other'],
+    'MBBS': ['1st Year', '2nd Year', '3rd Year', '4th Year', 'Internship', 'Dental (BDS)', 'Ayush'],
+    'Law': ['LLB', 'LLM', 'CLAT Prep', 'Civil Law', 'Criminal Law', 'Constitution', 'Other'],
+    'Intermediate': ['1st Year (MPC)', '1st Year (BiPC)', '1st Year (CEC/MEC)', '2nd Year (MPC)', '2nd Year (BiPC)', '2nd Year (CEC/MEC)'],
+    'EAMCET': ['Engineering Stream', 'Agriculture & Medical', 'Previous Papers', 'Study Material'],
+    'GATE': ['CSE', 'ECE', 'EEE', 'Mechanical', 'Civil', 'Instrumentation', 'General Aptitude'],
+    'PG': ['MTech - CSE', 'MTech - ECE', 'MBA - Finance', 'MBA - Marketing', 'MBA - HR', 'MSc - Maths', 'MSc - Physics', 'MSc - Chemistry', 'MCA'],
+    'Competitive Exams': ['UPSC (Civil Services)', 'SSC (CGL/CHSL)', 'Banking (PO/Clerk)', 'RRB (Railways)', 'GRE/TOEFL/IELTS', 'CAT/MAT', 'Defense'],
+    'Gadgets': ['Laptops', 'Phones', 'Scientific Calculators', 'Drafters', 'Lab Coats', 'Aprons'],
+    'Other': ['Fiction', 'Non-Fiction', 'Self Help', 'Stationery']
 };
 
-// --- INIT ---
+// --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("App Initialized");
+    fetchListings();
+    checkLoginState();
+    setupEventListeners();
+    
     const token = localStorage.getItem('token');
     if (token) {
-        const username = localStorage.getItem('username');
-        const role = localStorage.getItem('role');
-        const uid = localStorage.getItem('userId');
-        
-        initSocket(uid);
-        if (role === 'admin') showAdminDashboard();
-        else showDashboard(username);
+        currentUser = parseJwt(token)?.user_id;
+        fetchWishlistIds();
+        // REMOVED: detectUserLocation(); so items don't disappear!
     }
 });
 
-// --- AUTHENTICATION ---
-async function login() {
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
+function parseJwt (token) {
+    try { return JSON.parse(atob(token.split('.')[1])); } catch (e) { return null; }
+}
+
+function timeAgo(dateString) {
+    if(!dateString) return 'Recently';
+    const date = new Date(dateString);
+    const seconds = Math.floor((new Date() - date) / 1000);
     
-    try {
-        // ✅ UPDATED: Using Relative Path
-        const response = await fetch(`${API_AUTH}/login`, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ email, password }) 
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            localStorage.setItem('token', data.token); 
-            // Fix: ensure we save the right fields from backend response
-            localStorage.setItem('username', data.username || data.user?.username); 
-            localStorage.setItem('role', data.role || data.user?.role); 
-            
-            // Handle User ID logic safely
-            let userId = data.id || data.user?.id;
-            if (!userId && data.token) {
-                try {
-                     const payload = JSON.parse(atob(data.token.split('.')[1]));
-                     userId = payload.id;
-                } catch(e) { console.error("Token parse error", e); }
-            }
-            localStorage.setItem('userId', userId);
-
-            initSocket(userId);
-            if (localStorage.getItem('role') === 'admin') showAdminDashboard(); 
-            else showDashboard(localStorage.getItem('username'));
-        } else { 
-            alert(data.message || "Login failed"); 
-        }
-    } catch (err) { 
-        console.error(err); 
-        alert("Cannot connect to server. Check console for details."); 
-    }
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + "y ago";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + "m ago";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + "d ago";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + "h ago";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + "m ago";
+    return "Just now";
 }
 
-async function register() {
-    const username = document.getElementById('reg-username').value;
-    const email = document.getElementById('reg-email').value;
-    const password = document.getElementById('reg-password').value;
-    try {
-        const response = await fetch(`${API_AUTH}/register`, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ username, email, password }) 
-        });
-        if (response.ok) { alert("Success! Login now."); showLogin(); } 
-        else { const d = await response.json(); alert(d.message || "Error"); }
-    } catch (err) { console.error(err); }
-}
-
-function logout() { if(socket) socket.disconnect(); localStorage.clear(); window.location.reload(); }
-
-// --- LISTINGS ---
-async function loadListings() {
-    try {
-        const response = await fetch(API_LISTINGS);
-        allBooks = await response.json();
-        allBooks.sort((a, b) => b.id - a.id);
-        
-        if(document.getElementById('dashboard-title')) document.getElementById('dashboard-title').innerText = ""; 
-        
-        initUserLocation();
-        renderFilters("ROOT"); 
-        filterBooks('All');
-    } catch (e) { console.error(e); }
-}
-
-// ✅ PROFILE FUNCTIONS
-async function showProfileSettings() {
-    document.getElementById('sell-book-section').classList.add('hidden');
-    document.getElementById('dashboard-title').innerText = "Profile Settings";
+// --- Geolocation ---
+function detectUserLocation() {
+    const locInput = document.getElementById('locationFilter');
+    if (!navigator.geolocation) { alert("Geolocation not supported"); return; }
+    if(locInput.value.trim() === "") { locInput.placeholder = "Locating..."; }
     
-    try {
-        const res = await fetch(API_PROFILE, {
-            headers: { 'Authorization': localStorage.getItem('token') }
-        });
-        const user = await res.json();
-        
-        document.getElementById('profile-username').value = user.username;
-        document.getElementById('profile-email').value = user.email;
-        
-        const p = document.getElementById('profile-section');
-        p.classList.remove('hidden');
-        p.scrollIntoView({ behavior: 'smooth' });
-    } catch (e) {
-        console.error(e);
-        alert("Failed to load profile.");
-    }
-}
-
-function hideProfileSettings() {
-    document.getElementById('profile-section').classList.add('hidden');
-}
-
-async function updateProfile() {
-    const username = document.getElementById('profile-username').value;
-    const email = document.getElementById('profile-email').value;
-    const password = document.getElementById('profile-password').value;
-
-    if (!username || !email) return alert("Name and Email are required.");
-
-    try {
-        const res = await fetch(API_PROFILE, {
-            method: 'PUT',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': localStorage.getItem('token')
-            },
-            body: JSON.stringify({ username, email, password })
-        });
-
-        if (res.ok) {
-            alert("Profile updated successfully!");
-            localStorage.setItem('username', username);
-            document.getElementById('user-display').innerText = `Welcome, ${username}!`;
-            hideProfileSettings();
-        } else {
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
             const data = await res.json();
-            alert("Error: " + data.message);
-        }
-    } catch (e) {
-        console.error(e);
-        alert("Failed to update profile.");
-    }
-}
-
-// ✅ FILTER RENDERER
-function renderFilters(levelKey) {
-    const container = document.getElementById('filter-container');
-    container.innerHTML = ''; 
-    
-    const buttons = filterTree[levelKey] || filterTree["ROOT"];
-
-    buttons.forEach(btn => {
-        const el = document.createElement('button');
-        const baseClass = `px-6 py-3 rounded-2xl font-bold text-xs whitespace-nowrap transition-all shadow-sm border`;
-        let colorClass = "";
-        
-        if(btn.color === 'indigo') colorClass = "bg-indigo-600 text-white border-transparent shadow-md";
-        else if(btn.color === 'slate') colorClass = "bg-slate-800 text-white border-transparent"; 
-        else colorClass = `bg-white text-slate-600 border-slate-200 hover:bg-${btn.color}-50 hover:text-${btn.color}-600 hover:border-${btn.color}-200`;
-
-        el.className = `${baseClass} ${colorClass}`;
-        el.innerText = btn.label;
-
-        el.onclick = () => {
-            if (btn.goBack) {
-                renderFilters(btn.goBack); 
-            } else if (btn.expand) {
-                renderFilters(btn.expand); 
-            } else {
-                filterBooks(btn.value);
-                Array.from(container.children).forEach(c => c.classList.add('opacity-50'));
-                el.classList.remove('opacity-50');
-                el.classList.add('ring-2', 'ring-offset-2', 'ring-indigo-500');
+            const city = data.address.city || data.address.town || data.address.village || data.address.county;
+            if (city) {
+                locInput.value = city;
+                filterCategory(currentCategory); 
             }
-        };
-        container.appendChild(el);
+        } catch (err) { console.error(err); }
+    }, (err) => { alert("Location permission denied"); });
+}
+
+// --- Socket Listeners ---
+if (socket) {
+    socket.on('receive_message', (data) => {
+        if (data.room === currentRoom) {
+            appendMessageToUI(data.message, data.author === currentUser ? 'self' : 'other');
+        }
     });
 }
 
-// ✅ FILTER & SORT LOGIC
-function filterBooks(categoryValue) {
-    if(categoryValue) currentFilter = categoryValue;
+function setupEventListeners() {
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.addEventListener('input', () => filterCategory(currentCategory));
     
-    const term = document.getElementById('search-box').value.toLowerCase();
-    const rangeKm = document.getElementById('range-slider').value;
-    const sortMode = document.getElementById('sort-dropdown').value; 
-
-    document.getElementById('range-val').innerText = `${rangeKm} km`;
-
-    let filtered = allBooks.filter(b => {
-        const branch = (b.branch || '').toLowerCase();
-        const filter = currentFilter.toLowerCase();
-        
-        if (currentFilter === 'All') return true;
-        if (['School'].includes(currentFilter)) return branch.startsWith(filter);
-        return branch === filter;
-    });
-
-    filtered = filtered.filter(b => b.title.toLowerCase().includes(term) || b.username.toLowerCase().includes(term));
+    const locationInput = document.getElementById('locationFilter');
+    if (locationInput) locationInput.addEventListener('input', () => filterCategory(currentCategory));
     
-    if (userLat && userLng) {
-        filtered.forEach(book => {
-            if (book.lat && book.lng) book.distance = getDistanceKm(userLat, userLng, book.lat, book.lng);
-            else book.distance = Infinity; 
-        });
-        filtered = filtered.filter(b => b.distance <= rangeKm || b.distance === Infinity);
+    const toggleBtn = document.getElementById('toggleRegister');
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleAuthMode);
+    
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) loginForm.addEventListener('submit', handleAuth);
+    
+    const sellForm = document.getElementById('sellForm');
+    if (sellForm) sellForm.addEventListener('submit', handleSellItem);
+}
+
+// --- Listings Logic ---
+async function fetchListings() {
+    try {
+        const response = await fetch(`${API_URL}/listings`);
+        allListings = await response.json();
+        handleSort(); 
+    } catch (err) { console.error("Fetch Error:", err); }
+}
+
+function renderListings(listings) {
+    const grid = document.getElementById('listingsGrid');
+    if (!grid) return;
+    grid.innerHTML = ''; 
+
+    if (!listings || listings.length === 0) {
+        grid.innerHTML = '<p style="color:white; text-align:center; width:100%;">No listings found matching criteria.</p>';
+        return;
     }
 
-    if (sortMode === 'PriceLow') {
-        filtered.sort((a, b) => a.price - b.price);
-    } else if (sortMode === 'PriceHigh') {
-        filtered.sort((a, b) => b.price - a.price);
+    listings.forEach(item => {
+        if (item.status === 'sold') return;
+
+        let imageUrl = 'https://via.placeholder.com/300?text=No+Image';
+        if (item.images && item.images.length > 0) {
+            imageUrl = item.images[0].startsWith('http') ? item.images[0] : `${API_URL}${item.images[0]}`;
+        }
+
+        const isLiked = wishlistIds.includes(item.listing_id);
+        const heartColor = isLiked ? '#ff7675' : 'white';
+
+        const card = document.createElement('div');
+        card.className = 'listing-card';
+        card.style.position = 'relative';
+        
+        // Added onerror to handle missing images gracefully
+        card.innerHTML = `
+            <img src="${imageUrl}" class="card-img" alt="${item.title}" 
+                 onerror="this.src='https://via.placeholder.com/300?text=Image+Deleted'"
+                 onclick="viewListing('${item.listing_id}')" style="cursor:pointer;">
+            
+            <button onclick="toggleWishlist('${item.listing_id}', this)" 
+                style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.5); border:none; border-radius:50%; width:30px; height:30px; cursor:pointer; font-size:1.2rem; color:${heartColor}; transition:0.2s;">
+                ♥
+            </button>
+            <div class="card-content">
+                <h3 onclick="viewListing('${item.listing_id}')" style="cursor:pointer;">${item.title}</h3>
+                <p class="price">₹${parseFloat(item.price).toFixed(2)}</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                    <span style="font-size: 0.75rem; opacity: 0.7">📍 ${item.location || 'Unknown'}</span>
+                    <span style="font-size: 0.75rem; opacity: 0.7">📅 ${timeAgo(item.created_at)}</span>
+                </div>
+                <button class="btn-primary" style="width:100%; margin-top:10px; padding: 5px;" onclick="openChat('${item.listing_id}', '${item.title}')">Chat</button>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+function handleSort() {
+    filterCategory(currentCategory); 
+}
+
+function filterCategory(category) {
+    currentCategory = category;
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if(btn.innerText === category || (category === 'all' && btn.innerText === 'All')) {
+            btn.classList.add('active');
+        }
+    });
+
+    const searchTerm = document.getElementById('searchInput') ? document.getElementById('searchInput').value.toLowerCase() : '';
+    const locTerm = document.getElementById('locationFilter') ? document.getElementById('locationFilter').value.toLowerCase() : '';
+    const sortSelect = document.getElementById('sortSelect');
+    const sortValue = sortSelect ? sortSelect.value : 'newest';
+    
+    let filtered = allListings.filter(item => {
+        const matchesSearch = item.title.toLowerCase().includes(searchTerm) || 
+                              item.description.toLowerCase().includes(searchTerm) ||
+                              (item.subcategory && item.subcategory.toLowerCase().includes(searchTerm));
+        const matchesCategory = category === 'all' || item.category === category;
+        const matchesLocation = item.location ? item.location.toLowerCase().includes(locTerm) : true;
+        return matchesSearch && matchesCategory && matchesLocation;
+    });
+
+    if (sortValue === 'price_low') {
+        filtered.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+    } else if (sortValue === 'price_high') {
+        filtered.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+    } else if (sortValue === 'popular') {
+        filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
     } else {
-        filtered.sort((a, b) => b.id - a.id); 
+        filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }
 
     renderListings(filtered);
 }
 
-function renderListings(books) {
-    const cont = document.getElementById('listings-container');
-    cont.innerHTML = '';
-    
-    if (books.length === 0) {
-        cont.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">No products found. Try a different category!</div>`;
-        return;
-    }
+// --- Detail View Logic ---
+async function viewListing(id) {
+    try {
+        const res = await fetch(`${API_URL}/listings/${id}`);
+        if (!res.ok) return alert("Item not found");
+        const item = await res.json();
 
-    const user = localStorage.getItem('username'); 
+        document.getElementById('detailTitle').innerText = item.title;
+        document.getElementById('detailPrice').innerText = `₹${parseFloat(item.price).toFixed(2)}`;
+        document.getElementById('detailDesc').innerText = item.description;
+        document.getElementById('detailCategory').innerText = item.category;
+        document.getElementById('detailSub').innerText = item.subcategory || ""; 
+        document.getElementById('detailLoc').innerText = `📍 ${item.location || 'Unknown'}`;
 
-    books.forEach((b, i) => {
-        let imgSrc = "https://via.placeholder.com/300?text=No+Image";
-        if (b.image_url) {
-            // Fix image paths relative to root
-            const cleanPath = b.image_url.replace(/\\/g, '/').replace(/^\//, '');
-            imgSrc = `/${cleanPath}`; // Relative path for images too
+        const mainImg = document.getElementById('detailImage');
+        const thumbContainer = document.getElementById('detailThumbnails');
+        thumbContainer.innerHTML = ''; 
+
+        let images = item.images && item.images.length > 0 ? item.images : [];
+        if (images.length > 0) mainImg.src = images[0].startsWith('http') ? images[0] : `${API_URL}${images[0]}`;
+        else mainImg.src = 'https://via.placeholder.com/400?text=No+Image';
+
+        // Add error handler for detail image
+        mainImg.onerror = function() { this.src = 'https://via.placeholder.com/400?text=Image+Deleted'; };
+
+        if (images.length > 1) {
+            images.forEach(img => {
+                const src = img.startsWith('http') ? img : `${API_URL}${img}`;
+                const thumb = document.createElement('img');
+                thumb.src = src;
+                thumb.style.width = '60px';
+                thumb.style.height = '60px';
+                thumb.style.borderRadius = '5px';
+                thumb.style.cursor = 'pointer';
+                thumb.style.objectFit = 'cover';
+                thumb.style.border = '2px solid transparent';
+                thumb.onclick = () => {
+                    mainImg.src = src;
+                    Array.from(thumbContainer.children).forEach(t => t.style.border = '2px solid transparent');
+                    thumb.style.border = '2px solid #6c5ce7';
+                };
+                thumbContainer.appendChild(thumb);
+            });
         }
+
+        document.getElementById('detailChatBtn').onclick = () => { closeModal('detailsModal'); openChat(item.listing_id, item.title); };
+        const wishBtn = document.getElementById('detailWishlistBtn');
+        wishBtn.onclick = () => toggleWishlist(item.listing_id, wishBtn);
         
-        let distBadge = '';
-        if (b.distance && b.distance !== Infinity) {
-            const distDisplay = b.distance < 1 ? `${(b.distance * 1000).toFixed(0)}m` : `${b.distance.toFixed(1)} km`;
-            distBadge = `<span class="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 absolute top-2 right-2 shadow-sm">📍 ${distDisplay}</span>`;
-        }
+        wishBtn.innerText = wishlistIds.includes(item.listing_id) ? "♥" : "♡";
+        wishBtn.style.background = wishlistIds.includes(item.listing_id) ? "#ff7675" : "rgba(255,255,255,0.2)";
 
-        const conditionBadge = b.condition ? `<span class="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-1 rounded-full border border-blue-100">${b.condition}</span>` : '';
-        const exchangeBadge = b.is_exchange ? `<span class="bg-purple-50 text-purple-600 text-[10px] font-bold px-2 py-1 rounded-full border border-purple-100">🔄 Swap</span>` : '';
-        
-        let displayBranch = b.branch ? b.branch.replace(/^(Eng-|Inter-|Med-|Law-|School-)/, '') : 'General';
-        const branchBadge = `<span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">${displayBranch}</span>`;
+        renderRelated(item.category, item.listing_id);
+        openModal('detailsModal');
+    } catch (err) { console.error(err); }
+}
 
-        const actionBtn = b.username === user 
-            ? `<button onclick="startEdit(${b.id})" class="text-indigo-600 font-bold text-xs bg-indigo-50 px-3 py-2 rounded-lg hover:bg-indigo-100 transition">Edit</button>` 
-            : `<button onclick="openChat(${b.user_id}, '${b.username}')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-indigo-700 transition">Chat</button>`;
-
-        cont.innerHTML += `
-            <div class="product-card bg-white p-4 rounded-2xl border animate-fade-down" style="animation-delay: ${i*0.05}s">
-                <div class="overflow-hidden rounded-xl mb-3 relative">
-                    <img src="${imgSrc}" class="w-full h-48 object-cover">
-                    ${distBadge}
-                    <div class="absolute top-2 left-2 flex gap-1 flex-wrap pr-10">${conditionBadge} ${exchangeBadge}</div>
-                </div>
-                <div class="flex justify-between items-start mb-1">
-                    <h4 class="font-bold truncate w-2/3">${b.title}</h4>
-                    <span class="text-indigo-600 font-bold text-sm">₹${b.price}</span>
-                </div>
-                <div class="flex justify-between items-center mb-2">
-                    ${branchBadge}
-                    <p class="text-[10px] text-gray-400 uppercase">Seller: ${b.username}</p>
-                </div>
-                <div class="mt-2 pt-2 border-t flex justify-between items-center">${actionBtn}</div>
-            </div>`;
+function renderRelated(category, currentId) {
+    const grid = document.getElementById('relatedGrid');
+    grid.innerHTML = '';
+    const related = allListings.filter(i => i.category === category && i.listing_id !== currentId && i.status !== 'sold').slice(0, 4);
+    if (related.length === 0) { grid.innerHTML = '<p style="opacity:0.6;">No similar items.</p>'; return; }
+    related.forEach(item => {
+        let imageUrl = 'https://via.placeholder.com/200?text=No+Image';
+        if (item.images && item.images.length > 0) imageUrl = item.images[0].startsWith('http') ? item.images[0] : `${API_URL}${item.images[0]}`;
+        const card = document.createElement('div');
+        card.style.background = 'rgba(255,255,255,0.05)';
+        card.style.borderRadius = '10px';
+        card.style.padding = '10px';
+        card.style.cursor = 'pointer';
+        card.onclick = () => viewListing(item.listing_id);
+        card.innerHTML = `<img src="${imageUrl}" onerror="this.src='https://via.placeholder.com/200?text=Image+Deleted'" style="width:100%; height:120px; object-fit:cover; border-radius:5px;"><h4 style="margin:5px 0;">${item.title}</h4><p style="color:#00b894; font-weight:bold;">₹${parseFloat(item.price).toFixed(2)}</p>`;
+        grid.appendChild(card);
     });
 }
 
-function showDashboard(u) {
-    document.getElementById('login-form').classList.add('hidden');
-    document.getElementById('dashboard').classList.remove('hidden');
-    document.getElementById('user-display').innerText = `Welcome, ${u}!`;
-    document.getElementById('profile-initial').innerText = u.charAt(0).toUpperCase();
-    loadListings();
-}
-
-function startEdit(id) {
-    const b = allBooks.find(book => book.id === id);
-    if(!b) return;
-    const f = document.getElementById('sell-book-section');
-    if(f) { 
-        f.classList.remove('hidden'); 
-        document.getElementById('edit-book-id').value = b.id; 
-        document.getElementById('book-title').value = b.title; 
-        document.getElementById('book-price').value = b.price; 
-        document.getElementById('book-desc').value = b.description||''; 
-        if(b.branch) document.getElementById('book-branch').value = b.branch;
-        if(b.condition) document.getElementById('book-condition').value = b.condition;
-        document.getElementById('book-exchange').checked = b.is_exchange === 1;
-        document.getElementById('form-submit-btn').innerText="Update Listing"; 
-        document.getElementById('book-image').value = "";
-        f.scrollIntoView({behavior:'smooth'}); 
-    }
-}
-
-async function handleFormSubmit() {
-    const id = document.getElementById('edit-book-id').value;
-    const title = document.getElementById('book-title').value;
-    const price = document.getElementById('book-price').value;
-    const desc = document.getElementById('book-desc').value;
-    const branch = document.getElementById('book-branch').value;
-    const condition = document.getElementById('book-condition').value;
-    const isExchange = document.getElementById('book-exchange').checked ? 1 : 0;
-    const file = document.getElementById('book-image').files[0];
-    
-    if (!id && !file) return alert("Please upload an image for new listings.");
-    if(!title || !price || !branch || !condition) return alert("Please fill all details.");
-    
-    const btn = document.getElementById('form-submit-btn');
-    const prevText = btn.innerText;
-    btn.innerText = "Processing...";
-    btn.disabled = true;
-
-    const coords = await getPosition(); 
-    const fd = new FormData();
-    fd.append('title', title); 
-    fd.append('price', price); 
-    fd.append('description', desc);
-    fd.append('branch', branch);
-    fd.append('condition', condition);
-    fd.append('is_exchange', isExchange);
-    if(coords) { fd.append('lat', coords.lat); fd.append('lng', coords.lng); }
-    if(file) fd.append('image', file);
-    
+// --- ADMIN LOGIC ---
+async function openAdmin() {
+    const token = localStorage.getItem('token');
     try {
-        const url = id ? `${API_LISTINGS}/${id}` : API_LISTINGS;
-        const method = id ? 'PUT' : 'POST'; 
-        const res = await fetch(url, { method: method, headers: {'Authorization': localStorage.getItem('token')}, body: fd });
-        if(res.ok) { 
-            alert(id ? "Product updated!" : "Product listed!"); 
-            resetAndHideForm(); 
-            loadListings(); 
-        } else { 
-            const err = await res.json(); 
-            alert("Error: " + err.message); 
-        }
-    } catch(e) { 
-        console.error(e); 
-        alert("Connection Error. Please check your internet or try again."); 
+        const resStats = await fetch(`${API_URL}/admin/stats`, { headers: { 'Authorization': `Bearer ${token}` }});
+        if(!resStats.ok) return alert("Access Denied: Admins Only");
+        const stats = await resStats.json();
+        
+        document.getElementById('statUsers').innerText = stats.total_users;
+        document.getElementById('statListings').innerText = stats.total_listings;
+        document.getElementById('statSold').innerText = stats.total_sold;
+
+        // Default view: Users
+        adminShow('users');
+        openModal('adminModal');
+    } catch (err) { console.error(err); alert("Failed to load admin panel"); }
+}
+
+async function adminShow(type) {
+    const token = localStorage.getItem('token');
+    const content = document.getElementById('adminDynamicContent');
+    const title = document.getElementById('adminSectionTitle');
+    content.innerHTML = '<p>Loading...</p>';
+    
+    if (type === 'users') {
+        title.innerText = "User Management";
+        try {
+            const res = await fetch(`${API_URL}/admin/users`, { headers: { 'Authorization': `Bearer ${token}` }});
+            const users = await res.json();
+            content.innerHTML = '';
+            users.forEach(u => {
+                const div = document.createElement('div');
+                div.style.display = 'flex'; div.style.justifyContent = 'space-between'; div.style.padding = '10px'; div.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+                div.innerHTML = `<span>${u.name} (${u.email}) - <small>${u.role}</small></span>${u.role !== 'admin' ? `<button onclick="banUser('${u.user_id}')" style="background:#d63031;color:white;border:none;padding:2px 8px;border-radius:4px;cursor:pointer;">Ban</button>` : ''}`;
+                content.appendChild(div);
+            });
+        } catch (e) { content.innerHTML = '<p>Error loading users</p>'; }
     } 
-    finally { btn.innerText = prevText; btn.disabled = false; }
-}
-
-function resetAndHideForm() { 
-    document.getElementById('sell-book-section').classList.add('hidden'); 
-    document.getElementById('edit-book-id').value = ''; 
-    document.getElementById('book-title').value = ''; 
-    document.getElementById('book-price').value = ''; 
-    document.getElementById('book-desc').value = ''; 
-    document.getElementById('book-image').value = '';
-    document.getElementById('form-submit-btn').innerText = "Publish Listing";
-}
-
-// --- LOCATION / SOCKET ---
-function getPosition(){return new Promise((r)=>{if(!navigator.geolocation){r(null);return;}navigator.geolocation.getCurrentPosition((p)=>r({lat:p.coords.latitude,lng:p.coords.longitude}),()=>r(null),{enableHighAccuracy:true,timeout:5000});});}
-function initUserLocation(){if(navigator.geolocation){navigator.geolocation.getCurrentPosition((p)=>{userLat=p.coords.latitude;userLng=p.coords.longitude;document.getElementById('location-bar').classList.remove('hidden');filterBooks();});}}
-function getDistanceKm(lat1,lon1,lat2,lon2){const R=6371;const dLat=(lat2-lat1)*Math.PI/180;const dLon=(lon2-lon1)*Math.PI/180;const a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));return R*c;}
-function initSocket(u){if(socket)return;currentUserId=parseInt(u);socket=io(BASE_URL);socket.on('receive_message',(d)=>{if(document.getElementById('chat-box')&&!document.getElementById('chat-box').classList.contains('hidden')&&currentChatRoom===d.room){appendMessage(d.content,d.sender_id===currentUserId);}else if(d.sender_id!==currentUserId){showToastNotification(d.sender_id,d.sender_name,d.content);}});socket.on('load_history',(m)=>{document.getElementById('chat-messages').innerHTML='';m.forEach(x=>appendMessage(x.content,x.sender_id===currentUserId));scrollToBottom();});socket.on('inbox_data',(c)=>{const l=document.getElementById('inbox-list');if(!l)return;l.innerHTML='';c.forEach(x=>{l.innerHTML+=`<div onclick="openChat(${x.otherId},'${x.name}');closeInbox();" class="bg-white p-4 mb-3 rounded-2xl shadow-sm border-l-4 border-indigo-500 cursor-pointer"><h4 class="font-bold text-sm">${x.name}</h4><p class="text-xs text-gray-500 truncate">${x.lastMsg}</p></div>`;});});}
-function openInbox(){const u=localStorage.getItem('userId');if(!u)return alert("Login");if(!socket)initSocket(u);document.getElementById('inbox-modal').classList.remove('hidden');socket.emit('get_inbox',u);}
-function closeInbox(){document.getElementById('inbox-modal').classList.add('hidden');}
-function openChat(rid,rname){if(!currentUserId)currentUserId=parseInt(localStorage.getItem('userId'));if(currentUserId===rid)return alert("Self chat error");currentChatRoom=`chat_${[currentUserId,rid].sort((a,b)=>a-b).join('_')}`;document.getElementById('chat-box').classList.remove('hidden');document.getElementById('chat-with-name').innerText=rname;document.getElementById('chat-messages').innerHTML='';socket.emit('join_room',{room:currentChatRoom});}
-function sendChatMessage(){const i=document.getElementById('chat-input');const m=i.value.trim();if(!m)return;socket.emit('send_message',{room:currentChatRoom,sender_id:currentUserId,sender_name:localStorage.getItem('username'),content:m});i.value='';}
-function appendMessage(t,me){const d=document.createElement('div');d.className=me?"self-end bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm mb-2 max-w-[80%]":"self-start bg-white text-slate-700 px-4 py-2 rounded-xl border text-sm mb-2 max-w-[80%]";d.innerText=t;const w=document.createElement('div');w.className=me?"flex justify-end":"flex justify-start";w.appendChild(d);document.getElementById('chat-messages').appendChild(w);scrollToBottom();}
-function scrollToBottom(){const c=document.getElementById('chat-messages');if(c)c.scrollTop=c.scrollHeight;}
-function toggleChatWindow(){document.getElementById('chat-box').classList.toggle('hidden');}
-function toggleProfileMenu(){document.getElementById('profile-menu').classList.toggle('hidden');}
-function showRegister(){document.getElementById('login-form').classList.add('hidden');document.getElementById('register-form').classList.remove('hidden');}
-function showLogin(){document.getElementById('register-form').classList.add('hidden');document.getElementById('login-form').classList.remove('hidden');}
-function toggleSellForm(){document.getElementById('sell-book-section').classList.toggle('hidden');}
-function showAdminDashboard(){document.getElementById('login-form').classList.add('hidden');document.getElementById('admin-dashboard').classList.remove('hidden');loadAdminData();}
-function showMyListings(){const u=localStorage.getItem('username');const c=document.getElementById('listings-container');const m=allBooks.filter(b=>b.username===u);c.innerHTML='';m.forEach((b,i)=>{let img=b.image_url?`/${b.image_url.replace(/\\/g,'/').replace(/^\//,'')}`:"";c.innerHTML+=`<div class="product-card bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100"><img src="${img}" class="w-full h-48 object-cover rounded-xl"><h4 class="font-bold mt-2">${b.title}</h4><div class="flex gap-2 mt-2"><button onclick="startEdit(${b.id})" class="text-xs font-bold text-indigo-600">Edit</button><button onclick="deleteListing(${b.id})" class="text-xs font-bold text-red-500">Delete</button></div></div>`;});}
-async function deleteListing(id){if(confirm("Delete?")){await fetch(`${API_LISTINGS}/${id}`,{method:'DELETE',headers:{'Authorization':localStorage.getItem('token')}});loadListings();}}
-function closeToast(){document.getElementById('msg-toast').classList.add('hidden');}
-function showToastNotification(id,name,msg){document.getElementById('msg-toast').classList.remove('hidden');document.getElementById('toast-sender').innerText=name;document.getElementById('toast-preview').innerText=msg;document.getElementById('toast-reply-btn').onclick=()=>{openChat(id,name);closeToast();};setTimeout(closeToast,5000);}
-
-// ✅ ADMIN DASHBOARD LOGIC
-async function loadAdminData() {
-    try {
-        const token = localStorage.getItem('token');
-        
-        // 1. Fetch Users & Listings
-        const [resUsers, resBooks] = await Promise.all([
-            fetch(API_USERS, { headers: { 'Authorization': token } }), 
-            fetch(API_LISTINGS, { headers: { 'Authorization': token } })
-        ]);
-
-        const users = await resUsers.json();
-        const books = await resBooks.json();
-
-        // 2. Update Stats
-        document.getElementById('stat-total-users').innerText = users.length || 0;
-        document.getElementById('stat-total-books').innerText = books.length || 0;
-
-        // 3. Render Users Table
-        const userTable = document.getElementById('admin-users-table');
-        userTable.innerHTML = `
-            <tr class="text-xs text-slate-400 border-b">
-                <th class="pb-3 pl-4">ID</th>
-                <th class="pb-3">NAME</th>
-                <th class="pb-3">EMAIL</th>
-                <th class="pb-3">ROLE</th>
-                <th class="pb-3">ACTION</th>
-            </tr>`;
-        
-        users.forEach(u => {
-            const roleBadge = u.role === 'admin' 
-                ? `<span class="bg-purple-100 text-purple-700 px-2 py-1 rounded text-[10px] font-bold">ADMIN</span>` 
-                : `<span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[10px] font-bold">USER</span>`;
-            
-            const deleteBtn = u.email === 'admin@example.com' 
-                ? `<span class="text-gray-300 text-xs">Protected</span>` 
-                : `<button onclick="adminDeleteUser(${u.id})" class="text-red-500 hover:underline text-xs font-bold">Remove</button>`;
-
-            userTable.innerHTML += `
-                <tr class="border-b last:border-0 hover:bg-slate-50 transition">
-                    <td class="py-4 pl-4 text-slate-500 font-mono text-xs">#${u.id}</td>
-                    <td class="py-4 font-bold text-sm text-slate-700">${u.username}</td>
-                    <td class="py-4 text-sm text-slate-600">${u.email}</td>
-                    <td class="py-4">${roleBadge}</td>
-                    <td class="py-4">${deleteBtn}</td>
-                </tr>`;
+    else if (type === 'listings') {
+        title.innerText = "Active Listings Management";
+        const active = allListings.filter(i => i.status !== 'sold');
+        content.innerHTML = '';
+        active.forEach(item => {
+            const div = document.createElement('div');
+            div.style.display = 'flex'; div.style.justifyContent = 'space-between'; div.style.padding = '10px'; div.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+            div.innerHTML = `<span>${item.title} ($${item.price})</span> <button onclick="deleteListing('${item.listing_id}')" style="background:#d63031;color:white;border:none;padding:2px 8px;border-radius:4px;">Del</button>`;
+            content.appendChild(div);
         });
-
-        // 4. Render Listings Grid
-        const booksContainer = document.getElementById('admin-listings-container');
-        booksContainer.innerHTML = '';
-        books.forEach(b => {
-            let img = b.image_url ? `/${b.image_url.replace(/\\/g, '/').replace(/^\//, '')}` : "https://via.placeholder.com/150";
-            booksContainer.innerHTML += `
-                <div class="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                    <img src="${img}" class="w-16 h-16 rounded-lg object-cover">
-                    <div class="flex-1 min-w-0">
-                        <h4 class="font-bold text-sm truncate">${b.title}</h4>
-                        <p class="text-xs text-slate-500">By: ${b.username}</p>
-                    </div>
-                    <button onclick="adminDeleteListing(${b.id})" class="bg-red-50 text-red-500 p-2 rounded-lg hover:bg-red-500 hover:text-white transition">🗑</button>
-                </div>`;
+    } 
+    else if (type === 'sold') {
+        title.innerText = "Sold Items History";
+        const sold = allListings.filter(i => i.status === 'sold');
+        content.innerHTML = '';
+        if(sold.length === 0) content.innerHTML = '<p>No sold items.</p>';
+        sold.forEach(item => {
+            const div = document.createElement('div');
+            div.style.display = 'flex'; div.style.justifyContent = 'space-between'; div.style.padding = '10px'; div.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+            div.innerHTML = `<span style="opacity:0.6">${item.title} (Sold)</span> <button onclick="deleteListing('${item.listing_id}')" style="background:#d63031;color:white;border:none;padding:2px 8px;border-radius:4px;">Del</button>`;
+            content.appendChild(div);
         });
-
-        toggleSection('users');
-
-    } catch (e) {
-        console.error("Admin Load Error:", e);
-        alert("Failed to load admin data.");
     }
 }
 
-function toggleSection(section) {
-    document.getElementById('admin-section-users').classList.add('hidden');
-    document.getElementById('admin-section-books').classList.add('hidden');
-    document.getElementById(`admin-section-${section}`).classList.remove('hidden');
+async function banUser(id) {
+    if(!confirm("Ban user?")) return;
+    try {
+        await fetch(`${API_URL}/admin/user/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }});
+        alert("User Banned"); adminShow('users');
+    } catch(err) { alert("Error"); }
 }
 
-async function adminDeleteUser(id) {
-    if(!confirm("Are you sure? This will delete the user AND their listings.")) return;
+// --- Common Utils ---
+async function fetchWishlistIds() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
     try {
-        const res = await fetch(`${API_USERS}/${id}`, { 
-            method: 'DELETE',
-            headers: { 'Authorization': localStorage.getItem('token') }
-        });
-        if(res.ok) { loadAdminData(); } 
-        else { alert("Failed to delete user"); }
-    } catch(e) { console.error(e); }
+        const res = await fetch(`${API_URL}/wishlist/ids`, { headers: { 'Authorization': `Bearer ${token}` }});
+        wishlistIds = await res.json();
+        renderListings(allListings);
+    } catch (err) { console.error(err); }
 }
 
-async function adminDeleteListing(id) {
-    if(!confirm("Delete this listing permanently?")) return;
-    try {
-        const res = await fetch(`${API_LISTINGS}/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': localStorage.getItem('token') }
-        });
-        if(res.ok) { loadAdminData(); }
-        else { alert("Failed to delete listing"); }
-    } catch(e) { console.error(e); }
+async function toggleWishlist(id, btn) {
+    const token = localStorage.getItem('token');
+    if (!token) return alert("Please login to wishlist");
+    const isLiked = wishlistIds.includes(id);
+    if (isLiked) { wishlistIds = wishlistIds.filter(itemId => itemId !== id); btn.style.color = 'white'; } 
+    else { wishlistIds.push(id); btn.style.color = '#ff7675'; }
+    try { await fetch(`${API_URL}/wishlist/toggle/${id}`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }}); } catch (err) {}
 }
+
+// --- Profile & Management ---
+async function openProfile() {
+    console.log("Opening Profile...");
+    const token = localStorage.getItem('token');
+    if (!token) return alert("Please login");
+
+    try {
+        const response = await fetch(`${API_URL}/user`, { headers: { 'Authorization': `Bearer ${token}` }});
+        const data = await response.json();
+        
+        document.getElementById('profileName').innerText = data.user.name || "Student";
+        document.getElementById('profileEmail').innerText = data.user.email;
+        
+        // Base64 Fallback
+        if (data.user.avatar) {
+            document.getElementById('profileAvatar').src = `${API_URL}${data.user.avatar}`;
+        } else {
+            document.getElementById('profileAvatar').src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiIgd2lkdGg9IjEwMHB4IiBoZWlnaHQ9IjEwMHB4Ij48cGF0aCBkPSZNMTIgMTJjMi4yMSAwIDQtMS43OSA0LTRzLTEuNzktNC00LTQtNCAxLjc5LTQgNCAxLjc5IDQgNCA0em0wIDJjLTIuNjcgMC04IDEuMzQtOCA0djJoMTZ2LTJjMC0yLjY2LTUuMzMtNC04LTR6Ii8+PC9zdmc+";
+        }
+
+        const myGrid = document.getElementById('myListingsGrid');
+        myGrid.innerHTML = '';
+        
+        if (data.listings.length === 0) {
+            myGrid.innerHTML = '<p>No active listings.</p>';
+        } else {
+            data.listings.forEach(item => {
+                const div = document.createElement('div');
+                div.style.background = 'rgba(255,255,255,0.05)';
+                div.style.padding = '10px';
+                div.style.marginBottom = '10px';
+                div.style.borderRadius = '8px';
+                div.style.display = 'flex';
+                div.style.justifyContent = 'space-between';
+                div.style.alignItems = 'center';
+
+                const statusBadge = item.status === 'sold' 
+                    ? '<span style="color:#ff7675; font-weight:bold;">(SOLD)</span>' 
+                    : '<span style="color:#55efc4; font-weight:bold;">(Active)</span>';
+
+                div.innerHTML = `
+                    <div style="font-size:0.9rem;">
+                        <strong>${item.title}</strong><br> ₹${item.price} ${statusBadge}
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        ${item.status !== 'sold' ? `
+                        <button onclick="editListing('${item.listing_id}')" style="background:#0984e3; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; color:white;">✎</button>
+                        <button onclick="markSold('${item.listing_id}')" style="background:#00b894; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; color:white;">✔</button>
+                        ` : ''}
+                        <button onclick="deleteListing('${item.listing_id}')" style="background:#d63031; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; color:white;">🗑</button>
+                    </div>
+                `;
+                myGrid.appendChild(div);
+            });
+        }
+        openModal('profileModal');
+    } catch (err) { console.error(err); }
+}
+
+async function editProfileDetails() {
+    const newName = prompt("Enter your new name:");
+    if (!newName) return;
+
+    try {
+        const res = await fetch(`${API_URL}/user/profile`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}` 
+            },
+            body: JSON.stringify({ name: newName })
+        });
+        
+        if (res.ok) {
+            alert("Name updated!");
+            openProfile(); 
+        } else {
+            alert("Failed to update name");
+        }
+    } catch(err) { console.error(err); alert("Error updating profile"); }
+}
+
+async function deleteListing(id) {
+    if(!confirm("Are you sure you want to delete this listing?")) return;
+    
+    try {
+        const res = await fetch(`${API_URL}/listings/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+
+        if (res.ok) { 
+            alert("Item Deleted"); 
+            
+            // Check if we are currently in the Admin Modal
+            const adminModal = document.getElementById('adminModal');
+            if (adminModal && adminModal.style.display === 'flex') {
+                // If in Admin mode, refresh the Admin list instead of opening Profile
+                const isSoldView = document.getElementById('adminSectionTitle').innerText.includes('Sold');
+                adminShow(isSoldView ? 'sold' : 'listings');
+            } else {
+                // If in normal mode, open Profile
+                openProfile(); 
+            }
+            fetchListings(); 
+        } else {
+            alert("Failed to delete. Make sure you are an Admin.");
+        }
+    } catch (err) { console.error(err); }
+}
+
+async function markSold(id) {
+    if(!confirm("Mark as sold?")) return;
+    try {
+        const res = await fetch(`${API_URL}/listings/${id}/sold`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (res.ok) { alert("Sold!"); openProfile(); fetchListings(); }
+    } catch (err) { console.error(err); }
+}
+
+async function uploadAvatar() {
+    const file = document.getElementById('avatarInput').files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('avatar', file);
+    try {
+        const res = await fetch(`${API_URL}/user/avatar`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            body: formData
+        });
+        const data = await res.json();
+        if (res.ok) { document.getElementById('profileAvatar').src = `${API_URL}${data.avatar}`; alert("Updated!"); }
+    } catch (err) { alert("Error"); }
+}
+
+// --- Auth & Sell ---
+function toggleAuthMode(e) {
+    e.preventDefault();
+    const h2 = document.querySelector('#loginModal h2');
+    const btn = document.querySelector('#loginModal button');
+    const tog = document.getElementById('toggleRegister');
+    if (h2.innerText === 'Welcome Back') { h2.innerText='Create Account'; btn.innerText='Register'; tog.innerText='Login'; }
+    else { h2.innerText='Welcome Back'; btn.innerText='Login'; tog.innerText='Register'; }
+}
+
+async function handleAuth(e) {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const isReg = document.querySelector('#loginModal h2').innerText === 'Create Account';
+    try {
+        const res = await fetch(`${API_URL}/auth${isReg?'/register':'/login'}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, name: isReg ? email.split('@')[0] : undefined })
+        });
+        const data = await res.json();
+        if (res.ok) { 
+            localStorage.setItem('token', data.token); 
+            localStorage.setItem('role', data.role); 
+            currentUser = parseJwt(data.token)?.user_id; 
+            alert('Success!'); 
+            closeModal('loginModal'); 
+            checkLoginState(); 
+            fetchWishlistIds(); 
+            // Removed detectUserLocation() from here too
+        } else {
+            // Display error nicely
+            const errDiv = document.getElementById('authError');
+            if(errDiv) {
+                errDiv.style.display = 'block';
+                errDiv.innerText = data.error || 'Authentication Failed';
+            }
+        }
+    } catch (e) { alert('Error: ' + e.message); }
+}
+
+function checkLoginState() {
+    const nav = document.getElementById('navLinks');
+    const role = localStorage.getItem('role');
+    const token = localStorage.getItem('token');
+    if (token) {
+        let adminBtn = role === 'admin' ? `<button onclick="openAdmin()" class="btn-primary" style="margin-right:10px; background:#d63031;">Admin</button>` : '';
+        nav.innerHTML = `${adminBtn}<button onclick="openProfile()" class="btn-primary" style="margin-right:10px; background:#6c5ce7;">Profile</button><button onclick="logout()" class="btn-primary" style="background:#ff7675">Logout</button>`;
+    } else nav.innerHTML = '<button onclick="openModal(\'loginModal\')" class="btn-primary">Login / Register</button>';
+}
+
+function logout() { 
+    localStorage.removeItem('token'); 
+    localStorage.removeItem('role'); 
+    currentUser=null; 
+    checkLoginState(); 
+    alert('Logged out'); 
+}
+
+// --- Utils Exports ---
+function updateSubCategories() {
+    const cat = document.getElementById('itemCategory').value;
+    const subSel = document.getElementById('itemSubCategory');
+    subSel.innerHTML = ''; 
+    if (subCategories[cat]) {
+        subCategories[cat].forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = sub; opt.innerText = sub; subSel.appendChild(opt);
+        });
+        subSel.parentElement.style.display = 'block'; 
+    } else subSel.parentElement.style.display = 'none'; 
+}
+
+function openSellModal() {
+    isEditingId = null; 
+    document.getElementById('sellForm').reset();
+    document.querySelector('#sellModal h2').innerText = "Sell an Item";
+    document.querySelector('#sellModal button[type="submit"]').innerText = "Post Listing";
+    document.getElementById('imageUploadSection').style.display = 'block'; 
+    document.getElementById('itemCategory').value = 'Engineering';
+    updateSubCategories();
+    closeModal('profileModal');
+    openModal('sellModal');
+}
+
+function editListing(id) {
+    const item = allListings.find(l => l.listing_id == id);
+    if (!item) return;
+    
+    isEditingId = id; 
+    
+    // 1. Populate Basic Fields
+    document.getElementById('itemTitle').value = item.title;
+    document.getElementById('itemDesc').value = item.description;
+    document.getElementById('itemPrice').value = item.price;
+    document.getElementById('itemLocation').value = item.location || '';
+    document.getElementById('itemCondition').value = item.condition;
+    
+    // 2. Set Category
+    const catSelect = document.getElementById('itemCategory');
+    catSelect.value = item.category;
+    
+    // 3. FORCE Update Sub-Categories based on the selected category
+    updateSubCategories(); 
+    
+    // 4. Set Sub-Category (Now that the options exist)
+    const subSelect = document.getElementById('itemSubCategory');
+    if (item.subcategory) {
+        subSelect.value = item.subcategory;
+    }
+
+    // 5. Update UI for "Edit Mode"
+    document.getElementById('imageUploadSection').style.display = 'none'; 
+    document.querySelector('#sellModal h2').innerText = "Edit Item";
+    document.querySelector('#sellModal button[type="submit"]').innerText = "Update Listing";
+    
+    closeModal('profileModal');
+    openModal('sellModal');
+}
+
+async function handleSellItem(e) {
+    e.preventDefault();
+    const token = localStorage.getItem('token');
+    
+    // Correct FormData construction
+    const formData = new FormData();
+    formData.append('title', document.getElementById('itemTitle').value);
+    formData.append('description', document.getElementById('itemDesc').value);
+    formData.append('price', document.getElementById('itemPrice').value);
+    formData.append('location', document.getElementById('itemLocation').value);
+    formData.append('category', document.getElementById('itemCategory').value);
+    formData.append('subcategory', document.getElementById('itemSubCategory').value);
+    formData.append('condition', document.getElementById('itemCondition').value);
+
+    const files = document.getElementById('itemImages').files;
+    for (let i = 0; i < files.length; i++) {
+        formData.append('images', files[i]);
+    }
+
+    if (isEditingId) {
+        const data = {};
+        formData.forEach((value, key) => data[key] = value);
+        delete data.images; 
+
+        try {
+            const res = await fetch(`${API_URL}/listings/${isEditingId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) { alert('Updated!'); closeModal('sellModal'); fetchListings(); } 
+            else { 
+                const err = await res.json();
+                document.getElementById('sellError').innerText = err.message || 'Update failed';
+                document.getElementById('sellError').style.display = 'block';
+            }
+        } catch (err) { alert('Error'); }
+    } else {
+        try {
+            const res = await fetch(`${API_URL}/listings`, { 
+                method: 'POST', 
+                headers: { 'Authorization': `Bearer ${token}` }, 
+                body: formData 
+            });
+            if (res.ok) { 
+                alert('Posted!'); 
+                closeModal('sellModal'); 
+                fetchListings(); 
+            } else { 
+                const err = await res.json(); 
+                const errMsg = document.getElementById('sellError');
+                if(errMsg) {
+                    errMsg.style.display = 'block';
+                    errMsg.innerText = "Error: " + (err.message || res.statusText);
+                } else {
+                    alert('Failed to post'); 
+                }
+            }
+        } catch (e) { alert('Error posting: ' + e.message); }
+    }
+}
+
+// --- Chat Logic ---
+async function openChat(listingId, title) {
+    if (!localStorage.getItem('token')) return alert("Please login to chat.");
+    if (!socket) return alert("Chat server connecting...");
+
+    document.getElementById('chatTitle').innerText = `Chat: ${title}`;
+    currentRoom = listingId;
+    socket.emit('join_room', listingId);
+    
+    const win = document.getElementById('chatWindow');
+    win.innerHTML = '<p style="text-align:center;color:#ccc;">Loading history...</p>';
+    
+    try {
+        const res = await fetch(`${API_URL}/messages/${listingId}`);
+        const msgs = await res.json();
+        win.innerHTML = ''; 
+        msgs.forEach(m => {
+            const isMe = m.sender_id === currentUser; 
+            appendMessageToUI(m.content, isMe ? 'self' : 'other');
+        });
+    } catch (e) {
+        console.error("Error loading chat:", e);
+        win.innerHTML = '<p>No history yet.</p>';
+    }
+
+    openModal('chatModal');
+}
+
+function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const msg = input.value;
+    if (!msg.trim()) return;
+    if (!socket) { alert("Socket not connected"); return; }
+
+    socket.emit('send_message', { 
+        room: currentRoom, 
+        author: currentUser, 
+        message: msg, 
+        time: new Date().toISOString() 
+    });
+
+    appendMessageToUI(msg, 'self');
+    input.value = "";
+}
+
+function appendMessageToUI(text, type) {
+    const win = document.getElementById('chatWindow');
+    const div = document.createElement('div');
+    div.style.textAlign = type === 'self' ? 'right' : 'left';
+    div.style.margin = '5px 0';
+    div.innerHTML = `<span style="background:${type==='self'?'#6c5ce7':'#555'}; color:white; padding:8px 12px; border-radius:15px; display:inline-block; max-width: 80%; word-wrap: break-word;">${text}</span>`;
+    win.appendChild(div);
+    win.scrollTop = win.scrollHeight;
+}
+
+// Window Exports
+window.openModal = (id) => {
+    const m = document.getElementById(id);
+    if(m) {
+        m.style.display = 'flex';
+        // Clear errors
+        if(document.getElementById('authError')) document.getElementById('authError').style.display='none';
+        if(document.getElementById('sellError')) document.getElementById('sellError').style.display='none';
+    }
+};
+window.closeModal = (id) => { const m = document.getElementById(id); if(m) m.style.display = 'none'; };
+window.sendMessage = sendMessage;
+window.logout = logout;
+window.openProfile = openProfile;
+window.uploadAvatar = uploadAvatar;
+window.deleteListing = deleteListing;
+window.markSold = markSold;
+window.toggleWishlist = toggleWishlist;
+window.openAdmin = openAdmin;
+window.adminShow = adminShow;
+window.banUser = banUser;
+window.editListing = editListing; 
+window.openSellModal = openSellModal; 
+window.viewListing = viewListing; 
+window.handleSort = handleSort;
+window.filterCategory = filterCategory;
+window.updateSubCategories = updateSubCategories;
+window.toggleAuthMode = toggleAuthMode; 
+window.handleAuth = handleAuth;
+window.detectUserLocation = detectUserLocation;
+window.editProfileDetails = editProfileDetails;
