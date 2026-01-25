@@ -4,8 +4,9 @@ const API_URL = ''; // Empty string for relative path on production
 let socket = null;
 try {
     socket = io(API_URL);
+    console.log("Socket connected");
 } catch (e) {
-    console.warn("Socket.io not loaded.");
+    console.warn("Socket.io not loaded. Chat will not work.");
 }
 
 // --- Global State ---
@@ -82,7 +83,7 @@ function detectUserLocation() {
             const city = data.address.city || data.address.town || data.address.village || data.address.county;
             if (city) {
                 locInput.value = city;
-                // Note: We intentionally do NOT auto-filter here to prevent items from disappearing
+                // No auto-filter to prevent items disappearing
             }
             locInput.placeholder = originalPlaceholder;
         } catch (err) { 
@@ -160,7 +161,7 @@ function renderListings(listings) {
 
         const card = document.createElement('div');
         card.className = 'listing-card';
-        // ADDED ANIMATION DELAY FOR "ATTRACTIVE" EFFECT
+        // STAGGERED ANIMATION
         card.style.animationDelay = `${index * 0.1}s`; 
         card.style.position = 'relative';
         
@@ -697,7 +698,62 @@ async function handleSellItem(e) {
     }
 }
 
-// --- Global Functions (Required for onclick in HTML) ---
+// --- Chat Logic ---
+async function openChat(listingId, title) {
+    if (!localStorage.getItem('token')) return alert("Please login to chat.");
+    if (!socket) return alert("Chat server connecting...");
+
+    document.getElementById('chatTitle').innerText = `Chat: ${title}`;
+    currentRoom = listingId;
+    socket.emit('join_room', listingId);
+    
+    const win = document.getElementById('chatWindow');
+    win.innerHTML = '<p style="text-align:center;color:#ccc;">Loading history...</p>';
+    
+    try {
+        const res = await fetch(`${API_URL}/messages/${listingId}`);
+        const msgs = await res.json();
+        win.innerHTML = ''; 
+        msgs.forEach(m => {
+            const isMe = m.sender_id === currentUser; 
+            appendMessageToUI(m.content, isMe ? 'self' : 'other');
+        });
+    } catch (e) {
+        console.error("Error loading chat:", e);
+        win.innerHTML = '<p>No history yet.</p>';
+    }
+
+    openModal('chatModal');
+}
+
+function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const msg = input.value;
+    if (!msg.trim()) return;
+    if (!socket) { alert("Socket not connected"); return; }
+
+    socket.emit('send_message', { 
+        room: currentRoom, 
+        author: currentUser, 
+        message: msg, 
+        time: new Date().toISOString() 
+    });
+
+    appendMessageToUI(msg, 'self');
+    input.value = "";
+}
+
+function appendMessageToUI(text, type) {
+    const win = document.getElementById('chatWindow');
+    const div = document.createElement('div');
+    div.style.textAlign = type === 'self' ? 'right' : 'left';
+    div.style.margin = '5px 0';
+    div.innerHTML = `<span style="background:${type==='self'?'#6c5ce7':'#555'}; color:white; padding:8px 12px; border-radius:15px; display:inline-block; max-width: 80%; word-wrap: break-word;">${text}</span>`;
+    win.appendChild(div);
+    win.scrollTop = win.scrollHeight;
+}
+
+// --- Global Functions (FIXED: Added to window scope so HTML can see them) ---
 window.openModal = (id) => {
     const m = document.getElementById(id);
     if(m) {
@@ -727,3 +783,4 @@ window.toggleAuthMode = toggleAuthMode;
 window.handleAuth = handleAuth;
 window.detectUserLocation = detectUserLocation;
 window.editProfileDetails = editProfileDetails;
+window.openChat = openChat; // Ensures Open Chat works
