@@ -42,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (token) {
         currentUser = parseJwt(token)?.user_id;
         fetchWishlistIds();
-        // REMOVED: detectUserLocation(); so items don't disappear!
     }
 });
 
@@ -115,6 +114,16 @@ function setupEventListeners() {
     if (sellForm) sellForm.addEventListener('submit', handleSellItem);
 }
 
+// --- Helper: Handle Image Errors (Stops Flickering) ---
+function handleImgError(img) {
+    // Prevent infinite loop if placeholder fails
+    if (img.dataset.hasError) return; 
+    img.dataset.hasError = true;
+    
+    // Set to a reliable static placeholder
+    img.src = 'https://placehold.co/400x300/2d3436/FFF?text=Image+Deleted\n(Server+Reset)';
+}
+
 // --- Listings Logic ---
 async function fetchListings() {
     try {
@@ -137,7 +146,7 @@ function renderListings(listings) {
     listings.forEach(item => {
         if (item.status === 'sold') return;
 
-        let imageUrl = 'https://via.placeholder.com/300?text=No+Image';
+        let imageUrl = 'https://placehold.co/400x300/2d3436/FFF?text=No+Image';
         if (item.images && item.images.length > 0) {
             imageUrl = item.images[0].startsWith('http') ? item.images[0] : `${API_URL}${item.images[0]}`;
         }
@@ -149,10 +158,9 @@ function renderListings(listings) {
         card.className = 'listing-card';
         card.style.position = 'relative';
         
-        // Added onerror to handle missing images gracefully
         card.innerHTML = `
             <img src="${imageUrl}" class="card-img" alt="${item.title}" 
-                 onerror="this.src='https://via.placeholder.com/300?text=Image+Deleted'"
+                 onerror="handleImgError(this)"
                  onclick="viewListing('${item.listing_id}')" style="cursor:pointer;">
             
             <button onclick="toggleWishlist('${item.listing_id}', this)" 
@@ -233,11 +241,16 @@ async function viewListing(id) {
         thumbContainer.innerHTML = ''; 
 
         let images = item.images && item.images.length > 0 ? item.images : [];
-        if (images.length > 0) mainImg.src = images[0].startsWith('http') ? images[0] : `${API_URL}${images[0]}`;
-        else mainImg.src = 'https://via.placeholder.com/400?text=No+Image';
+        
+        // Initial Image Load
+        if (images.length > 0) {
+             mainImg.src = images[0].startsWith('http') ? images[0] : `${API_URL}${images[0]}`;
+        } else {
+             mainImg.src = 'https://placehold.co/400x300/2d3436/FFF?text=No+Image';
+        }
 
-        // Add error handler for detail image
-        mainImg.onerror = function() { this.src = 'https://via.placeholder.com/400?text=Image+Deleted'; };
+        // Attach Error Handler to prevent flickering
+        mainImg.onerror = function() { handleImgError(this); };
 
         if (images.length > 1) {
             images.forEach(img => {
@@ -250,6 +263,8 @@ async function viewListing(id) {
                 thumb.style.cursor = 'pointer';
                 thumb.style.objectFit = 'cover';
                 thumb.style.border = '2px solid transparent';
+                thumb.onerror = function() { handleImgError(this); }; // Handle thumb errors too
+                
                 thumb.onclick = () => {
                     mainImg.src = src;
                     Array.from(thumbContainer.children).forEach(t => t.style.border = '2px solid transparent');
@@ -277,7 +292,7 @@ function renderRelated(category, currentId) {
     const related = allListings.filter(i => i.category === category && i.listing_id !== currentId && i.status !== 'sold').slice(0, 4);
     if (related.length === 0) { grid.innerHTML = '<p style="opacity:0.6;">No similar items.</p>'; return; }
     related.forEach(item => {
-        let imageUrl = 'https://via.placeholder.com/200?text=No+Image';
+        let imageUrl = 'https://placehold.co/200x120/2d3436/FFF?text=No+Image';
         if (item.images && item.images.length > 0) imageUrl = item.images[0].startsWith('http') ? item.images[0] : `${API_URL}${item.images[0]}`;
         const card = document.createElement('div');
         card.style.background = 'rgba(255,255,255,0.05)';
@@ -285,7 +300,7 @@ function renderRelated(category, currentId) {
         card.style.padding = '10px';
         card.style.cursor = 'pointer';
         card.onclick = () => viewListing(item.listing_id);
-        card.innerHTML = `<img src="${imageUrl}" onerror="this.src='https://via.placeholder.com/200?text=Image+Deleted'" style="width:100%; height:120px; object-fit:cover; border-radius:5px;"><h4 style="margin:5px 0;">${item.title}</h4><p style="color:#00b894; font-weight:bold;">₹${parseFloat(item.price).toFixed(2)}</p>`;
+        card.innerHTML = `<img src="${imageUrl}" onerror="handleImgError(this)" style="width:100%; height:120px; object-fit:cover; border-radius:5px;"><h4 style="margin:5px 0;">${item.title}</h4><p style="color:#00b894; font-weight:bold;">₹${parseFloat(item.price).toFixed(2)}</p>`;
         grid.appendChild(card);
     });
 }
@@ -474,15 +489,12 @@ async function deleteListing(id) {
 
         if (res.ok) { 
             alert("Item Deleted"); 
-            
             // Check if we are currently in the Admin Modal
             const adminModal = document.getElementById('adminModal');
             if (adminModal && adminModal.style.display === 'flex') {
-                // If in Admin mode, refresh the Admin list instead of opening Profile
                 const isSoldView = document.getElementById('adminSectionTitle').innerText.includes('Sold');
                 adminShow(isSoldView ? 'sold' : 'listings');
             } else {
-                // If in normal mode, open Profile
                 openProfile(); 
             }
             fetchListings(); 
@@ -606,32 +618,26 @@ function openSellModal() {
 }
 
 function editListing(id) {
-    const item = allListings.find(l => l.listing_id == id);
+    const item = allListings.find(l => l.listing_id == id); // Use == for loose match
     if (!item) return;
     
     isEditingId = id; 
     
-    // 1. Populate Basic Fields
     document.getElementById('itemTitle').value = item.title;
     document.getElementById('itemDesc').value = item.description;
     document.getElementById('itemPrice').value = item.price;
     document.getElementById('itemLocation').value = item.location || '';
     document.getElementById('itemCondition').value = item.condition;
     
-    // 2. Set Category
     const catSelect = document.getElementById('itemCategory');
     catSelect.value = item.category;
-    
-    // 3. FORCE Update Sub-Categories based on the selected category
     updateSubCategories(); 
     
-    // 4. Set Sub-Category (Now that the options exist)
     const subSelect = document.getElementById('itemSubCategory');
     if (item.subcategory) {
         subSelect.value = item.subcategory;
     }
 
-    // 5. Update UI for "Edit Mode"
     document.getElementById('imageUploadSection').style.display = 'none'; 
     document.querySelector('#sellModal h2').innerText = "Edit Item";
     document.querySelector('#sellModal button[type="submit"]').innerText = "Update Listing";
