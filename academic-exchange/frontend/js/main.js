@@ -1,4 +1,4 @@
-const API_URL = ''; // Empty string for relative path on production
+const API_URL = ''; // Relative path for production
 
 // --- 1. Socket Connection (Safe Mode) ---
 let socket = null;
@@ -6,12 +6,8 @@ try {
     if (typeof io !== 'undefined') {
         socket = io(API_URL);
         console.log("Socket connected");
-    } else {
-        console.warn("Socket.io script not loaded.");
     }
-} catch (e) {
-    console.warn("Socket connection failed:", e);
-}
+} catch (e) { console.warn("Socket failed:", e); }
 
 // --- 2. Global State ---
 let allListings = [];
@@ -21,7 +17,7 @@ let currentUser = null;
 let isEditingId = null; 
 let currentCategory = 'all'; 
 
-// --- 3. Helper Functions ---
+// --- 3. Helper Functions (Global) ---
 window.parseJwt = (token) => {
     try { return JSON.parse(atob(token.split('.')[1])); } catch (e) { return null; }
 };
@@ -42,7 +38,8 @@ window.timeAgo = (dateString) => {
 window.handleImgError = (img) => {
     if (img.dataset.hasError) return; 
     img.dataset.hasError = true;
-    img.src = 'https://placehold.co/400x300/2d3436/FFF?text=Image+Deleted';
+    // Shows a clean placeholder if the server wiped the image
+    img.src = 'https://placehold.co/400x300/2d3436/FFF?text=Image+Missing\n(Server+Reset)';
 };
 
 // --- 4. Sub-Categories Data ---
@@ -61,8 +58,6 @@ const subCategories = {
 
 // --- 5. Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("App Initializing...");
-    
     // Auth Check
     const token = localStorage.getItem('token');
     if (token) {
@@ -83,7 +78,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const locInput = document.getElementById('locationFilter');
     if(locInput) locInput.addEventListener('input', () => window.filterCategory(currentCategory));
 
-    // Fix: Attach button listeners programmatically to ensure they work
+    // Force Attach Location Click (Fixes your issue)
+    const locIcon = document.querySelector('.location-icon'); 
+    if(locIcon) locIcon.onclick = window.detectUserLocation;
+
+    // Attach Form Handlers
     const toggleBtn = document.getElementById('toggleRegister');
     if(toggleBtn) toggleBtn.onclick = window.toggleAuthMode;
 
@@ -94,21 +93,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if(sellForm) sellForm.onsubmit = window.handleSellItem;
 });
 
-// --- 6. Core Logic (Attached to window) ---
+// --- 6. Core Logic (Global) ---
 
 window.checkLoginState = () => {
     const nav = document.getElementById('navLinks');
     if (!nav) return;
     
     const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role'); // Get role from storage
+    const role = localStorage.getItem('role');
 
     if (token) {
-        // ADMIN CHECK: Only show button if role is 'admin'
-        let adminBtn = '';
-        if (role === 'admin') {
-            adminBtn = `<button onclick="window.openAdmin()" class="btn-primary" style="background:#d63031; margin-right:10px;">Admin</button>`;
-        }
+        // Only show Admin button if role is 'admin'
+        let adminBtn = (role === 'admin') 
+            ? `<button onclick="window.openAdmin()" class="btn-primary" style="background:#d63031; margin-right:10px;">Admin</button>` 
+            : '';
 
         nav.innerHTML = `
             ${adminBtn}
@@ -120,9 +118,34 @@ window.checkLoginState = () => {
     }
 };
 
+window.detectUserLocation = () => {
+    const locInput = document.getElementById('locationFilter');
+    if (!navigator.geolocation) { return alert("Geolocation not supported"); }
+    
+    const oldPlaceholder = locInput.placeholder;
+    locInput.placeholder = "Locating...";
+    
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        try {
+            const { latitude, longitude } = position.coords;
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+            const data = await res.json();
+            const city = data.address.city || data.address.town || data.address.village;
+            
+            if (city) {
+                locInput.value = city;
+                // We do NOT auto-filter here to prevent items disappearing
+            }
+            locInput.placeholder = oldPlaceholder;
+        } catch (err) { 
+            console.error(err); 
+            locInput.placeholder = "City/College";
+        }
+    }, () => { alert("Location access denied"); locInput.placeholder = "City/College"; });
+};
+
 window.logout = () => {
     localStorage.clear();
-    currentUser = null;
     location.reload();
 };
 
@@ -156,7 +179,7 @@ window.handleAuth = async (e) => {
         
         if (res.ok) {
             localStorage.setItem('token', data.token);
-            localStorage.setItem('role', data.role); // Save role!
+            localStorage.setItem('role', data.role);
             location.reload();
         } else {
             const errDiv = document.getElementById('authError');
@@ -165,126 +188,15 @@ window.handleAuth = async (e) => {
                 errDiv.innerText = data.error || 'Authentication Failed';
             }
         }
-    } catch (err) { alert("Connection Error: " + err.message); }
+    } catch (err) { alert("Server Error. Please try again later."); }
 };
 
-// --- Sell / Post Item ---
-
-window.openSellModal = () => {
-    isEditingId = null;
-    document.getElementById('sellForm').reset();
-    document.querySelector('#sellModal h2').innerText = "Sell an Item";
-    document.querySelector('#sellModal button[type="submit"]').innerText = "Post Listing";
-    document.getElementById('imageUploadSection').style.display = 'block';
-    
-    document.getElementById('itemCategory').value = 'Engineering';
-    window.updateSubCategories();
-    
-    window.closeModal('profileModal');
-    window.openModal('sellModal');
-};
-
-window.updateSubCategories = () => {
-    const cat = document.getElementById('itemCategory').value;
-    const subSel = document.getElementById('itemSubCategory');
-    subSel.innerHTML = ''; 
-    if (subCategories[cat]) {
-        subCategories[cat].forEach(sub => {
-            const opt = document.createElement('option');
-            opt.value = sub; opt.innerText = sub; subSel.appendChild(opt);
-        });
-        subSel.parentElement.style.display = 'block'; 
-    } else {
-        subSel.parentElement.style.display = 'none'; 
-    }
-};
-
-window.handleSellItem = async (e) => {
-    e.preventDefault();
-    console.log("Submitting item...");
-    
-    const token = localStorage.getItem('token');
-    if (!token) return alert("Please login to post.");
-
-    const formData = new FormData();
-    formData.append('title', document.getElementById('itemTitle').value);
-    formData.append('description', document.getElementById('itemDesc').value);
-    formData.append('price', document.getElementById('itemPrice').value);
-    formData.append('location', document.getElementById('itemLocation').value);
-    formData.append('category', document.getElementById('itemCategory').value);
-    formData.append('subcategory', document.getElementById('itemSubCategory').value);
-    formData.append('condition', document.getElementById('itemCondition').value);
-
-    const files = document.getElementById('itemImages').files;
-    for (let i = 0; i < files.length; i++) {
-        formData.append('images', files[i]);
-    }
-
-    try {
-        let url = `${API_URL}/listings`;
-        let method = 'POST';
-        let headers = { 'Authorization': `Bearer ${token}` };
-        let body = formData;
-
-        // Logic for Edit vs Create
-        if (isEditingId) {
-            url = `${API_URL}/listings/${isEditingId}`;
-            method = 'PUT';
-            headers['Content-Type'] = 'application/json';
-            
-            const jsonData = {};
-            formData.forEach((value, key) => jsonData[key] = value);
-            delete jsonData.images; 
-            body = JSON.stringify(jsonData);
-        }
-
-        const res = await fetch(url, { method, headers, body });
-        
-        if (res.ok) {
-            alert(isEditingId ? 'Item Updated!' : 'Item Posted Successfully!');
-            window.closeModal('sellModal');
-            window.fetchListings();
-        } else {
-            const err = await res.json();
-            alert("Error: " + (err.message || err.error || "Failed to save"));
-        }
-    } catch (err) {
-        console.error(err);
-        alert("Network Error: " + err.message);
-    }
-};
-
-window.editListing = (id) => {
-    const item = allListings.find(l => l.listing_id == id);
-    if (!item) return;
-    
-    isEditingId = id; 
-    document.getElementById('itemTitle').value = item.title;
-    document.getElementById('itemDesc').value = item.description;
-    document.getElementById('itemPrice').value = item.price;
-    document.getElementById('itemLocation').value = item.location || '';
-    document.getElementById('itemCondition').value = item.condition;
-    
-    const catSelect = document.getElementById('itemCategory');
-    catSelect.value = item.category;
-    window.updateSubCategories(); 
-    
-    const subSelect = document.getElementById('itemSubCategory');
-    if (item.subcategory) subSelect.value = item.subcategory;
-
-    document.getElementById('imageUploadSection').style.display = 'none'; 
-    document.querySelector('#sellModal h2').innerText = "Edit Item";
-    document.querySelector('#sellModal button[type="submit"]').innerText = "Update Listing";
-    
-    window.closeModal('profileModal');
-    window.openModal('sellModal');
-};
-
-// --- Listings Display ---
+// --- Listings ---
 
 window.fetchListings = async () => {
     try {
         const res = await fetch(`${API_URL}/listings`);
+        if(!res.ok) throw new Error("Failed to fetch");
         allListings = await res.json();
         window.renderListings(allListings);
     } catch (e) { console.error("Fetch Error:", e); }
@@ -302,6 +214,7 @@ window.renderListings = (items) => {
     grid.innerHTML = items.map((item, index) => {
         if (item.status === 'sold') return ''; 
 
+        // Image URL Logic
         let imageUrl = (item.images && item.images.length > 0) 
             ? (item.images[0].startsWith('http') ? item.images[0] : `${API_URL}${item.images[0]}`)
             : 'https://placehold.co/400x300/2d3436/FFF?text=No+Image';
@@ -352,6 +265,123 @@ window.filterCategory = (cat) => {
         return mCat && mSearch && mLoc;
     });
     window.renderListings(filtered);
+};
+
+// --- Sell Item ---
+
+window.openSellModal = () => {
+    isEditingId = null;
+    document.getElementById('sellForm').reset();
+    document.querySelector('#sellModal h2').innerText = "Sell an Item";
+    document.querySelector('#sellModal button[type="submit"]').innerText = "Post Listing";
+    document.getElementById('imageUploadSection').style.display = 'block';
+    
+    document.getElementById('itemCategory').value = 'Engineering';
+    window.updateSubCategories();
+    
+    window.closeModal('profileModal');
+    window.openModal('sellModal');
+};
+
+window.updateSubCategories = () => {
+    const cat = document.getElementById('itemCategory').value;
+    const subSel = document.getElementById('itemSubCategory');
+    subSel.innerHTML = ''; 
+    if (subCategories[cat]) {
+        subCategories[cat].forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = sub; opt.innerText = sub; subSel.appendChild(opt);
+        });
+        subSel.parentElement.style.display = 'block'; 
+    } else {
+        subSel.parentElement.style.display = 'none'; 
+    }
+};
+
+window.handleSellItem = async (e) => {
+    e.preventDefault();
+    
+    const token = localStorage.getItem('token');
+    if (!token) return alert("Please login to post.");
+
+    // Visual Feedback
+    const submitBtn = document.querySelector('#sellForm button[type="submit"]');
+    const originalText = submitBtn.innerText;
+    submitBtn.innerText = "Processing...";
+    submitBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('title', document.getElementById('itemTitle').value);
+    formData.append('description', document.getElementById('itemDesc').value);
+    formData.append('price', document.getElementById('itemPrice').value);
+    formData.append('location', document.getElementById('itemLocation').value);
+    formData.append('category', document.getElementById('itemCategory').value);
+    formData.append('subcategory', document.getElementById('itemSubCategory').value);
+    formData.append('condition', document.getElementById('itemCondition').value);
+
+    const files = document.getElementById('itemImages').files;
+    for (let i = 0; i < files.length; i++) {
+        formData.append('images', files[i]);
+    }
+
+    try {
+        let url = `${API_URL}/listings`;
+        let method = 'POST';
+        let headers = { 'Authorization': `Bearer ${token}` };
+        let body = formData;
+
+        if (isEditingId) {
+            url = `${API_URL}/listings/${isEditingId}`;
+            method = 'PUT';
+            headers['Content-Type'] = 'application/json';
+            const jsonData = {};
+            formData.forEach((value, key) => jsonData[key] = value);
+            delete jsonData.images; 
+            body = JSON.stringify(jsonData);
+        }
+
+        const res = await fetch(url, { method, headers, body });
+        
+        if (res.ok) {
+            alert(isEditingId ? 'Item Updated!' : 'Item Posted Successfully!');
+            window.closeModal('sellModal');
+            window.fetchListings();
+        } else {
+            const err = await res.json();
+            alert("Error: " + (err.message || "Failed to save. Check server logs."));
+        }
+    } catch (err) {
+        alert("Network Error. Server might be waking up (wait 30s) or 'uploads' folder is missing.");
+    } finally {
+        submitBtn.innerText = originalText;
+        submitBtn.disabled = false;
+    }
+};
+
+window.editListing = (id) => {
+    const item = allListings.find(l => l.listing_id == id);
+    if (!item) return;
+    
+    isEditingId = id; 
+    document.getElementById('itemTitle').value = item.title;
+    document.getElementById('itemDesc').value = item.description;
+    document.getElementById('itemPrice').value = item.price;
+    document.getElementById('itemLocation').value = item.location || '';
+    document.getElementById('itemCondition').value = item.condition;
+    
+    const catSelect = document.getElementById('itemCategory');
+    catSelect.value = item.category;
+    window.updateSubCategories(); 
+    
+    const subSelect = document.getElementById('itemSubCategory');
+    if (item.subcategory) subSelect.value = item.subcategory;
+
+    document.getElementById('imageUploadSection').style.display = 'none'; 
+    document.querySelector('#sellModal h2').innerText = "Edit Item";
+    document.querySelector('#sellModal button[type="submit"]').innerText = "Update Listing";
+    
+    window.closeModal('profileModal');
+    window.openModal('sellModal');
 };
 
 // --- View Details ---
@@ -455,10 +485,7 @@ window.openChat = async (listingId, title) => {
             const isMe = m.sender_id === currentUser;
             window.appendMessageToUI(m.content, isMe ? 'self' : 'other');
         });
-    } catch (e) {
-        console.error("Chat Error:", e);
-        win.innerHTML = '<p>No history yet.</p>';
-    }
+    } catch (e) { win.innerHTML = '<p>No history yet.</p>'; }
     window.openModal('chatModal');
 };
 
@@ -504,7 +531,7 @@ window.openAdmin = async () => {
 
         window.adminShow('users');
         window.openModal('adminModal');
-    } catch (err) { console.error(err); alert("Failed to load admin panel"); }
+    } catch (err) { alert("Failed to load admin panel"); }
 };
 
 window.adminShow = async (type) => {
@@ -656,4 +683,3 @@ window.openModal = (id) => {
     }
 };
 window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; };
-window.detectUserLocation = () => { /* Logic integrated into listener */ };

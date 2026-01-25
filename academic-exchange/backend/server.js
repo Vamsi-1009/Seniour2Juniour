@@ -7,6 +7,14 @@ const { Server } = require('socket.io');
 const pool = require('./config/db'); 
 require('dotenv').config();
 
+// --- CRITICAL FIX: Auto-create uploads folder ---
+// This prevents the "Network Error" crash on Render
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)){
+    fs.mkdirSync(uploadDir);
+    console.log("Created 'uploads' folder successfully.");
+}
+
 const app = express();
 const server = http.createServer(app);
 
@@ -29,7 +37,7 @@ const io = new Server(server, {
 });
 
 io.on('connection', (socket) => {
-    // console.log(`User Connected: ${socket.id}`); // Optional: Uncomment for debugging
+    // console.log(`User Connected: ${socket.id}`);
 
     socket.on('join_room', (room) => {
         socket.join(room);
