@@ -3,10 +3,14 @@ const API_URL = ''; // Empty string for relative path on production
 // --- 1. Socket Connection (Safe Mode) ---
 let socket = null;
 try {
-    socket = io(API_URL);
-    console.log("Socket connected");
+    if (typeof io !== 'undefined') {
+        socket = io(API_URL);
+        console.log("Socket connected");
+    } else {
+        console.warn("Socket.io script not loaded in HTML.");
+    }
 } catch (e) {
-    console.warn("Socket.io not loaded. Chat features disabled.");
+    console.warn("Socket connection failed:", e);
 }
 
 // --- 2. Global State ---
@@ -38,7 +42,6 @@ window.timeAgo = (dateString) => {
 window.handleImgError = (img) => {
     if (img.dataset.hasError) return; 
     img.dataset.hasError = true;
-    // Set a reliable placeholder
     img.src = 'https://placehold.co/400x300/2d3436/FFF?text=Image+Deleted';
 };
 
@@ -67,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.fetchWishlistIds();
         window.checkLoginState();
     } else {
-        window.checkLoginState(); // Show Login button
+        window.checkLoginState();
     }
 
     // Load Data
@@ -90,28 +93,33 @@ document.addEventListener('DOMContentLoaded', () => {
     if(sellForm) sellForm.onsubmit = window.handleSellItem;
 });
 
-// --- 6. Core Logic (Attached to window to prevent ReferenceErrors) ---
+// --- 6. Core Logic (Auth & State) ---
 
 window.checkLoginState = () => {
     const nav = document.getElementById('navLinks');
     if (!nav) return;
     
-    if (localStorage.getItem('token')) {
-        // Logged In View
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+
+    if (token) {
+        // Only show Admin button if the stored role is 'admin'
+        const adminBtn = role === 'admin' 
+            ? `<button onclick="window.openAdmin()" class="btn-primary" style="background:#d63031; margin-right:10px;">Admin</button>` 
+            : '';
+
         nav.innerHTML = `
-            <button onclick="window.openAdmin()" class="btn-primary" style="background:#d63031; margin-right:10px;">Admin</button>
+            ${adminBtn}
             <button onclick="window.openProfile()" class="btn-primary" style="margin-right:10px;">Profile</button>
             <button onclick="window.logout()" class="btn-primary" style="background:#ff7675">Logout</button>
         `;
     } else {
-        // Guest View
         nav.innerHTML = '<button onclick="window.openModal(\'loginModal\')" class="btn-primary">Login / Register</button>';
     }
 };
 
 window.logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
+    localStorage.clear(); // Clear token, role, and anything else
     currentUser = null;
     location.reload();
 };
@@ -120,16 +128,13 @@ window.toggleAuthMode = (e) => {
     e.preventDefault();
     const h2 = document.querySelector('#loginModal h2');
     const btn = document.querySelector('#loginModal button');
-    const tog = document.getElementById('toggleRegister');
     
     if (h2.innerText.includes('Welcome')) {
         h2.innerText = 'Create Account';
         btn.innerText = 'Register';
-        tog.innerText = 'Login';
     } else {
         h2.innerText = 'Welcome Back';
         btn.innerText = 'Login';
-        tog.innerText = 'Register';
     }
 };
 
@@ -149,7 +154,7 @@ window.handleAuth = async (e) => {
         
         if (res.ok) {
             localStorage.setItem('token', data.token);
-            localStorage.setItem('role', data.role);
+            localStorage.setItem('role', data.role); // Save role for checkLoginState
             location.reload();
         } else {
             const errDiv = document.getElementById('authError');
@@ -181,16 +186,17 @@ window.renderListings = (items) => {
     }
 
     grid.innerHTML = items.map((item, index) => {
-        if (item.status === 'sold') return ''; // Skip sold items in main feed
+        if (item.status === 'sold') return ''; 
 
         let imageUrl = (item.images && item.images.length > 0) 
             ? (item.images[0].startsWith('http') ? item.images[0] : `${API_URL}${item.images[0]}`)
             : 'https://placehold.co/400x300/2d3436/FFF?text=No+Image';
 
         const heartColor = wishlistIds.includes(item.listing_id) ? '#ff7675' : 'white';
-
-        // Add staggered animation delay
         const delay = index * 0.05;
+
+        // Escape title for onclick safely
+        const safeTitle = item.title.replace(/'/g, "\\'");
 
         return `
         <div class="listing-card" style="animation-delay: ${delay}s; position: relative;">
@@ -211,7 +217,7 @@ window.renderListings = (items) => {
                     <span>${window.timeAgo(item.created_at)}</span>
                 </div>
                 <button class="btn-primary" style="width:100%; margin-top:10px;" 
-                    onclick="window.openChat('${item.listing_id}', '${item.title.replace(/'/g, "\\'")}')">Chat</button>
+                    onclick="window.openChat('${item.listing_id}', '${safeTitle}')">Chat</button>
             </div>
         </div>`;
     }).join('');
@@ -219,7 +225,6 @@ window.renderListings = (items) => {
 
 window.filterCategory = (cat) => {
     currentCategory = cat;
-    // Update UI active state
     document.querySelectorAll('.filter-btn').forEach(b => {
         b.classList.remove('active');
         if(b.innerText === cat || (cat === 'all' && b.innerText === 'All')) b.classList.add('active');
@@ -294,14 +299,15 @@ window.handleSellItem = async (e) => {
         let headers = { 'Authorization': `Bearer ${token}` };
         let body = formData;
 
+        // If editing, switch to PUT and JSON body
         if (isEditingId) {
             url = `${API_URL}/listings/${isEditingId}`;
             method = 'PUT';
             headers['Content-Type'] = 'application/json';
-            // Convert formData to JSON for PUT (as per our backend logic for edit)
+            
             const jsonData = {};
             formData.forEach((value, key) => jsonData[key] = value);
-            delete jsonData.images; // Don't update images on simple edit
+            delete jsonData.images; // Don't allow image update on quick edit
             body = JSON.stringify(jsonData);
         }
 
