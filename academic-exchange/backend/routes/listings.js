@@ -1,36 +1,60 @@
 const router = require('express').Router();
-const pool = require('../config/db'); 
+const pool = require('../config/db');
 const authenticateToken = require('../middleware/auth');
 const multer = require('multer');
-const path = require('path');
+const supabase = require('../config/supabaseClient'); // Import the Supabase client
 
-// Multer Setup for Image Uploads
-const storage = multer.diskStorage({
-    destination: './uploads/',
-    filename: (req, file, cb) => {
-        cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-    }
-});
+// --- 1. Use Memory Storage (Required for Supabase Uploads) ---
+// We don't save to disk anymore. Files are held in RAM temporarily.
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-// CREATE LISTING
+// --- 2. CREATE LISTING (Now Uploads to Supabase) ---
 router.post('/', authenticateToken, upload.array('images', 5), async (req, res) => {
     try {
         const { title, description, price, category, condition, subcategory, location } = req.body;
-        
-        // Convert uploaded files to URL paths
-        const imagePaths = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
+        const imageUrls = [];
 
+        // Upload each file to Supabase Storage
+        if (req.files && req.files.length > 0) {
+            for (const file of req.files) {
+                // Generate a unique file name
+                const fileName = `listing-${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+
+                // Upload to the 'uploads' bucket
+                const { data, error } = await supabase
+                    .storage
+                    .from('uploads') // Make sure your Supabase bucket is named 'uploads'
+                    .upload(fileName, file.buffer, {
+                        contentType: file.mimetype
+                    });
+
+                if (error) {
+                    console.error("Supabase Upload Error:", error);
+                    throw error;
+                }
+
+                // Get the Public URL for the database
+                const { data: publicData } = supabase
+                    .storage
+                    .from('uploads')
+                    .getPublicUrl(fileName);
+                
+                imageUrls.push(publicData.publicUrl);
+            }
+        }
+
+        // Save the listing to the database with the new Supabase URLs
         const newListing = await pool.query(
             `INSERT INTO listings (user_id, title, description, price, category, condition, images, subcategory, location) 
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-            [req.user.user_id, title, description, price, category, condition, imagePaths, subcategory, location]
+            [req.user.user_id, title, description, price, category, condition, imageUrls, subcategory, location]
         );
 
         res.json(newListing.rows[0]);
     } catch (err) {
-        console.error("Listing Error:", err.message);
-        res.status(500).send("Server Error");
+        console.error("Listing Creation Error:", err.message);
+        res.status(500).json({ error: "Server Error: " + err.message });
     }
 });
 
@@ -99,7 +123,7 @@ router.put('/:id/sold', authenticateToken, async (req, res) => {
     }
 });
 
-// DELETE LISTING (FIXED: Deletes Messages & Wishlist first)
+// DELETE LISTING (Deletes Messages & Wishlist first)
 router.delete('/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
@@ -113,9 +137,9 @@ router.delete('/:id', authenticateToken, async (req, res) => {
             return res.status(403).json("Not Authorized");
         }
 
-        // 3. DELETE RELATED DATA FIRST (To fix foreign key error)
-        await pool.query('DELETE FROM messages WHERE listing_id = $1', [id]); // Delete chats
-        await pool.query('DELETE FROM wishlist WHERE listing_id = $1', [id]); // Delete likes
+        // 3. DELETE RELATED DATA FIRST
+        await pool.query('DELETE FROM messages WHERE listing_id = $1', [id]); 
+        await pool.query('DELETE FROM wishlist WHERE listing_id = $1', [id]); 
 
         // 4. Delete the Listing
         await pool.query('DELETE FROM listings WHERE listing_id = $1', [id]);
@@ -123,7 +147,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         res.json("Listing deleted");
     } catch (err) {
         console.error("Delete Error:", err.message);
-        res.status(500).json({ error: err.message }); // Send actual error to frontend
+        res.status(500).json({ error: err.message });
     }
 });
 
