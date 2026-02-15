@@ -1,0 +1,28 @@
+{
+  "name": "academic-exchange",
+  "version": "1.0.0",
+  "description": "Student-to-Student Marketplace Platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "setup": "node setupAdmin.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": ["marketplace", "academic", "student"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.11.3",
+    "socket.io": "^4.6.2",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
+}

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Exchange - Student Marketplace</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="logo">🎓 Academic Exchange</div>
+        <div class="nav-menu" id="navMenu">
+            <button class="nav-btn" onclick="showLogin()">Login</button>
+            <button class="nav-btn primary" onclick="showRegister()">Sign Up</button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Student-to-Student Marketplace</h1>
+        <p>Buy, sell, and trade academic resources with fellow students</p>
+        <div class="search-container">
+            <input type="text" class="search-input" id="searchInput" placeholder="Search books, notes, gadgets...">
+        </div>
+    </section>
+
+    <!-- Filters -->
+    <div class="filters">
+        <button class="filter-btn active" onclick="filterCategory('all')">All</button>
+        <button class="filter-btn" onclick="filterCategory('Engineering')">Engineering</button>
+        <button class="filter-btn" onclick="filterCategory('MBBS')">MBBS</button>
+        <button class="filter-btn" onclick="filterCategory('Law')">Law</button>
+        <button class="filter-btn" onclick="filterCategory('Gadgets')">Gadgets</button>
+    </div>
+
+    <!-- Listings Grid -->
+    <div class="listings-grid" id="listingsGrid">
+        <!-- Dynamic content -->
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <h2>Welcome Back</h2>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <input type="email" class="form-input" placeholder="Email" required id="loginEmail">
+                <input type="password" class="form-input" placeholder="Password" required id="loginPassword">
+                <button type="submit" class="btn btn-primary" style="width:100%">Login</button>
+            </form>
+            <p style="margin-top:1rem;text-align:center">
+                Don't have an account? <a href="#" onclick="showRegister()" style="color:var(--accent)">Sign up</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div class="modal" id="registerModal">
+        <div class="modal-content">
+            <h2>Create Account</h2>
+            <form id="registerForm" onsubmit="handleRegister(event)">
+                <input type="text" class="form-input" placeholder="Full Name" required id="registerName">
+                <input type="email" class="form-input" placeholder="Email" required id="registerEmail">
+                <input type="password" class="form-input" placeholder="Password" required id="registerPassword">
+                <button type="submit" class="btn btn-primary" style="width:100%">Sign Up</button>
+            </form>
+            <p style="margin-top:1rem;text-align:center">
+                Already have an account? <a href="#" onclick="showLogin()" style="color:var(--accent)">Login</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Sell Modal -->
+    <div class="modal" id="sellModal">
+        <div class="modal-content">
+            <h2>Sell an Item</h2>
+            <form id="sellForm" onsubmit="handleSell(event)">
+                <input type="text" class="form-input" placeholder="Title" required id="sellTitle">
+                <textarea class="form-textarea" placeholder="Description" required id="sellDesc" rows="3"></textarea>
+                <input type="number" class="form-input" placeholder="Price (₹)" required id="sellPrice">
+                <select class="form-select" id="sellCategory" required>
+                    <option value="">Select Category</option>
+                    <option value="Engineering">Engineering</option>
+                    <option value="MBBS">MBBS</option>
+                    <option value="Law">Law</option>
+                    <option value="Gadgets">Gadgets</option>
+                </select>
+                <select class="form-select" id="sellCondition" required>
+                    <option value="New">New</option>
+                    <option value="Used">Used</option>
+                </select>
+                <input type="text" class="form-input" placeholder="Location" id="sellLocation">
+                <input type="file" class="form-input" id="sellImages" accept="image/*" multiple required>
+                <button type="submit" class="btn btn-primary" style="width:100%">Post Listing</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content">
+            <h2>My Profile</h2>
+            <div id="profileContent"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

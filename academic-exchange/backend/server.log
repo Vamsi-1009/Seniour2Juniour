@@ -1,0 +1,219 @@
+
+> academic-exchange@1.0.0 start
+> node server.js
+
+
+    ╔══════════════════════════════════════╗
+    ║   🎓 Academic Exchange Server       ║
+    ║   Running on http://localhost:5000  ║
+    ╚══════════════════════════════════════╝
+    
+✅ Database connected successfully
+error: column l.is_draft does not exist
+    at E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\routes\listings.js:52:24 {
+  length: 109,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '140',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3718',
+  routine: 'errorMissingColumn'
+}
+User connected: ZVs4RATMc4qfA1_DAAAB
+User disconnected: ZVs4RATMc4qfA1_DAAAB
+User connected: RXOfYyfPMQ6PoL7xAAAD
+✅ Database connected successfully
+error: column l.is_draft does not exist
+    at E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\routes\listings.js:52:24 {
+  length: 109,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '140',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3718',
+  routine: 'errorMissingColumn'
+}
+✅ Database connected successfully
+✅ Database connected successfully
+User disconnected: RXOfYyfPMQ6PoL7xAAAD
+User connected: AZ08PtuxUP6DKsAQAAAF
+✅ Database connected successfully
+error: column l.is_draft does not exist
+    at E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\routes\listings.js:52:24 {
+  length: 109,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '140',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3718',
+  routine: 'errorMissingColumn'
+}
+✅ Database connected successfully
+User disconnected: AZ08PtuxUP6DKsAQAAAF
+error: column l.is_draft does not exist
+    at E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\routes\listings.js:52:24 {
+  length: 109,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '140',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3718',
+  routine: 'errorMissingColumn'
+}
+User connected: pPaZVbhHMiZ5LdLJAAAH
+User connected: yn5nLNVknSdQn0YIAAAJ
+✅ Database connected successfully
+error: column l.is_draft does not exist
+    at E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\routes\listings.js:52:24 {
+  length: 109,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '140',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3718',
+  routine: 'errorMissingColumn'
+}
+User disconnected: pPaZVbhHMiZ5LdLJAAAH
+User disconnected: yn5nLNVknSdQn0YIAAAJ
+User connected: XbmFI_ilz415L87MAAAL
+✅ Database connected successfully
+error: column l.is_draft does not exist
+    at E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\routes\listings.js:52:24 {
+  length: 109,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '140',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3718',
+  routine: 'errorMissingColumn'
+}
+✅ Database connected successfully
+User disconnected: XbmFI_ilz415L87MAAAL
+error: column l.is_draft does not exist
+    at E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\routes\listings.js:52:24 {
+  length: 109,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '140',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3718',
+  routine: 'errorMissingColumn'
+}
+User connected: csBU2ut5xX7_Pmi7AAAN
+✅ Database connected successfully
+✅ Database connected successfully
+✅ Database connected successfully
+✅ Database connected successfully
+✅ Database connected successfully
+error: column l.is_draft does not exist
+    at E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async E:\AI Course\Project\Seniour2Juniour\.claude\worktrees\recursing-fermat\academic-exchange\backend\routes\listings.js:52:24 {
+  length: 109,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '140',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3718',
+  routine: 'errorMissingColumn'
+}
+✅ Database connected successfully
+✅ Database connected successfully
+✅ Database connected successfully
+✅ Database connected successfully
+✅ Database connected successfully
+✅ Database connected successfully
