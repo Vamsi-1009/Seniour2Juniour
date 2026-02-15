@@ -30,11 +30,14 @@ router.post('/register', async (req, res) => {
             [email, bcryptPassword, userName, 'student']
         );
 
-        // 6. Generate Token
+        // 6. Generate Token (Include role in token for middleware)
         const token = jwt.sign(
-            { user_id: newUser.rows[0].user_id }, 
+            {
+                user_id: newUser.rows[0].user_id,
+                role: newUser.rows[0].role
+            },
             process.env.JWT_SECRET || 'secret', // Fallback key
-            { expiresIn: "1h" }
+            { expiresIn: "24h" }
         );
 
         res.json({ token, role: newUser.rows[0].role });
@@ -61,11 +64,14 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid Credential' });
         }
 
-        // 3. Generate Token
+        // 3. Generate Token (Include role in token for middleware)
         const token = jwt.sign(
-            { user_id: user.rows[0].user_id }, 
-            process.env.JWT_SECRET || 'secret', 
-            { expiresIn: "1h" }
+            {
+                user_id: user.rows[0].user_id,
+                role: user.rows[0].role
+            },
+            process.env.JWT_SECRET || 'secret',
+            { expiresIn: "24h" }
         );
 
         res.json({ token, role: user.rows[0].role });

@@ -8,9 +8,16 @@ function authenticateToken(req, res, next) {
 
     if (!token) return res.sendStatus(401); // Unauthorized
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    const jwtSecret = process.env.JWT_SECRET || 'secret';
+
+    if (!process.env.JWT_SECRET) {
+        console.warn('WARNING: JWT_SECRET not set in environment variables. Using fallback (INSECURE for production).');
+    }
+
+    jwt.verify(token, jwtSecret, (err, user) => {
         if (err) return res.sendStatus(403); // Forbidden
         req.user = user;
+        req.user.role = user.role; // Preserve role from token
         next();
     });
 }

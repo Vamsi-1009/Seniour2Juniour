@@ -1,40 +1,19 @@
 const express = require('express');
 const router = express.Router();
-// NOTE: Ensure this path points to your actual db.js file. 
-// If your db.js is in the root of 'backend', use require('../db');
-// If it is in a 'config' folder, use require('../config/db');
-const pool = require('../config/db'); 
+const pool = require('../config/db');
+const authenticateToken = require('../middleware/auth');
 const multer = require('multer');
-const path = require('path');
-const jwt = require('jsonwebtoken');
+const supabase = require('../config/supabaseClient');
 
-// --- Middleware: Verify Token ---
-function authenticateToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.sendStatus(401);
-
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
-        req.user = user;
-        next();
-    });
-}
-
-// --- Multer Setup (Avatar Upload) ---
-const storage = multer.diskStorage({
-    destination: './uploads/',
-    filename: function(req, file, cb) {
-        cb(null, 'avatar-' + Date.now() + path.extname(file.originalname));
-    }
-});
+// --- Multer Setup (Avatar Upload - Memory Storage for Supabase) ---
+const storage = multer.memoryStorage();
 
 const upload = multer({
     storage: storage,
     limits: { fileSize: 2000000 }, // 2MB limit
     fileFilter: function(req, file, cb) {
         const filetypes = /jpeg|jpg|png|webp/;
-        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+        const extname = filetypes.test(file.originalname.toLowerCase().split('.').pop());
         const mimetype = filetypes.test(file.mimetype);
         if (mimetype && extname) return cb(null, true);
         cb('Error: Images Only!');
@@ -62,18 +41,41 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
-// 2. UPDATE AVATAR
+// 2. UPDATE AVATAR (Now uploads to Supabase)
 router.put('/avatar', authenticateToken, upload.single('avatar'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'Please upload a file' });
         }
 
-        const avatarPath = `/uploads/${req.file.filename}`;
-        
-        await pool.query('UPDATE users SET avatar = $1 WHERE user_id = $2', [avatarPath, req.user.user_id]);
+        // Generate unique filename
+        const fileName = `avatar-${req.user.user_id}-${Date.now()}`;
 
-        res.json({ avatar: avatarPath, message: 'Avatar updated!' });
+        // Upload to Supabase Storage
+        const { data, error } = await supabase
+            .storage
+            .from('uploads')
+            .upload(fileName, req.file.buffer, {
+                contentType: req.file.mimetype
+            });
+
+        if (error) {
+            console.error("Supabase Upload Error:", error);
+            return res.status(500).json({ error: "Failed to upload avatar" });
+        }
+
+        // Get public URL
+        const { data: publicData } = supabase
+            .storage
+            .from('uploads')
+            .getPublicUrl(fileName);
+
+        const avatarUrl = publicData.publicUrl;
+
+        // Update database with Supabase URL
+        await pool.query('UPDATE users SET avatar = $1 WHERE user_id = $2', [avatarUrl, req.user.user_id]);
+
+        res.json({ avatar: avatarUrl, message: 'Avatar updated!' });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

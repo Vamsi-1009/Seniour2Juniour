@@ -1,20 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
-const jwt = require('jsonwebtoken');
-
-// Middleware
-function authenticateToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.sendStatus(401);
-
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
-        req.user = user;
-        next();
-    });
-}
+const authenticateToken = require('../middleware/auth');
 
 // 1. TOGGLE WISHLIST (Add or Remove)
 router.post('/toggle/:id', authenticateToken, async (req, res) => {

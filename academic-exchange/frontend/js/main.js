@@ -267,6 +267,22 @@ window.filterCategory = (cat) => {
     window.renderListings(filtered);
 };
 
+window.handleSort = () => {
+    const sortValue = document.getElementById('sortSelect').value;
+    let sorted = [...allListings];
+
+    if (sortValue === 'newest') {
+        sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    } else if (sortValue === 'price_low') {
+        sorted.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+    } else if (sortValue === 'popular') {
+        sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
+    }
+
+    allListings = sorted;
+    window.filterCategory(currentCategory);
+};
+
 // --- Sell Item ---
 
 window.openSellModal = () => {
@@ -672,6 +688,61 @@ window.fetchWishlistIds = async () => {
         wishlistIds = await res.json();
         window.renderListings(allListings);
     } catch (err) { console.error(err); }
+};
+
+// --- Avatar Upload ---
+window.uploadAvatar = async () => {
+    const input = document.getElementById('avatarInput');
+    const file = input.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    try {
+        const res = await fetch(`${API_URL}/user/avatar`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            body: formData
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('profileAvatar').src = data.avatar;
+            alert('Avatar updated successfully!');
+        } else {
+            alert('Failed to upload avatar');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error uploading avatar');
+    }
+};
+
+window.editProfileDetails = async () => {
+    const newName = prompt("Enter new name:");
+    if (!newName || newName.trim() === '') return;
+
+    try {
+        const res = await fetch(`${API_URL}/user/profile`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name: newName })
+        });
+
+        if (res.ok) {
+            document.getElementById('profileName').innerText = newName;
+            alert('Name updated successfully!');
+        } else {
+            alert('Failed to update name');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error updating profile');
+    }
 };
 
 // --- Modals ---
