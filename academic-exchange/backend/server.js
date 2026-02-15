@@ -1,95 +1,79 @@
 const express = require('express');
+const http = require('http');
+const socketIO = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const http = require('http');
-const { Server } = require('socket.io');
-const pool = require('./config/db'); 
 require('dotenv').config();
-
-// --- CRITICAL FIX: Auto-create uploads folder ---
-// This prevents the "Network Error" crash on Render
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)){
-    fs.mkdirSync(uploadDir);
-    console.log("Created 'uploads' folder successfully.");
-}
 
 const app = express();
 const server = http.createServer(app);
+const io = socketIO(server, {
+    cors: { origin: "*", methods: ["GET", "POST"] }
+});
 
-// 1. Middleware
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// 2. API Routes
-app.use('/auth', require('./routes/auth'));
-app.use('/listings', require('./routes/listings'));
-app.use('/user', require('./routes/user'));
-app.use('/wishlist', require('./routes/wishlist'));
-app.use('/messages', require('./routes/messages'));
-app.use('/admin', require('./routes/admin'));
+// Ensure uploads folder exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+    console.log('✅ Created uploads folder');
+}
 
-// 3. Socket.io Logic (Chat)
-const io = new Server(server, {
-    cors: { origin: "*", methods: ["GET", "POST"] }
-});
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/listings', require('./routes/listings'));
+app.use('/api/user', require('./routes/user'));
+app.use('/api/wishlist', require('./routes/wishlist'));
+app.use('/api/admin', require('./routes/admin'));
+
+// Socket.io for real-time chat
+const pool = require('./config/db');
 
 io.on('connection', (socket) => {
-    // console.log(`User Connected: ${socket.id}`);
+    console.log('User connected:', socket.id);
 
-    socket.on('join_room', (room) => {
-        socket.join(room);
+    socket.on('join_chat', ({ listingId, userId }) => {
+        socket.join(listingId);
+        console.log(`User ${userId} joined chat for listing ${listingId}`);
     });
 
     socket.on('send_message', async (data) => {
-        // Send to others in the room
-        socket.to(data.room).emit('receive_message', data);
-
-        // Save to Database
+        const { listingId, senderId, receiverId, message } = data;
         try {
-            await pool.query(
-                'INSERT INTO messages (listing_id, sender_id, content) VALUES ($1, $2, $3)',
-                [data.room, data.author, data.message]
+            const result = await pool.query(
+                'INSERT INTO messages (listing_id, sender_id, receiver_id, content) VALUES ($1, $2, $3, $4) RETURNING *',
+                [listingId, senderId, receiverId, message]
             );
-        } catch (err) {
-            console.error("Error saving message:", err.message);
+            io.to(listingId).emit('new_message', result.rows[0]);
+        } catch (error) {
+            console.error('Message save error:', error);
         }
     });
 
     socket.on('disconnect', () => {
-        // console.log('User Disconnected', socket.id);
+        console.log('User disconnected:', socket.id);
     });
 });
 
-// ==========================================
-// 4. SMART FRONTEND SERVING
-// ==========================================
+// Serve frontend
+const frontendPath = path.join(__dirname, '../frontend');
+app.use(express.static(frontendPath));
 
-// Check two possible locations for the frontend
-let frontendPath = path.join(__dirname, 'frontend'); // Option A: Inside backend
-if (!fs.existsSync(frontendPath)) {
-    console.log("Frontend not found inside backend. Checking sibling folder...");
-    frontendPath = path.join(__dirname, '../frontend'); // Option B: Next to backend
-}
-
-console.log("SERVING FRONTEND FROM:", frontendPath);
-
-if (fs.existsSync(frontendPath)) {
-    app.use(express.static(frontendPath));
-    
-    // Serve index.html for any unknown route (SPA Support)
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(frontendPath, 'index.html'));
-    });
-} else {
-    console.error("CRITICAL ERROR: Frontend folder not found in any expected location!");
-    app.get('*', (req, res) => res.send("Frontend folder missing. Check server logs."));
-}
-// ==========================================
+app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
+});
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`
+    ╔══════════════════════════════════════╗
+    ║   🎓 Academic Exchange Server       ║
+    ║   Running on http://localhost:${PORT}  ║
+    ╚══════════════════════════════════════╝
+    `);
 });

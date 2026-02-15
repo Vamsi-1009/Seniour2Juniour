@@ -1,60 +1,36 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 
-// 1. TOGGLE WISHLIST (Add or Remove)
-router.post('/toggle/:id', authenticateToken, async (req, res) => {
-    try {
-        const { id } = req.params; // Listing ID
-        const userId = req.user.user_id;
-
-        // Check if already in wishlist
-        const check = await pool.query(
-            'SELECT * FROM wishlist WHERE user_id = $1 AND listing_id = $2',
-            [userId, id]
-        );
-
-        if (check.rows.length > 0) {
-            // Already exists -> Remove it
-            await pool.query('DELETE FROM wishlist WHERE user_id = $1 AND listing_id = $2', [userId, id]);
-            res.json({ status: 'removed' });
-        } else {
-            // Doesn't exist -> Add it
-            await pool.query('INSERT INTO wishlist (user_id, listing_id) VALUES ($1, $2)', [userId, id]);
-            res.json({ status: 'added' });
-        }
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
-    }
-});
-
-// 2. GET MY WISHLIST IDs (To show red hearts)
-router.get('/ids', authenticateToken, async (req, res) => {
-    try {
-        const result = await pool.query('SELECT listing_id FROM wishlist WHERE user_id = $1', [req.user.user_id]);
-        const ids = result.rows.map(row => row.listing_id);
-        res.json(ids);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
-    }
-});
-
-// 3. GET FULL WISHLIST ITEMS (For Profile)
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const result = await pool.query(
-            `SELECT l.* FROM listings l 
-             JOIN wishlist w ON l.listing_id = w.listing_id 
-             WHERE w.user_id = $1 ORDER BY w.created_at DESC`,
-            [req.user.user_id]
-        );
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        const result = await pool.query(`
+            SELECT l.*, u.name as seller_name, w.created_at as added_at
+            FROM wishlist w
+            JOIN listings l ON w.listing_id = l.listing_id
+            JOIN users u ON l.user_id = u.user_id
+            WHERE w.user_id = $1
+            ORDER BY w.created_at DESC
+        `, [req.user.user_id]);
+        res.json({ success: true, wishlist: result.rows });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch wishlist' });
+    }
+});
+
+router.post('/:listingId', authenticateToken, async (req, res) => {
+    try {
+        const check = await pool.query('SELECT * FROM wishlist WHERE user_id = $1 AND listing_id = $2', [req.user.user_id, req.params.listingId]);
+        if (check.rows.length > 0) {
+            await pool.query('DELETE FROM wishlist WHERE user_id = $1 AND listing_id = $2', [req.user.user_id, req.params.listingId]);
+            res.json({ success: true, action: 'removed' });
+        } else {
+            await pool.query('INSERT INTO wishlist (user_id, listing_id) VALUES ($1, $2)', [req.user.user_id, req.params.listingId]);
+            res.json({ success: true, action: 'added' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update wishlist' });
     }
 });
 

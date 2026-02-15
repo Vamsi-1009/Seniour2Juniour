@@ -1,84 +1,113 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
+const pool = require('../config/db');
 
-// REGISTER USER
+// Register
 router.post('/register', async (req, res) => {
-    // 1. Destructure name, email, password (allow name to be passed)
-    const { name, email, password } = req.body;
-    
     try {
-        // 2. Check if user exists
-        const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-        if (userCheck.rows.length > 0) {
-            return res.status(401).json({ error: 'User already exists' });
+        const { name, email, password } = req.body;
+
+        // Validation
+        if (!name || !email || !password) {
+            return res.status(400).json({ error: 'All fields are required' });
         }
 
-        // 3. Hash password
-        const salt = await bcrypt.genSalt(10);
-        const bcryptPassword = await bcrypt.hash(password, salt);
+        // Check if user exists
+        const userExists = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+        if (userExists.rows.length > 0) {
+            return res.status(400).json({ error: 'Email already registered' });
+        }
 
-        // 4. Determine Name (Use provided name, or default to "Student")
-        const userName = name || 'Student';
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-        // 5. Insert into DB
+        // Create user
         const newUser = await pool.query(
-            'INSERT INTO users (email, password, name, role) VALUES ($1, $2, $3, $4) RETURNING *',
-            [email, bcryptPassword, userName, 'student']
+            'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING user_id, name, email, role, avatar',
+            [name, email, hashedPassword]
         );
 
-        // 6. Generate Token (Include role in token for middleware)
+        const user = newUser.rows[0];
+
+        // Generate token
         const token = jwt.sign(
-            {
-                user_id: newUser.rows[0].user_id,
-                role: newUser.rows[0].role
-            },
-            process.env.JWT_SECRET || 'secret', // Fallback key
-            { expiresIn: "24h" }
+            { user_id: user.user_id, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
         );
 
-        res.json({ token, role: newUser.rows[0].role });
-
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send("Server Error");
+        res.status(201).json({
+            success: true,
+            token,
+            user: {
+                user_id: user.user_id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                avatar: user.avatar
+            }
+        });
+    } catch (error) {
+        console.error('Register error:', error);
+        res.status(500).json({ error: 'Server error during registration' });
     }
 });
 
-// LOGIN USER
+// Login
 router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
     try {
-        // 1. Check if user exists
-        const user = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-        if (user.rows.length === 0) {
-            return res.status(401).json({ error: 'Invalid Credential' });
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password required' });
         }
 
-        // 2. Check password
-        const validPassword = await bcrypt.compare(password, user.rows[0].password);
+        // Find user
+        const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+        if (result.rows.length === 0) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const user = result.rows[0];
+
+        // Check if active
+        if (!user.is_active) {
+            return res.status(403).json({ error: 'Account is deactivated' });
+        }
+
+        // Verify password
+        const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) {
-            return res.status(401).json({ error: 'Invalid Credential' });
+            return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // 3. Generate Token (Include role in token for middleware)
+        // Update last login
+        await pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = $1', [user.user_id]);
+
+        // Generate token
         const token = jwt.sign(
-            {
-                user_id: user.rows[0].user_id,
-                role: user.rows[0].role
-            },
-            process.env.JWT_SECRET || 'secret',
-            { expiresIn: "24h" }
+            { user_id: user.user_id, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
         );
 
-        res.json({ token, role: user.rows[0].role });
-
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send("Server Error");
+        res.json({
+            success: true,
+            token,
+            user: {
+                user_id: user.user_id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                avatar: user.avatar,
+                location: user.location
+            }
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Server error during login' });
     }
 });
 

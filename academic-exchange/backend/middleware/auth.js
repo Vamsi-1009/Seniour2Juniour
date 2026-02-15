@@ -1,25 +1,27 @@
-// backend/middleware/auth.js
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
 
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = authHeader && authHeader.split(' ')[1];
 
-    if (!token) return res.sendStatus(401); // Unauthorized
-
-    const jwtSecret = process.env.JWT_SECRET || 'secret';
-
-    if (!process.env.JWT_SECRET) {
-        console.warn('WARNING: JWT_SECRET not set in environment variables. Using fallback (INSECURE for production).');
+    if (!token) {
+        return res.status(401).json({ error: 'Access denied. No token provided.' });
     }
 
-    jwt.verify(token, jwtSecret, (err, user) => {
-        if (err) return res.sendStatus(403); // Forbidden
-        req.user = user;
-        req.user.role = user.role; // Preserve role from token
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
         next();
-    });
+    } catch (error) {
+        return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
 }
 
-module.exports = authenticateToken;
+function isAdmin(req, res, next) {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin only.' });
+    }
+    next();
+}
+
+module.exports = { authenticateToken, isAdmin };

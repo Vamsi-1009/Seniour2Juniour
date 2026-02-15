@@ -9,9 +9,12 @@ if (!connectionString) {
     process.exit(1);
 }
 
+// Determine if we need SSL (for cloud databases)
+const isLocalhost = connectionString.includes('localhost');
+
 const pool = new Pool({
     connectionString: connectionString,
-    ssl: {
+    ssl: isLocalhost ? false : {
         rejectUnauthorized: false
     }
 });
