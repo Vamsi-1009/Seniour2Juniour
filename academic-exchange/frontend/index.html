@@ -25,13 +25,48 @@
         </div>
     </section>
 
-    <!-- Filters -->
+    <!-- Advanced Filters -->
     <div class="filters">
         <button class="filter-btn active" onclick="filterCategory('all')">All</button>
         <button class="filter-btn" onclick="filterCategory('Engineering')">Engineering</button>
         <button class="filter-btn" onclick="filterCategory('MBBS')">MBBS</button>
         <button class="filter-btn" onclick="filterCategory('Law')">Law</button>
         <button class="filter-btn" onclick="filterCategory('Gadgets')">Gadgets</button>
+        <button class="filter-btn" onclick="toggleAdvancedFilters()">⚙️ More Filters</button>
+    </div>
+
+    <!-- Advanced Filters Panel -->
+    <div class="advanced-filters" id="advancedFilters" style="display:none;">
+        <div class="filter-group">
+            <label>Price Range</label>
+            <div style="display:flex;gap:0.5rem;">
+                <input type="number" class="form-input" id="minPrice" placeholder="Min ₹" style="width:100px;">
+                <input type="number" class="form-input" id="maxPrice" placeholder="Max ₹" style="width:100px;">
+            </div>
+        </div>
+        <div class="filter-group">
+            <label>Condition</label>
+            <select class="form-select" id="conditionFilter">
+                <option value="">All</option>
+                <option value="New">New</option>
+                <option value="Used">Used</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Location</label>
+            <input type="text" class="form-input" id="locationFilter" placeholder="Enter location">
+        </div>
+        <div class="filter-group">
+            <label>Sort By</label>
+            <select class="form-select" id="sortBy">
+                <option value="newest">Newest First</option>
+                <option value="price_low">Price: Low to High</option>
+                <option value="price_high">Price: High to Low</option>
+                <option value="popular">Most Popular</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" onclick="applyAdvancedFilters()">Apply Filters</button>
+        <button class="btn" onclick="clearFilters()">Clear</button>
     </div>
 
     <!-- Listings Grid -->
@@ -70,7 +105,7 @@
         </div>
     </div>
 
-    <!-- Sell Modal -->
+    <!-- Sell Modal with Drag & Drop -->
     <div class="modal" id="sellModal">
         <div class="modal-content">
             <h2>Sell an Item</h2>
@@ -90,7 +125,20 @@
                     <option value="Used">Used</option>
                 </select>
                 <input type="text" class="form-input" placeholder="Location" id="sellLocation">
-                <input type="file" class="form-input" id="sellImages" accept="image/*" multiple required>
+
+                <!-- Drag & Drop Image Upload -->
+                <div class="drag-drop-area" id="dragDropArea">
+                    <input type="file" class="file-input" id="sellImages" accept="image/*" multiple required>
+                    <div class="drag-drop-text">
+                        <p>📸 Drag & drop images here</p>
+                        <p>or click to browse</p>
+                        <small>Max 5 images, 5MB each (JPG, PNG, WEBP)</small>
+                    </div>
+                </div>
+
+                <!-- Image Preview -->
+                <div class="image-preview-container" id="imagePreview"></div>
+
                 <button type="submit" class="btn btn-primary" style="width:100%">Post Listing</button>
             </form>
         </div>
@@ -104,6 +152,45 @@
         </div>
     </div>
 
+    <!-- Chat Modal -->
+    <div class="modal" id="chatModal">
+        <div class="modal-content chat-container">
+            <div class="chat-header">
+                <h3 id="chatTitle">Chat</h3>
+                <button onclick="closeModal('chatModal')" class="close-btn">✕</button>
+            </div>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="typing-indicator" id="typingIndicator" style="display:none;">
+                <span class="typing-dots"></span>
+                <span>typing...</span>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Type a message...">
+                <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div class="modal" id="paymentModal">
+        <div class="modal-content">
+            <h2>Complete Payment</h2>
+            <div id="paymentContent">
+                <p>Item: <strong id="paymentItem"></strong></p>
+                <p>Price: <strong id="paymentPrice"></strong></p>
+                <div class="payment-methods">
+                    <button class="payment-btn" onclick="initiatePayment('razorpay')">
+                        💳 Pay with Razorpay
+                    </button>
+                    <button class="payment-btn" onclick="initiatePayment('stripe')">
+                        💳 Pay with Stripe
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="js/main.js"></script>
 </body>

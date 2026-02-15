@@ -30,7 +30,7 @@ const upload = multer({
 
 router.get('/', async (req, res) => {
     try {
-        const { category, search, sort } = req.query;
+        const { category, search, sort, minPrice, maxPrice, condition, location } = req.query;
         let query = 'SELECT l.*, u.name as seller_name, u.avatar as seller_avatar FROM listings l JOIN users u ON l.user_id = u.user_id WHERE l.status = $1 AND l.is_draft = FALSE';
         const params = ['active'];
 
@@ -44,9 +44,30 @@ router.get('/', async (req, res) => {
             query += ' AND (l.title ILIKE $' + params.length + ' OR l.description ILIKE $' + params.length + ')';
         }
 
+        if (minPrice) {
+            params.push(minPrice);
+            query += ' AND l.price >= $' + params.length;
+        }
+
+        if (maxPrice) {
+            params.push(maxPrice);
+            query += ' AND l.price <= $' + params.length;
+        }
+
+        if (condition) {
+            params.push(condition);
+            query += ' AND l.condition = $' + params.length;
+        }
+
+        if (location) {
+            params.push('%' + location + '%');
+            query += ' AND l.location ILIKE $' + params.length;
+        }
+
         if (sort === 'price_low') query += ' ORDER BY l.price ASC';
         else if (sort === 'price_high') query += ' ORDER BY l.price DESC';
         else if (sort === 'popular') query += ' ORDER BY l.views DESC';
+        else if (sort === 'newest') query += ' ORDER BY l.created_at DESC';
         else query += ' ORDER BY l.created_at DESC';
 
         const result = await pool.query(query, params);

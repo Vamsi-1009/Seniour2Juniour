@@ -12,6 +12,10 @@ const io = socketIO(server, {
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
+// Rate Limiting
+const rateLimiter = require('./middleware/rateLimiter');
+app.use(rateLimiter(100, 15 * 60 * 1000)); // 100 requests per 15 minutes
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -30,16 +34,25 @@ app.use('/api/listings', require('./routes/listings'));
 app.use('/api/user', require('./routes/user'));
 app.use('/api/wishlist', require('./routes/wishlist'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/messages', require('./routes/messages'));
+app.use('/api/transactions', require('./routes/transactions'));
 
 // Socket.io for real-time chat
 const pool = require('./config/db');
+
+// Enhanced Socket.io with typing indicators
+const userSockets = new Map();
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
     socket.on('join_chat', ({ listingId, userId }) => {
         socket.join(listingId);
+        userSockets.set(userId, socket.id);
         console.log(`User ${userId} joined chat for listing ${listingId}`);
+
+        // Notify online status
+        io.to(listingId).emit('user_online', { userId });
     });
 
     socket.on('send_message', async (data) => {
@@ -55,8 +68,23 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('typing', ({ room, userId }) => {
+        socket.to(room).emit('user_typing', { userId });
+    });
+
+    socket.on('stopped_typing', ({ room }) => {
+        socket.to(room).emit('user_stopped_typing');
+    });
+
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
+        // Find and remove user from map
+        for (let [userId, socketId] of userSockets.entries()) {
+            if (socketId === socket.id) {
+                userSockets.delete(userId);
+                break;
+            }
+        }
     });
 });
 
