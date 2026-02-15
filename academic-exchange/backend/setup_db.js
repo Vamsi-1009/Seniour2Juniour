@@ -1,7 +1,13 @@
 const { Pool } = require('pg');
+require('dotenv').config();
 
-// PASTE YOUR COPIED RENDER URL INSIDE THE QUOTES BELOW:
-const connectionString = "postgresql://academic_db_p2lf_user:HMAAGnDkruGd7F7tu7fd4tSp0VivWo4L@dpg-d5qejo75r7bs738j62tg-a.singapore-postgres.render.com/academic_db_p2lf"; 
+// Use DATABASE_URL from .env file
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+    console.error("❌ ERROR: DATABASE_URL not found in .env file");
+    process.exit(1);
+}
 
 const pool = new Pool({
     connectionString: connectionString,
@@ -54,11 +60,22 @@ const createTablesQuery = `
 
 async function setup() {
     try {
-        console.log("Connecting to Render Database...");
+        console.log("🔄 Connecting to Database...");
+        console.log("📍 URL:", connectionString.replace(/:[^:@]+@/, ':****@')); // Hide password
         await pool.query(createTablesQuery);
-        console.log("✅ SUCCESS! All tables created successfully in the cloud.");
+        console.log("✅ SUCCESS! All tables created successfully.");
+        console.log("\n📋 Tables created:");
+        console.log("  - users");
+        console.log("  - listings");
+        console.log("  - wishlist");
+        console.log("  - messages");
+        console.log("\n🎉 Database setup complete! You can now run the server.");
     } catch (err) {
         console.error("❌ ERROR:", err.message);
+        console.error("\n💡 Troubleshooting:");
+        console.error("  1. Check your DATABASE_URL in .env file");
+        console.error("  2. Make sure your database password is correct");
+        console.error("  3. Verify your Supabase project is active");
     } finally {
         await pool.end();
     }
