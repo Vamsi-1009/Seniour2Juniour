@@ -750,3 +750,352 @@ window.onclick = (e) => {
         dropdown.classList.remove('show');
     }
 };
+
+// ==================== NEW FEATURES ====================
+
+// Multi-step Sell Form
+let currentStep = 1;
+let selectedCategoryValue = '';
+let sellMap = null;
+let sellMarker = null;
+
+function selectCategory(category) {
+    selectedCategoryValue = category;
+    document.getElementById('sellCategory').value = category;
+
+    // Update UI
+    document.querySelectorAll('.category-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    event.target.closest('.category-card').classList.add('selected');
+}
+
+function nextStep(step) {
+    // Validate current step
+    if (!validateStep(currentStep)) {
+        return;
+    }
+
+    // Hide current step
+    document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+
+    // Show next step
+    document.getElementById(`step${step}`).classList.add('active');
+    document.querySelector(`.step[data-step="${step}"]`).classList.add('active');
+
+    currentStep = step;
+
+    // Initialize map if on location step
+    if (step === 3 && !sellMap) {
+        setTimeout(initSellMap, 100);
+    }
+}
+
+function prevStep(step) {
+    document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+
+    document.getElementById(`step${step}`).classList.add('active');
+    document.querySelector(`.step[data-step="${step}"]`).classList.add('active');
+
+    currentStep = step;
+}
+
+function validateStep(step) {
+    if (step === 1) {
+        const title = document.getElementById('sellTitle').value;
+        const desc = document.getElementById('sellDesc').value;
+        const price = document.getElementById('sellPrice').value;
+        const category = document.getElementById('sellCategory').value;
+
+        if (!title || !desc || !price || !category) {
+            showAlert('Please fill all required fields', 'error');
+            return false;
+        }
+    } else if (step === 2) {
+        if (selectedImages.length === 0) {
+            showAlert('Please upload at least one image', 'error');
+            return false;
+        }
+    }
+    return true;
+}
+
+function initSellMap() {
+    if (sellMap) return;
+
+    const mapElement = document.getElementById('sellMap');
+    if (!mapElement) return;
+
+    sellMap = L.map('sellMap').setView([20.5937, 78.9629], 5); // India center
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(sellMap);
+
+    // Get user's current location
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            sellMap.setView([lat, lng], 13);
+
+            sellMarker = L.marker([lat, lng], { draggable: true }).addTo(sellMap);
+
+            document.getElementById('sellLatitude').value = lat;
+            document.getElementById('sellLongitude').value = lng;
+
+            sellMarker.on('dragend', function(e) {
+                const pos = e.target.getLatLng();
+                document.getElementById('sellLatitude').value = pos.lat;
+                document.getElementById('sellLongitude').value = pos.lng;
+            });
+        });
+    }
+
+    sellMap.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+
+        if (sellMarker) {
+            sellMarker.setLatLng([lat, lng]);
+        } else {
+            sellMarker = L.marker([lat, lng], { draggable: true }).addTo(sellMap);
+
+            sellMarker.on('dragend', function(e) {
+                const pos = e.target.getLatLng();
+                document.getElementById('sellLatitude').value = pos.lat;
+                document.getElementById('sellLongitude').value = pos.lng;
+            });
+        }
+
+        document.getElementById('sellLatitude').value = lat;
+        document.getElementById('sellLongitude').value = lng;
+    });
+}
+
+// My Items Functionality
+async function loadMyItems() {
+    if (!currentUser) return;
+
+    try {
+        const res = await fetch(API + '/listings/my-items', {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+
+        const data = await res.json();
+
+        if (data.success && data.listings.length > 0) {
+            document.getElementById('myItemsSection').style.display = 'block';
+            renderMyItems(data.listings);
+        }
+    } catch (error) {
+        console.error('Failed to load my items');
+    }
+}
+
+function renderMyItems(items) {
+    const grid = document.getElementById('myItemsGrid');
+
+    grid.innerHTML = items.map(item => `
+        <div class="card">
+            <img src="${item.images[0]}" class="card-image" alt="${item.title}">
+            <div class="card-content">
+                <h3 class="card-title">${item.title}</h3>
+                <p class="card-price">₹${item.price}</p>
+                <div class="card-meta">
+                    <span>${item.condition}</span>
+                    <span>${item.status}</span>
+                </div>
+                <div class="card-meta">
+                    <span>👁️ ${item.views || 0} views</span>
+                </div>
+                <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                    <button class="btn btn-sm" onclick="editListing('${item.listing_id}')">Edit</button>
+                    <button class="btn btn-sm btn-secondary" onclick="deleteListing('${item.listing_id}')">Delete</button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function deleteListing(id) {
+    if (!confirm('Are you sure you want to delete this listing?')) return;
+
+    try {
+        const res = await fetch(API + `/listings/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+
+        if (res.ok) {
+            showAlert('Listing deleted successfully', 'success');
+            loadMyItems();
+            loadListings();
+        }
+    } catch (error) {
+        showAlert('Failed to delete listing', 'error');
+    }
+}
+
+// Map Filter System
+let filterMap = null;
+let filterCircle = null;
+let filterMarker = null;
+let selectedLocation = null;
+let selectedRange = 50;
+
+function updateRangeValue(value) {
+    document.getElementById('rangeValue').textContent = value;
+    selectedRange = value;
+}
+
+function showMapFilter() {
+    showModal('mapFilterModal');
+    setTimeout(initFilterMap, 100);
+}
+
+function initFilterMap() {
+    if (filterMap) return;
+
+    filterMap = L.map('filterMap').setView([20.5937, 78.9629], 5);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(filterMap);
+
+    // Get user's current location
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            filterMap.setView([lat, lng], 10);
+            updateFilterLocation(lat, lng);
+        });
+    }
+
+    filterMap.on('click', function(e) {
+        updateFilterLocation(e.latlng.lat, e.latlng.lng);
+    });
+}
+
+function updateFilterLocation(lat, lng) {
+    selectedLocation = { lat, lng };
+
+    if (filterMarker) {
+        filterMarker.setLatLng([lat, lng]);
+    } else {
+        filterMarker = L.marker([lat, lng]).addTo(filterMap);
+    }
+
+    if (filterCircle) {
+        filterCircle.setLatLng([lat, lng]);
+        filterCircle.setRadius(selectedRange * 1000);
+    } else {
+        filterCircle = L.circle([lat, lng], {
+            color: '#667eea',
+            fillColor: '#f093fb',
+            fillOpacity: 0.2,
+            radius: selectedRange * 1000
+        }).addTo(filterMap);
+    }
+}
+
+function updateMapRange(value) {
+    document.getElementById('mapRangeValue').textContent = value;
+    selectedRange = value;
+
+    if (filterCircle) {
+        filterCircle.setRadius(value * 1000);
+    }
+}
+
+async function searchMapLocation() {
+    const location = document.getElementById('mapSearch').value;
+
+    if (!location) return;
+
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`);
+        const data = await res.json();
+
+        if (data && data.length > 0) {
+            const lat = parseFloat(data[0].lat);
+            const lng = parseFloat(data[0].lon);
+
+            filterMap.setView([lat, lng], 12);
+            updateFilterLocation(lat, lng);
+        } else {
+            showAlert('Location not found', 'error');
+        }
+    } catch (error) {
+        showAlert('Failed to search location', 'error');
+    }
+}
+
+function applyMapFilter() {
+    if (!selectedLocation) {
+        showAlert('Please select a location on the map', 'error');
+        return;
+    }
+
+    closeModal('mapFilterModal');
+
+    // Apply filters with location
+    const filters = {
+        latitude: selectedLocation.lat,
+        longitude: selectedLocation.lng,
+        range: selectedRange,
+        minPrice: document.getElementById('minPrice').value,
+        maxPrice: document.getElementById('maxPrice').value,
+        condition: document.getElementById('conditionFilter').value,
+        sort: document.getElementById('sortBy').value
+    };
+
+    loadListings(filters);
+    showAlert(`Showing items within ${selectedRange}km radius`, 'success');
+}
+
+// Update loadListings to handle location filtering
+const originalLoadListings = loadListings;
+loadListings = async function(filters = {}) {
+    try {
+        let url = API + '/listings?';
+        if (filters.category) url += `category=${filters.category}&`;
+        if (filters.minPrice) url += `minPrice=${filters.minPrice}&`;
+        if (filters.maxPrice) url += `maxPrice=${filters.maxPrice}&`;
+        if (filters.condition) url += `condition=${filters.condition}&`;
+        if (filters.location) url += `location=${filters.location}&`;
+        if (filters.latitude) url += `latitude=${filters.latitude}&`;
+        if (filters.longitude) url += `longitude=${filters.longitude}&`;
+        if (filters.range) url += `range=${filters.range}&`;
+        if (filters.sort) url += `sort=${filters.sort}&`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.success) {
+            allListings = data.listings;
+            renderListings(allListings);
+        }
+    } catch (error) {
+        showAlert('Failed to load listings', 'error');
+    }
+};
+
+// Load my items when user logs in
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+    loadListings();
+    setupSearch();
+    setupDragDrop();
+    setupSocketListeners();
+    loadSavedSearches();
+
+    if (currentUser) {
+        loadMyItems();
+    }
+});

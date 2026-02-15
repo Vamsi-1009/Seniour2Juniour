@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Academic Exchange - Student Marketplace</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -76,19 +77,67 @@
             <input type="text" class="form-input" id="locationFilter" placeholder="Enter location">
         </div>
         <div class="filter-group">
+            <label>Distance Range (km)</label>
+            <input type="range" class="range-slider" id="rangeSlider" min="1" max="100" value="50" oninput="updateRangeValue(this.value)">
+            <div class="range-value">
+                <span id="rangeValue">50</span> km
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="showMapFilter()">📍 Select on Map</button>
+        </div>
+        <div class="filter-group">
             <label>Sort By</label>
             <select class="form-select" id="sortBy">
                 <option value="newest">Newest First</option>
                 <option value="price_low">Price: Low to High</option>
                 <option value="price_high">Price: High to Low</option>
                 <option value="popular">Most Popular</option>
+                <option value="distance">Nearest First</option>
             </select>
         </div>
         <button class="btn btn-primary" onclick="applyAdvancedFilters()">Apply Filters</button>
         <button class="btn" onclick="clearFilters()">Clear</button>
     </div>
 
-    <!-- Listings Grid -->
+    <!-- Map Filter Modal -->
+    <div class="modal" id="mapFilterModal">
+        <div class="modal-content" style="max-width: 900px; height: 80vh;">
+            <div class="modal-header">
+                <h2>📍 Select Location & Range</h2>
+                <button onclick="closeModal('mapFilterModal')" class="close-btn">✕</button>
+            </div>
+            <div class="map-filter-container">
+                <div id="filterMap" class="filter-map"></div>
+                <div class="map-controls">
+                    <div class="map-control-item">
+                        <label>Search Location:</label>
+                        <input type="text" class="form-input" id="mapSearch" placeholder="Enter location">
+                        <button class="btn btn-primary btn-sm" onclick="searchMapLocation()">Search</button>
+                    </div>
+                    <div class="map-control-item">
+                        <label>Range: <span id="mapRangeValue">50</span> km</label>
+                        <input type="range" class="range-slider" id="mapRangeSlider" min="1" max="100" value="50" oninput="updateMapRange(this.value)">
+                    </div>
+                    <button class="btn btn-primary btn-block" onclick="applyMapFilter()">Apply Location Filter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Items Section (shown when logged in) -->
+    <div class="my-items-section" id="myItemsSection" style="display:none;">
+        <div class="section-header">
+            <h2>📦 My Items</h2>
+            <button class="btn btn-primary" onclick="showSellModal()">+ Add New Item</button>
+        </div>
+        <div class="my-items-grid" id="myItemsGrid">
+            <!-- User's listings will be shown here -->
+        </div>
+    </div>
+
+    <!-- All Listings Section -->
+    <div class="section-header">
+        <h2>🛍️ Browse Marketplace</h2>
+    </div>
     <div class="listings-grid" id="listingsGrid">
         <!-- Dynamic content -->
     </div>
@@ -124,41 +173,133 @@
         </div>
     </div>
 
-    <!-- Sell Modal with Drag & Drop -->
+    <!-- Sell Modal with Enhanced UI -->
     <div class="modal" id="sellModal">
-        <div class="modal-content">
-            <h2>Sell an Item</h2>
-            <form id="sellForm" onsubmit="handleSell(event)">
-                <input type="text" class="form-input" placeholder="Title" required id="sellTitle">
-                <textarea class="form-textarea" placeholder="Description" required id="sellDesc" rows="3"></textarea>
-                <input type="number" class="form-input" placeholder="Price (₹)" required id="sellPrice">
-                <select class="form-select" id="sellCategory" required>
-                    <option value="">Select Category</option>
-                    <option value="Engineering">Engineering</option>
-                    <option value="MBBS">MBBS</option>
-                    <option value="Law">Law</option>
-                    <option value="Gadgets">Gadgets</option>
-                </select>
-                <select class="form-select" id="sellCondition" required>
-                    <option value="New">New</option>
-                    <option value="Used">Used</option>
-                </select>
-                <input type="text" class="form-input" placeholder="Location" id="sellLocation">
+        <div class="modal-content sell-modal-content">
+            <div class="modal-header">
+                <h2>📦 List Your Item</h2>
+                <button onclick="closeModal('sellModal')" class="close-btn">✕</button>
+            </div>
 
-                <!-- Drag & Drop Image Upload -->
-                <div class="drag-drop-area" id="dragDropArea">
-                    <input type="file" class="file-input" id="sellImages" accept="image/*" multiple required>
-                    <div class="drag-drop-text">
-                        <p>📸 Drag & drop images here</p>
-                        <p>or click to browse</p>
-                        <small>Max 5 images, 5MB each (JPG, PNG, WEBP)</small>
+            <form id="sellForm" onsubmit="handleSell(event)">
+                <!-- Step Indicator -->
+                <div class="step-indicator">
+                    <div class="step active" data-step="1">
+                        <div class="step-number">1</div>
+                        <div class="step-label">Basic Info</div>
+                    </div>
+                    <div class="step" data-step="2">
+                        <div class="step-number">2</div>
+                        <div class="step-label">Photos</div>
+                    </div>
+                    <div class="step" data-step="3">
+                        <div class="step-number">3</div>
+                        <div class="step-label">Location</div>
                     </div>
                 </div>
 
-                <!-- Image Preview -->
-                <div class="image-preview-container" id="imagePreview"></div>
+                <!-- Step 1: Basic Info -->
+                <div class="form-step active" id="step1">
+                    <div class="form-group">
+                        <label class="form-label">Item Title *</label>
+                        <input type="text" class="form-input modern" placeholder="e.g., Engineering Mathematics Book" required id="sellTitle">
+                    </div>
 
-                <button type="submit" class="btn btn-primary" style="width:100%">Post Listing</button>
+                    <div class="form-group">
+                        <label class="form-label">Description *</label>
+                        <textarea class="form-textarea modern" placeholder="Describe your item in detail..." required id="sellDesc" rows="4"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Price (₹) *</label>
+                            <input type="number" class="form-input modern" placeholder="0" required id="sellPrice">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Condition *</label>
+                            <select class="form-select modern" id="sellCondition" required>
+                                <option value="">Select</option>
+                                <option value="New">New</option>
+                                <option value="Like New">Like New</option>
+                                <option value="Good">Good</option>
+                                <option value="Fair">Fair</option>
+                                <option value="Used">Used</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Category *</label>
+                        <div class="category-grid">
+                            <div class="category-card" onclick="selectCategory('Engineering')">
+                                <div class="category-icon">📚</div>
+                                <div class="category-name">Engineering</div>
+                            </div>
+                            <div class="category-card" onclick="selectCategory('MBBS')">
+                                <div class="category-icon">🏥</div>
+                                <div class="category-name">MBBS</div>
+                            </div>
+                            <div class="category-card" onclick="selectCategory('Law')">
+                                <div class="category-icon">⚖️</div>
+                                <div class="category-name">Law</div>
+                            </div>
+                            <div class="category-card" onclick="selectCategory('Gadgets')">
+                                <div class="category-icon">💻</div>
+                                <div class="category-name">Gadgets</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="sellCategory" required>
+                    </div>
+
+                    <button type="button" class="btn btn-primary btn-block" onclick="nextStep(2)">Next: Add Photos →</button>
+                </div>
+
+                <!-- Step 2: Photos -->
+                <div class="form-step" id="step2">
+                    <div class="form-group">
+                        <label class="form-label">Upload Photos *</label>
+                        <div class="drag-drop-area modern" id="dragDropArea">
+                            <input type="file" class="file-input" id="sellImages" accept="image/*" multiple required>
+                            <div class="drag-drop-text">
+                                <div class="upload-icon">📸</div>
+                                <p class="upload-title">Drag & drop your photos here</p>
+                                <p class="upload-subtitle">or click to browse</p>
+                                <div class="upload-info">
+                                    <span>• Max 5 photos</span>
+                                    <span>• Up to 5MB each</span>
+                                    <span>• JPG, PNG, WEBP</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="image-preview-container" id="imagePreview"></div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="prevStep(1)">← Back</button>
+                        <button type="button" class="btn btn-primary" onclick="nextStep(3)">Next: Set Location →</button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Location -->
+                <div class="form-step" id="step3">
+                    <div class="form-group">
+                        <label class="form-label">Location *</label>
+                        <input type="text" class="form-input modern" placeholder="e.g., Mumbai, Maharashtra" id="sellLocation" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Select on Map (Optional)</label>
+                        <div id="sellMap" class="location-map"></div>
+                        <input type="hidden" id="sellLatitude">
+                        <input type="hidden" id="sellLongitude">
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="prevStep(2)">← Back</button>
+                        <button type="submit" class="btn btn-primary btn-block">✓ Post Listing</button>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
@@ -234,6 +375,7 @@
 
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

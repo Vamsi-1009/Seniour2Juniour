@@ -28,9 +28,23 @@ const upload = multer({
     }
 });
 
+// Get user's own listings
+router.get('/my-items', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM listings WHERE user_id = $1 ORDER BY created_at DESC',
+            [req.user.user_id]
+        );
+        res.json({ success: true, listings: result.rows });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch listings' });
+    }
+});
+
 router.get('/', async (req, res) => {
     try {
-        const { category, search, sort, minPrice, maxPrice, condition, location } = req.query;
+        const { category, search, sort, minPrice, maxPrice, condition, location, latitude, longitude, range } = req.query;
         let query = 'SELECT l.*, u.name as seller_name, u.avatar as seller_avatar FROM listings l JOIN users u ON l.user_id = u.user_id WHERE l.status = $1 AND l.is_draft = FALSE';
         const params = ['active'];
 
