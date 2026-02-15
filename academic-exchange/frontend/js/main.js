@@ -32,10 +32,11 @@ function updateNav() {
     const nav = document.getElementById('navMenu');
     if (currentUser) {
         nav.innerHTML = `
-            <button class="nav-btn" onclick="showSellModal()">+ Sell</button>
-            <button class="nav-btn" onclick="showProfile()">Profile</button>
             ${currentUser.role === 'admin' ? '<button class="nav-btn" onclick="showAdminDashboard()">Admin</button>' : ''}
-            <button class="nav-btn" onclick="logout()">Logout</button>
+            <button class="profile-btn" onclick="toggleProfileDropdown(event)">
+                <div class="profile-icon">👤</div>
+                <span>${currentUser.name || 'User'}</span>
+            </button>
         `;
     }
 }
@@ -627,8 +628,125 @@ function showSellModal() {
     showModal('sellModal');
 }
 
+// Profile Dropdown Functions
+function toggleProfileDropdown(event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById('profileDropdown');
+    dropdown.classList.toggle('show');
+}
+
+function closeProfileDropdown() {
+    const dropdown = document.getElementById('profileDropdown');
+    dropdown.classList.remove('show');
+}
+
+// Change Password Handler
+async function handleChangePassword(e) {
+    e.preventDefault();
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (newPassword !== confirmPassword) {
+        showAlert('Passwords do not match', 'error');
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        showAlert('Password must be at least 6 characters', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch(API + '/user/change-password', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            body: JSON.stringify({ currentPassword, newPassword })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            showAlert('Password changed successfully!', 'success');
+            closeModal('changePasswordModal');
+            document.getElementById('changePasswordForm').reset();
+        } else {
+            showAlert(data.error || 'Failed to change password', 'error');
+        }
+    } catch (error) {
+        showAlert('Network error. Please try again.', 'error');
+    }
+}
+
+function showChangePassword() {
+    showModal('changePasswordModal');
+}
+
+// Chats Panel Functions
+async function openChatsPanel() {
+    if (!currentUser) {
+        showAlert('Please login to view chats', 'error');
+        return;
+    }
+
+    showModal('chatsPanelModal');
+    loadAllChats();
+}
+
+async function loadAllChats() {
+    try {
+        const res = await fetch(API + '/messages/my-chats', {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            renderChatsList(data.chats || []);
+        }
+    } catch (error) {
+        console.error('Failed to load chats');
+    }
+}
+
+function renderChatsList(chats) {
+    const chatsList = document.getElementById('chatsList');
+
+    if (chats.length === 0) {
+        chatsList.innerHTML = '<p style="text-align:center;opacity:0.7;">No chats yet</p>';
+        return;
+    }
+
+    chatsList.innerHTML = chats.map(chat => `
+        <div class="chat-list-item" onclick="openChatFromList('${chat.listing_id}', '${chat.seller_id}')">
+            <img src="${chat.listing_image || '/uploads/default.png'}" alt="Listing">
+            <div class="chat-list-info">
+                <h4>${chat.listing_title || 'Listing'}</h4>
+                <p>${chat.last_message || 'No messages yet'}</p>
+                <small>${chat.last_message_time ? new Date(chat.last_message_time).toLocaleString() : ''}</small>
+            </div>
+            ${chat.unread_count > 0 ? `<span class="chat-unread-badge">${chat.unread_count}</span>` : ''}
+        </div>
+    `).join('');
+}
+
+function openChatFromList(listingId, sellerId) {
+    closeModal('chatsPanelModal');
+    openChat(listingId, sellerId);
+}
+
+// Close dropdown when clicking outside
 window.onclick = (e) => {
     if (e.target.classList.contains('modal')) {
         e.target.classList.remove('show');
+    }
+
+    // Close profile dropdown when clicking outside
+    const dropdown = document.getElementById('profileDropdown');
+    if (dropdown && !e.target.closest('.profile-btn') && !e.target.closest('.profile-dropdown')) {
+        dropdown.classList.remove('show');
     }
 };

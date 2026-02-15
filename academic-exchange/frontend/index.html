@@ -16,6 +16,25 @@
         </div>
     </nav>
 
+    <!-- Profile Dropdown Menu -->
+    <div class="profile-dropdown" id="profileDropdown">
+        <div class="dropdown-item" onclick="showSellModal(); closeProfileDropdown()">
+            <span>📦</span> Sell Item
+        </div>
+        <div class="dropdown-item" onclick="openChatsPanel(); closeProfileDropdown()">
+            <span>💬</span> Chats
+        </div>
+        <div class="dropdown-item" onclick="showChangePassword(); closeProfileDropdown()">
+            <span>🔒</span> Change Password
+        </div>
+        <div class="dropdown-item" onclick="showProfile(); closeProfileDropdown()">
+            <span>👤</span> My Profile
+        </div>
+        <div class="dropdown-item" onclick="logout(); closeProfileDropdown()">
+            <span>🚪</span> Logout
+        </div>
+    </div>
+
     <!-- Hero Section -->
     <section class="hero">
         <h1>Student-to-Student Marketplace</h1>
@@ -186,6 +205,29 @@
                         💳 Pay with Stripe
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal" id="changePasswordModal">
+        <div class="modal-content">
+            <h2>Change Password</h2>
+            <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
+                <input type="password" class="form-input" placeholder="Current Password" required id="currentPassword">
+                <input type="password" class="form-input" placeholder="New Password" required id="newPassword">
+                <input type="password" class="form-input" placeholder="Confirm New Password" required id="confirmPassword">
+                <button type="submit" class="btn btn-primary" style="width:100%">Change Password</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Chats Panel Modal -->
+    <div class="modal" id="chatsPanelModal">
+        <div class="modal-content" style="max-width: 800px;">
+            <h2>My Chats</h2>
+            <div id="chatsList" class="chats-list">
+                <!-- Dynamic chat list will be loaded here -->
             </div>
         </div>
     </div>
