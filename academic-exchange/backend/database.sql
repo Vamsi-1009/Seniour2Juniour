@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS listings (
     status VARCHAR(20) DEFAULT 'active',
     images TEXT[] NOT NULL,
     location VARCHAR(100),
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
     views INTEGER DEFAULT 0,
     is_featured BOOLEAN DEFAULT FALSE,
     is_draft BOOLEAN DEFAULT FALSE,
@@ -84,6 +86,7 @@ CREATE INDEX IF NOT EXISTS idx_listings_user_id ON listings(user_id);
 CREATE INDEX IF NOT EXISTS idx_listings_category ON listings(category);
 CREATE INDEX IF NOT EXISTS idx_listings_status ON listings(status);
 CREATE INDEX IF NOT EXISTS idx_listings_created_at ON listings(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_listings_location ON listings(latitude, longitude);
 CREATE INDEX IF NOT EXISTS idx_messages_listing_id ON messages(listing_id);
 CREATE INDEX IF NOT EXISTS idx_wishlist_user_id ON wishlist(user_id);
 CREATE INDEX IF NOT EXISTS idx_recently_viewed_user_id ON recently_viewed(user_id);

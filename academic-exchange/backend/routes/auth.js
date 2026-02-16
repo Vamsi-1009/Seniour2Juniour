@@ -31,9 +31,14 @@ router.post('/register', async (req, res) => {
 
         const user = newUser.rows[0];
 
-        // Generate token
+        // Generate token with user info
         const token = jwt.sign(
-            { user_id: user.user_id, role: user.role },
+            {
+                user_id: user.user_id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+            },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
@@ -86,9 +91,14 @@ router.post('/login', async (req, res) => {
         // Update last login
         await pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = $1', [user.user_id]);
 
-        // Generate token
+        // Generate token with user info
         const token = jwt.sign(
-            { user_id: user.user_id, role: user.role },
+            {
+                user_id: user.user_id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+            },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );

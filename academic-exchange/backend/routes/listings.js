@@ -94,19 +94,27 @@ router.get('/', async (req, res) => {
 
 router.post('/', authenticateToken, upload.array('images', 5), async (req, res) => {
     try {
-        const { title, description, price, category, condition, location } = req.body;
+        const { title, description, price, category, condition, location, latitude, longitude } = req.body;
+
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ error: 'At least one image required' });
         }
+
         const imageUrls = req.files.map(f => '/uploads/' + f.filename);
+
+        // Parse latitude and longitude if provided
+        const lat = latitude ? parseFloat(latitude) : null;
+        const lng = longitude ? parseFloat(longitude) : null;
+
         const result = await pool.query(
-            'INSERT INTO listings (user_id, title, description, price, category, condition, images, location) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-            [req.user.user_id, title, description, price, category, condition, imageUrls, location]
+            'INSERT INTO listings (user_id, title, description, price, category, condition, images, location, latitude, longitude) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+            [req.user.user_id, title, description, price, category, condition, imageUrls, location, lat, lng]
         );
+
         res.status(201).json({ success: true, listing: result.rows[0] });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to create listing' });
+        console.error('Listing creation error:', error);
+        res.status(500).json({ error: 'Failed to create listing', details: error.message });
     }
 });
 
