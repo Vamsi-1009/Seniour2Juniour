@@ -211,7 +211,7 @@ async function handleChangePassword(e) {
 // ============================
 async function loadListings() {
     const grid = document.getElementById('listingsGrid');
-    grid.innerHTML = '<div class="loading-state">Loading listings...</div>';
+    grid.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Loading listings...</p></div>';
     try {
         const params = new URLSearchParams();
         if (activeCategory && activeCategory !== 'all') params.set('category', activeCategory);
@@ -227,6 +227,9 @@ async function loadListings() {
         const data = await res.json();
         if (data.success) {
             allListings = data.listings;
+            // Update hero stat counter
+            const statEl = document.getElementById('statListings');
+            if (statEl) statEl.textContent = data.listings.length;
             applySearchFilter();
         } else {
             grid.innerHTML = '<div class="loading-state">Failed to load listings.</div>';
@@ -250,17 +253,35 @@ function applySearchFilter() {
 
 function renderListings(listings) {
     const grid = document.getElementById('listingsGrid');
+    // Update section listing count
+    const countEl = document.getElementById('listingCount');
+    if (countEl) countEl.textContent = listings ? listings.length : 0;
+
     if (!listings || listings.length === 0) {
-        grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📚</div><p>No listings found</p><small>Try adjusting your filters</small></div>';
+        grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📚</div><p>No listings found</p><small>Try adjusting your filters or be the first to post!</small></div>';
         return;
     }
-    grid.innerHTML = listings.map(item => {
+
+    const categoryIcons = {
+        'Books': '📚', 'Electronics': '💻', 'Notes': '📓', 'Lab Equipment': '🔬',
+        'Stationery': '✏️', 'Sports': '⚽', 'Clothing': '👕', 'Other': '📦'
+    };
+
+    grid.innerHTML = listings.map((item, idx) => {
         const img = item.images && item.images.length > 0 ? item.images[0] : '';
-        const imgEl = img ? `<img src="${img}" class="card-image" alt="${escapeHtml(item.title)}" onerror="this.style.display='none'">` : '<div class="card-image-placeholder">📷</div>';
+        const imgEl = img
+            ? `<img src="${img}" class="card-image" alt="${escapeHtml(item.title)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\'card-image-placeholder\'>📷</div>'">`
+            : '<div class="card-image-placeholder">📷</div>';
         const condBadge = item.condition === 'New' ? 'badge-new' : 'badge-used';
+        const catIcon = categoryIcons[item.category] || '📦';
+        const initials = item.seller_name ? item.seller_name.charAt(0).toUpperCase() : '?';
         return `
-            <div class="card" onclick="viewListing('${item.listing_id}')">
-                ${imgEl}
+            <div class="card" onclick="viewListing('${item.listing_id}')" style="animation-delay:${idx * 0.05}s">
+                <div class="card-image-wrap">
+                    ${imgEl}
+                    <button class="card-wish" onclick="event.stopPropagation(); toggleWish(this, '${item.listing_id}')" title="Wishlist">♡</button>
+                    <span class="card-category">${catIcon} ${escapeHtml(item.category || 'Other')}</span>
+                </div>
                 <div class="card-content">
                     <h3 class="card-title">${escapeHtml(item.title)}</h3>
                     <p class="card-price">₹${Number(item.price).toLocaleString('en-IN')}</p>
@@ -268,11 +289,20 @@ function renderListings(listings) {
                         <span class="badge ${condBadge}">${item.condition}</span>
                         <span class="card-location">📍 ${escapeHtml(item.location || 'Online')}</span>
                     </div>
-                    <div class="card-seller">By ${escapeHtml(item.seller_name || 'Unknown')}</div>
+                    <div class="card-seller">
+                        <div class="seller-chip">${initials}</div>
+                        <span>${escapeHtml(item.seller_name || 'Unknown')}</span>
+                    </div>
                 </div>
             </div>
         `;
     }).join('');
+}
+
+function toggleWish(btn, listingId) {
+    const wished = btn.classList.toggle('wished');
+    btn.textContent = wished ? '♥' : '♡';
+    if (wished) showToast('Added to wishlist', 'success');
 }
 
 async function viewListing(id) {
@@ -774,13 +804,14 @@ function escapeHtml(str) {
 function showToast(message, type = 'info') {
     const existing = document.querySelector('.toast');
     if (existing) existing.remove();
+    const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    toast.textContent = message;
+    toast.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span>${escapeHtml(message)}</span>`;
     document.body.appendChild(toast);
     setTimeout(() => toast.classList.add('show'), 10);
     setTimeout(() => {
         toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
+        setTimeout(() => toast.remove(), 400);
     }, 3000);
 }

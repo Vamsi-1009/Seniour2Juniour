@@ -2,227 +2,427 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Academic Exchange - Student Marketplace</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0f0c29">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Academic Exchange — Student Marketplace</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar">
-        <div class="logo">🎓 Academic Exchange</div>
-        <div class="nav-menu" id="navMenu">
-            <button class="nav-btn" onclick="showLogin()">Login</button>
-            <button class="nav-btn primary" onclick="showRegister()">Sign Up</button>
-        </div>
-    </nav>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <h1>Student-to-Student Marketplace</h1>
-        <p>Buy, sell, and trade academic resources with fellow students</p>
-        <div class="search-container">
-            <input type="text" class="search-input" id="searchInput" placeholder="Search books, notes, gadgets...">
-            <button class="location-btn" onclick="openMapFilter()" title="Filter by location">📍 Near Me</button>
-        </div>
-        <!-- Active location filter indicator -->
-        <div id="locationFilterBadge" class="location-badge hidden">
-            <span id="locationFilterText">Filtering by location</span>
-            <button onclick="clearLocationFilter()">✕</button>
-        </div>
-    </section>
+<!-- ── ANIMATED BG ─────────────────────────────────── -->
+<div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+</div>
+<canvas id="particleCanvas"></canvas>
 
-    <!-- Filters -->
+<!-- ── NAVBAR ──────────────────────────────────────── -->
+<nav class="navbar">
+    <div class="logo" onclick="scrollTo(0,0)">
+        <span class="logo-icon">🎓</span>
+        Academic Exchange
+    </div>
+    <div class="nav-menu" id="navMenu">
+        <button class="nav-btn" onclick="showLogin()">Login</button>
+        <button class="nav-btn primary" onclick="showRegister()">Sign Up</button>
+    </div>
+</nav>
+
+<!-- ── HERO ─────────────────────────────────────────── -->
+<section class="hero">
+    <!-- Floating background emojis -->
+    <div class="hero-floaters">
+        <span class="floater">📚</span>
+        <span class="floater">🔬</span>
+        <span class="floater">💡</span>
+        <span class="floater">🧪</span>
+        <span class="floater">📐</span>
+        <span class="floater">🎯</span>
+        <span class="floater">✏️</span>
+        <span class="floater">🖥️</span>
+        <span class="floater">📓</span>
+        <span class="floater">🏆</span>
+    </div>
+
+    <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        India's #1 Student Marketplace — Free to Use
+    </div>
+
+    <h1>Student‑to‑Student<br>Marketplace</h1>
+
+    <p class="hero-subtitle">
+        Buy, sell &amp; trade books, notes, gadgets and more<br>
+        with students at your college and nearby
+    </p>
+
+    <div class="hero-stats">
+        <div class="stat-item">
+            <div class="stat-num" id="statListings">—</div>
+            <div class="stat-label">Listings</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">100%</div>
+            <div class="stat-label">Free</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">⚡</div>
+            <div class="stat-label">Real‑time Chat</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">📍</div>
+            <div class="stat-label">Near You</div>
+        </div>
+    </div>
+
+    <div class="search-container">
+        <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="searchInput"
+                   placeholder="Search books, notes, gadgets, lab kits…"
+                   autocomplete="off">
+        </div>
+        <button class="location-btn" onclick="openMapFilter()">📍 Near Me</button>
+    </div>
+
+    <div id="locationFilterBadge" class="location-badge hidden">
+        <span>📍</span>
+        <span id="locationFilterText">Filtering by location</span>
+        <button onclick="clearLocationFilter()">✕</button>
+    </div>
+</section>
+
+<!-- ── STICKY FILTER BAR ─────────────────────────────── -->
+<div class="filters-wrapper">
     <div class="filters">
         <div class="filter-row">
-            <span class="filter-label">Category:</span>
-            <button class="filter-btn active" onclick="filterCategory('all', this)">All</button>
-            <button class="filter-btn" onclick="filterCategory('Engineering', this)">Engineering</button>
-            <button class="filter-btn" onclick="filterCategory('MBBS', this)">MBBS</button>
-            <button class="filter-btn" onclick="filterCategory('Law', this)">Law</button>
-            <button class="filter-btn" onclick="filterCategory('Gadgets', this)">Gadgets</button>
+            <span class="filter-label">Category</span>
+            <button class="filter-btn active" onclick="filterCategory('all',this)">All</button>
+            <button class="filter-btn" onclick="filterCategory('Engineering',this)">⚙️ Engineering</button>
+            <button class="filter-btn" onclick="filterCategory('MBBS',this)">🩺 MBBS</button>
+            <button class="filter-btn" onclick="filterCategory('Law',this)">⚖️ Law</button>
+            <button class="filter-btn" onclick="filterCategory('Gadgets',this)">🖥️ Gadgets</button>
         </div>
         <div class="filter-row">
-            <span class="filter-label">Condition:</span>
-            <button class="filter-btn condition-btn active" onclick="filterCondition('all', this)">All</button>
-            <button class="filter-btn condition-btn" onclick="filterCondition('New', this)">New</button>
-            <button class="filter-btn condition-btn" onclick="filterCondition('Used', this)">Used</button>
-        </div>
-        <div class="filter-row">
-            <span class="filter-label">Sort by:</span>
+            <span class="filter-label">Condition</span>
+            <button class="filter-btn condition-btn active" onclick="filterCondition('all',this)">All</button>
+            <button class="filter-btn condition-btn" onclick="filterCondition('New',this)">✨ New</button>
+            <button class="filter-btn condition-btn" onclick="filterCondition('Used',this)">♻️ Used</button>
             <select class="sort-select" id="sortSelect" onchange="applyFilters()">
-                <option value="">Latest</option>
-                <option value="price_low">Price: Low to High</option>
-                <option value="price_high">Price: High to Low</option>
-                <option value="popular">Most Popular</option>
+                <option value="">↕ Latest</option>
+                <option value="price_low">↑ Price Low</option>
+                <option value="price_high">↓ Price High</option>
+                <option value="popular">🔥 Popular</option>
             </select>
         </div>
     </div>
+</div>
 
-    <!-- Listings Grid -->
-    <div class="listings-grid" id="listingsGrid">
-        <div class="loading-state">Loading listings...</div>
+<!-- ── SECTION HEADER ────────────────────────────────── -->
+<div class="section-header">
+    <span class="section-title">✨ Latest Listings</span>
+    <span class="section-count" id="listingCount"></span>
+</div>
+
+<!-- ── LISTINGS GRID ─────────────────────────────────── -->
+<div class="listings-grid" id="listingsGrid">
+    <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Loading listings…</p>
     </div>
+</div>
 
-    <!-- ========== MODALS ========== -->
+<!-- ── FOOTER ─────────────────────────────────────────── -->
+<footer class="footer">
+    Made with ❤️ for students · <strong>Academic Exchange</strong> · © 2025
+</footer>
 
-    <!-- Login Modal -->
-    <div class="modal" id="loginModal">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeModal('loginModal')">✕</button>
-            <h2>Welcome Back</h2>
-            <form id="loginForm" onsubmit="handleLogin(event)">
-                <input type="email" class="form-input" placeholder="Email" required id="loginEmail">
-                <input type="password" class="form-input" placeholder="Password" required id="loginPassword">
-                <button type="submit" class="btn btn-primary" style="width:100%">Login</button>
-            </form>
-            <p style="margin-top:1rem;text-align:center">
-                Don't have an account? <a href="#" onclick="showRegister()" style="color:var(--accent)">Sign up</a>
-            </p>
+<!-- ── SCROLL TO TOP ──────────────────────────────────── -->
+<button class="scroll-top" id="scrollTopBtn" onclick="scrollTo({top:0,behavior:'smooth'})">▲</button>
+
+<!-- ══════════════════════════════════════════════════════
+     PROFILE DROPDOWN
+═════════════════════════════════════════════════════════ -->
+<div class="profile-dropdown" id="profileDropdown">
+    <button class="dropdown-item" onclick="closeDropdown();showSellModal()">
+        <span class="di-icon">🛒</span> Sell Item
+    </button>
+    <button class="dropdown-item" onclick="closeDropdown();showMyItems()">
+        <span class="di-icon">📦</span> My Items
+    </button>
+    <button class="dropdown-item" onclick="closeDropdown();showChats()">
+        <span class="di-icon">💬</span> Chats
+    </button>
+    <button class="dropdown-item" onclick="closeDropdown();showChangePassword()">
+        <span class="di-icon">🔒</span> Change Password
+    </button>
+    <hr class="dropdown-divider">
+    <button class="dropdown-item danger" onclick="logout()">
+        <span class="di-icon">🚪</span> Logout
+    </button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MODALS
+═════════════════════════════════════════════════════════ -->
+
+<!-- LOGIN -->
+<div class="modal" id="loginModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('loginModal')">✕</button>
+        <div class="modal-header-icon">👋</div>
+        <h2>Welcome Back!</h2>
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <input type="email"    class="form-input" placeholder="Email address"  required id="loginEmail">
+            <input type="password" class="form-input" placeholder="Password"       required id="loginPassword">
+            <button type="submit" class="btn btn-primary" style="width:100%">Login →</button>
+        </form>
+        <p style="margin-top:1rem;text-align:center;font-size:.88rem;color:var(--text-muted)">
+            No account? <a href="#" onclick="showRegister()" style="color:#c4b5fd;font-weight:600">Sign up free</a>
+        </p>
+    </div>
+</div>
+
+<!-- REGISTER -->
+<div class="modal" id="registerModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('registerModal')">✕</button>
+        <div class="modal-header-icon">🚀</div>
+        <h2>Create Account</h2>
+        <form id="registerForm" onsubmit="handleRegister(event)">
+            <input type="text"     class="form-input" placeholder="Full Name"      required id="registerName">
+            <input type="email"    class="form-input" placeholder="Email address"  required id="registerEmail">
+            <input type="password" class="form-input" placeholder="Password (min 6 chars)" required id="registerPassword">
+            <button type="submit" class="btn btn-primary" style="width:100%">Create Account 🎉</button>
+        </form>
+        <p style="margin-top:1rem;text-align:center;font-size:.88rem;color:var(--text-muted)">
+            Already have an account? <a href="#" onclick="showLogin()" style="color:#c4b5fd;font-weight:600">Login</a>
+        </p>
+    </div>
+</div>
+
+<!-- SELL -->
+<div class="modal" id="sellModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('sellModal')">✕</button>
+        <div class="modal-header-icon">🛒</div>
+        <h2>Post a Listing</h2>
+        <form id="sellForm" onsubmit="handleSell(event)">
+            <input type="text"   class="form-input"    placeholder="Item title"            required id="sellTitle">
+            <textarea            class="form-textarea"  placeholder="Description (condition, edition, etc.)" required id="sellDesc" rows="3"></textarea>
+            <input type="number" class="form-input"    placeholder="Price (₹)"             required id="sellPrice" min="0">
+            <select              class="form-select"                                        required id="sellCategory">
+                <option value="">Select Category</option>
+                <option value="Engineering">⚙️ Engineering</option>
+                <option value="MBBS">🩺 MBBS</option>
+                <option value="Law">⚖️ Law</option>
+                <option value="Gadgets">🖥️ Gadgets</option>
+            </select>
+            <select class="form-select" id="sellCondition" required>
+                <option value="New">✨ New</option>
+                <option value="Used">♻️ Used</option>
+            </select>
+            <div class="location-pick-group">
+                <input type="text" class="form-input" placeholder="Location (e.g. Hyderabad)" id="sellLocation">
+                <button type="button" class="btn-pick-location" onclick="openSellLocationPicker()">📍 Pick on Map</button>
+                <span id="sellLocationCoords" class="coords-display"></span>
+            </div>
+            <input type="file" class="form-input" id="sellImages" accept="image/*" multiple required>
+            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.5rem">Post Listing 📤</button>
+        </form>
+    </div>
+</div>
+
+<!-- LISTING DETAIL -->
+<div class="modal" id="listingModal">
+    <div class="modal-content modal-wide">
+        <button class="modal-close" onclick="closeModal('listingModal')">✕</button>
+        <div id="listingDetail"></div>
+    </div>
+</div>
+
+<!-- MY ITEMS -->
+<div class="modal" id="myItemsModal">
+    <div class="modal-content modal-wide">
+        <button class="modal-close" onclick="closeModal('myItemsModal')">✕</button>
+        <div class="modal-header-icon">📦</div>
+        <h2>My Items</h2>
+        <div id="myItemsContent" class="my-items-grid">
+            <div class="loading-state"><div class="loading-spinner"></div><p>Loading…</p></div>
         </div>
     </div>
+</div>
 
-    <!-- Register Modal -->
-    <div class="modal" id="registerModal">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeModal('registerModal')">✕</button>
-            <h2>Create Account</h2>
-            <form id="registerForm" onsubmit="handleRegister(event)">
-                <input type="text" class="form-input" placeholder="Full Name" required id="registerName">
-                <input type="email" class="form-input" placeholder="Email" required id="registerEmail">
-                <input type="password" class="form-input" placeholder="Password" required id="registerPassword">
-                <button type="submit" class="btn btn-primary" style="width:100%">Sign Up</button>
-            </form>
-            <p style="margin-top:1rem;text-align:center">
-                Already have an account? <a href="#" onclick="showLogin()" style="color:var(--accent)">Login</a>
-            </p>
-        </div>
-    </div>
-
-    <!-- Sell Modal -->
-    <div class="modal" id="sellModal">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeModal('sellModal')">✕</button>
-            <h2>Sell an Item</h2>
-            <form id="sellForm" onsubmit="handleSell(event)">
-                <input type="text" class="form-input" placeholder="Title" required id="sellTitle">
-                <textarea class="form-textarea" placeholder="Description" required id="sellDesc" rows="3"></textarea>
-                <input type="number" class="form-input" placeholder="Price (₹)" required id="sellPrice" min="0">
-                <select class="form-select" id="sellCategory" required>
-                    <option value="">Select Category</option>
-                    <option value="Engineering">Engineering</option>
-                    <option value="MBBS">MBBS</option>
-                    <option value="Law">Law</option>
-                    <option value="Gadgets">Gadgets</option>
-                </select>
-                <select class="form-select" id="sellCondition" required>
-                    <option value="New">New</option>
-                    <option value="Used">Used</option>
-                </select>
-                <div class="location-pick-group">
-                    <input type="text" class="form-input" placeholder="Location (e.g. Hyderabad)" id="sellLocation" style="margin-bottom:0.5rem">
-                    <button type="button" class="btn-pick-location" onclick="openSellLocationPicker()">📍 Pick on Map</button>
-                    <span id="sellLocationCoords" class="coords-display"></span>
+<!-- CHATS -->
+<div class="modal" id="chatsModal">
+    <div class="modal-content modal-wide chat-layout">
+        <button class="modal-close" onclick="closeModal('chatsModal')">✕</button>
+        <h2>💬 Chats</h2>
+        <div class="chat-container">
+            <div class="chat-list" id="chatList">
+                <div class="loading-state"><div class="loading-spinner"></div></div>
+            </div>
+            <div class="chat-window" id="chatWindow">
+                <div class="chat-placeholder">
+                    <span class="chat-placeholder-icon">💬</span>
+                    Select a conversation
                 </div>
-                <input type="file" class="form-input" id="sellImages" accept="image/*" multiple required>
-                <button type="submit" class="btn btn-primary" style="width:100%;margin-top:0.5rem">Post Listing</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Listing Detail Modal -->
-    <div class="modal" id="listingModal">
-        <div class="modal-content modal-wide">
-            <button class="modal-close" onclick="closeModal('listingModal')">✕</button>
-            <div id="listingDetail"></div>
-        </div>
-    </div>
-
-    <!-- Profile Dropdown (shown below navbar) -->
-    <div class="profile-dropdown" id="profileDropdown">
-        <button class="dropdown-item" onclick="closeDropdown(); showSellModal()">🛒 Sell Item</button>
-        <button class="dropdown-item" onclick="closeDropdown(); showMyItems()">📦 My Items</button>
-        <button class="dropdown-item" onclick="closeDropdown(); showChats()">💬 Chats</button>
-        <button class="dropdown-item" onclick="closeDropdown(); showChangePassword()">🔒 Change Password</button>
-        <hr class="dropdown-divider">
-        <button class="dropdown-item danger" onclick="logout()">🚪 Logout</button>
-    </div>
-
-    <!-- My Items Modal -->
-    <div class="modal" id="myItemsModal">
-        <div class="modal-content modal-wide">
-            <button class="modal-close" onclick="closeModal('myItemsModal')">✕</button>
-            <h2>My Items</h2>
-            <div id="myItemsContent" class="my-items-grid">
-                <div class="loading-state">Loading your items...</div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Chats Modal -->
-    <div class="modal" id="chatsModal">
-        <div class="modal-content modal-wide chat-layout">
-            <button class="modal-close" onclick="closeModal('chatsModal')">✕</button>
-            <h2>Chats</h2>
-            <div class="chat-container">
-                <div class="chat-list" id="chatList">
-                    <div class="loading-state">Loading chats...</div>
-                </div>
-                <div class="chat-window" id="chatWindow">
-                    <div class="chat-placeholder">Select a conversation to start chatting</div>
-                </div>
-            </div>
+<!-- CHANGE PASSWORD -->
+<div class="modal" id="changePasswordModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('changePasswordModal')">✕</button>
+        <div class="modal-header-icon">🔒</div>
+        <h2>Change Password</h2>
+        <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
+            <input type="password" class="form-input" placeholder="Current Password"      required id="currentPassword">
+            <input type="password" class="form-input" placeholder="New Password"          required id="newPassword">
+            <input type="password" class="form-input" placeholder="Confirm New Password"  required id="confirmPassword">
+            <button type="submit" class="btn btn-primary" style="width:100%">Update Password</button>
+        </form>
+        <div id="changePasswordMsg" class="form-message"></div>
+    </div>
+</div>
+
+<!-- MAP FILTER -->
+<div class="modal" id="mapFilterModal">
+    <div class="modal-content modal-wide">
+        <button class="modal-close" onclick="closeModal('mapFilterModal')">✕</button>
+        <div class="modal-header-icon">📍</div>
+        <h2>Filter by Location</h2>
+        <p class="map-hint">Click anywhere on the map to set your location, then drag the radius slider.</p>
+        <div id="mapContainer" style="height:340px;border-radius:16px;overflow:hidden;margin:1rem 0;border:1px solid var(--border)"></div>
+        <div class="range-control">
+            <label>Search Radius: <strong id="radiusValue">10 km</strong></label>
+            <input type="range" id="radiusSlider" min="1" max="100" value="10" oninput="updateRadius(this.value)">
+        </div>
+        <div id="mapLocationText" class="map-location-text">No location selected — click the map above</div>
+        <div style="display:flex;gap:.75rem;margin-top:1rem">
+            <button class="btn btn-secondary" style="flex:1" onclick="useMyLocation()">📡 Use My Location</button>
+            <button class="btn btn-primary"   style="flex:1" onclick="applyLocationFilter()">Apply Filter ✓</button>
         </div>
     </div>
+</div>
 
-    <!-- Change Password Modal -->
-    <div class="modal" id="changePasswordModal">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeModal('changePasswordModal')">✕</button>
-            <h2>Change Password</h2>
-            <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
-                <input type="password" class="form-input" placeholder="Current Password" required id="currentPassword">
-                <input type="password" class="form-input" placeholder="New Password" required id="newPassword">
-                <input type="password" class="form-input" placeholder="Confirm New Password" required id="confirmPassword">
-                <button type="submit" class="btn btn-primary" style="width:100%">Update Password</button>
-            </form>
-            <div id="changePasswordMsg" class="form-message"></div>
-        </div>
+<!-- SELL LOCATION PICKER -->
+<div class="modal" id="sellMapModal">
+    <div class="modal-content modal-wide">
+        <button class="modal-close" onclick="closeModal('sellMapModal')">✕</button>
+        <div class="modal-header-icon">📌</div>
+        <h2>Pick Item Location</h2>
+        <p class="map-hint">Click on the map to mark where this item is located.</p>
+        <div id="sellMapContainer" style="height:340px;border-radius:16px;overflow:hidden;margin:1rem 0;border:1px solid var(--border)"></div>
+        <div id="sellMapLocationText" class="map-location-text">No location selected — click the map</div>
+        <button class="btn btn-primary" style="width:100%;margin-top:1rem" onclick="confirmSellLocation()">Confirm Location 📌</button>
     </div>
+</div>
 
-    <!-- Map Filter Modal -->
-    <div class="modal" id="mapFilterModal">
-        <div class="modal-content modal-wide">
-            <button class="modal-close" onclick="closeModal('mapFilterModal')">✕</button>
-            <h2>📍 Filter by Location</h2>
-            <p class="map-hint">Click on the map to set your location, then choose a radius to see nearby listings.</p>
-            <div id="mapContainer" style="height:350px;border-radius:15px;overflow:hidden;margin:1rem 0;"></div>
-            <div class="range-control">
-                <label>Search Radius: <strong id="radiusValue">10 km</strong></label>
-                <input type="range" id="radiusSlider" min="1" max="100" value="10" oninput="updateRadius(this.value)">
-            </div>
-            <div id="mapLocationText" class="map-location-text">No location selected. Click the map.</div>
-            <div style="display:flex;gap:1rem;margin-top:1rem">
-                <button class="btn btn-primary" style="flex:1" onclick="useMyLocation()">📡 Use My Location</button>
-                <button class="btn btn-primary" style="flex:1" onclick="applyLocationFilter()">Apply Filter</button>
-            </div>
-        </div>
-    </div>
+<!-- ── SCRIPTS ──────────────────────────────────────── -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+<script src="js/main.js"></script>
+<script>
+// ── PARTICLE SYSTEM ───────────────────────────────────
+(function() {
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let W, H, particles = [];
 
-    <!-- Sell Location Picker Modal -->
-    <div class="modal" id="sellMapModal">
-        <div class="modal-content modal-wide">
-            <button class="modal-close" onclick="closeModal('sellMapModal')">✕</button>
-            <h2>📍 Pick Item Location</h2>
-            <p class="map-hint">Click on the map to set where this item is located.</p>
-            <div id="sellMapContainer" style="height:350px;border-radius:15px;overflow:hidden;margin:1rem 0;"></div>
-            <div id="sellMapLocationText" class="map-location-text">No location selected. Click the map.</div>
-            <button class="btn btn-primary" style="width:100%;margin-top:1rem" onclick="confirmSellLocation()">Confirm Location</button>
-        </div>
-    </div>
+    function resize() {
+        W = canvas.width  = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
-    <script src="js/main.js"></script>
+    function Particle() {
+        this.reset();
+    }
+    Particle.prototype.reset = function() {
+        this.x = Math.random() * W;
+        this.y = Math.random() * H;
+        this.r = Math.random() * 1.5 + 0.3;
+        this.vx = (Math.random() - 0.5) * 0.4;
+        this.vy = (Math.random() - 0.5) * 0.4;
+        this.alpha = Math.random() * 0.5 + 0.1;
+        const hues = [260, 190, 310, 40];
+        this.hue = hues[Math.floor(Math.random() * hues.length)];
+    };
+    Particle.prototype.update = function() {
+        this.x += this.vx; this.y += this.vy;
+        if (this.x < 0 || this.x > W || this.y < 0 || this.y > H) this.reset();
+    };
+    Particle.prototype.draw = function() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${this.hue},80%,70%,${this.alpha})`;
+        ctx.fill();
+    };
+
+    for (let i = 0; i < 120; i++) particles.push(new Particle());
+
+    // draw connections
+    function drawConnections() {
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 100) {
+                    ctx.beginPath();
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.strokeStyle = `rgba(167,139,250,${0.08 * (1 - dist/100)})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+
+    function loop() {
+        ctx.clearRect(0, 0, W, H);
+        drawConnections();
+        particles.forEach(p => { p.update(); p.draw(); });
+        requestAnimationFrame(loop);
+    }
+    loop();
+})();
+
+// ── SCROLL-TO-TOP ─────────────────────────────────────
+window.addEventListener('scroll', function() {
+    const btn = document.getElementById('scrollTopBtn');
+    if (window.scrollY > 400) btn.classList.add('visible');
+    else btn.classList.remove('visible');
+});
+
+// ── STAGGER CARD ENTRANCE ─────────────────────────────
+const cardObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+        if (entry.isIntersecting) {
+            entry.target.style.animationDelay = (i * 0.06) + 's';
+            entry.target.classList.add('visible');
+            cardObserver.unobserve(entry.target);
+        }
+    });
+}, { threshold: 0.1 });
+
+// observe new cards whenever grid updates
+const gridObserver = new MutationObserver(() => {
+    document.querySelectorAll('.card:not(.visible)').forEach(card => {
+        cardObserver.observe(card);
+    });
+});
+gridObserver.observe(document.getElementById('listingsGrid'), { childList: true });
+</script>
 </body>
 </html>
