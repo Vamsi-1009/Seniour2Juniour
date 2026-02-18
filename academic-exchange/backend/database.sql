@@ -79,6 +79,19 @@ CREATE TABLE IF NOT EXISTS reports (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Add location coordinates columns (migration - safe to run multiple times)
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='listings' AND column_name='latitude') THEN
+        ALTER TABLE listings ADD COLUMN latitude DECIMAL(10, 7);
+    END IF;
+END $$;
+
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='listings' AND column_name='longitude') THEN
+        ALTER TABLE listings ADD COLUMN longitude DECIMAL(10, 7);
+    END IF;
+END $$;
+
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_listings_user_id ON listings(user_id);
 CREATE INDEX IF NOT EXISTS idx_listings_category ON listings(category);

@@ -24,35 +24,23 @@ if (!fs.existsSync(uploadsDir)) {
     console.log('✅ Created uploads folder');
 }
 
+// Make io available to routes
+app.set('io', io);
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/listings', require('./routes/listings'));
 app.use('/api/user', require('./routes/user'));
+app.use('/api/messages', require('./routes/messages'));
 app.use('/api/wishlist', require('./routes/wishlist'));
 app.use('/api/admin', require('./routes/admin'));
 
 // Socket.io for real-time chat
-const pool = require('./config/db');
-
 io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
-
-    socket.on('join_chat', ({ listingId, userId }) => {
-        socket.join(listingId);
-        console.log(`User ${userId} joined chat for listing ${listingId}`);
-    });
-
-    socket.on('send_message', async (data) => {
-        const { listingId, senderId, receiverId, message } = data;
-        try {
-            const result = await pool.query(
-                'INSERT INTO messages (listing_id, sender_id, receiver_id, content) VALUES ($1, $2, $3, $4) RETURNING *',
-                [listingId, senderId, receiverId, message]
-            );
-            io.to(listingId).emit('new_message', result.rows[0]);
-        } catch (error) {
-            console.error('Message save error:', error);
-        }
+    // User joins their own room for receiving DMs
+    socket.on('join', (userId) => {
+        socket.join(userId);
+        console.log(`User ${userId} joined socket room`);
     });
 
     socket.on('disconnect', () => {

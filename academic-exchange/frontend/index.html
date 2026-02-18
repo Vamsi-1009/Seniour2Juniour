@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Academic Exchange - Student Marketplace</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
     <!-- Navbar -->
@@ -22,26 +23,53 @@
         <p>Buy, sell, and trade academic resources with fellow students</p>
         <div class="search-container">
             <input type="text" class="search-input" id="searchInput" placeholder="Search books, notes, gadgets...">
+            <button class="location-btn" onclick="openMapFilter()" title="Filter by location">📍 Near Me</button>
+        </div>
+        <!-- Active location filter indicator -->
+        <div id="locationFilterBadge" class="location-badge hidden">
+            <span id="locationFilterText">Filtering by location</span>
+            <button onclick="clearLocationFilter()">✕</button>
         </div>
     </section>
 
     <!-- Filters -->
     <div class="filters">
-        <button class="filter-btn active" onclick="filterCategory('all')">All</button>
-        <button class="filter-btn" onclick="filterCategory('Engineering')">Engineering</button>
-        <button class="filter-btn" onclick="filterCategory('MBBS')">MBBS</button>
-        <button class="filter-btn" onclick="filterCategory('Law')">Law</button>
-        <button class="filter-btn" onclick="filterCategory('Gadgets')">Gadgets</button>
+        <div class="filter-row">
+            <span class="filter-label">Category:</span>
+            <button class="filter-btn active" onclick="filterCategory('all', this)">All</button>
+            <button class="filter-btn" onclick="filterCategory('Engineering', this)">Engineering</button>
+            <button class="filter-btn" onclick="filterCategory('MBBS', this)">MBBS</button>
+            <button class="filter-btn" onclick="filterCategory('Law', this)">Law</button>
+            <button class="filter-btn" onclick="filterCategory('Gadgets', this)">Gadgets</button>
+        </div>
+        <div class="filter-row">
+            <span class="filter-label">Condition:</span>
+            <button class="filter-btn condition-btn active" onclick="filterCondition('all', this)">All</button>
+            <button class="filter-btn condition-btn" onclick="filterCondition('New', this)">New</button>
+            <button class="filter-btn condition-btn" onclick="filterCondition('Used', this)">Used</button>
+        </div>
+        <div class="filter-row">
+            <span class="filter-label">Sort by:</span>
+            <select class="sort-select" id="sortSelect" onchange="applyFilters()">
+                <option value="">Latest</option>
+                <option value="price_low">Price: Low to High</option>
+                <option value="price_high">Price: High to Low</option>
+                <option value="popular">Most Popular</option>
+            </select>
+        </div>
     </div>
 
     <!-- Listings Grid -->
     <div class="listings-grid" id="listingsGrid">
-        <!-- Dynamic content -->
+        <div class="loading-state">Loading listings...</div>
     </div>
+
+    <!-- ========== MODALS ========== -->
 
     <!-- Login Modal -->
     <div class="modal" id="loginModal">
         <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('loginModal')">✕</button>
             <h2>Welcome Back</h2>
             <form id="loginForm" onsubmit="handleLogin(event)">
                 <input type="email" class="form-input" placeholder="Email" required id="loginEmail">
@@ -57,6 +85,7 @@
     <!-- Register Modal -->
     <div class="modal" id="registerModal">
         <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('registerModal')">✕</button>
             <h2>Create Account</h2>
             <form id="registerForm" onsubmit="handleRegister(event)">
                 <input type="text" class="form-input" placeholder="Full Name" required id="registerName">
@@ -73,11 +102,12 @@
     <!-- Sell Modal -->
     <div class="modal" id="sellModal">
         <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('sellModal')">✕</button>
             <h2>Sell an Item</h2>
             <form id="sellForm" onsubmit="handleSell(event)">
                 <input type="text" class="form-input" placeholder="Title" required id="sellTitle">
                 <textarea class="form-textarea" placeholder="Description" required id="sellDesc" rows="3"></textarea>
-                <input type="number" class="form-input" placeholder="Price (₹)" required id="sellPrice">
+                <input type="number" class="form-input" placeholder="Price (₹)" required id="sellPrice" min="0">
                 <select class="form-select" id="sellCategory" required>
                     <option value="">Select Category</option>
                     <option value="Engineering">Engineering</option>
@@ -89,21 +119,109 @@
                     <option value="New">New</option>
                     <option value="Used">Used</option>
                 </select>
-                <input type="text" class="form-input" placeholder="Location" id="sellLocation">
+                <div class="location-pick-group">
+                    <input type="text" class="form-input" placeholder="Location (e.g. Hyderabad)" id="sellLocation" style="margin-bottom:0.5rem">
+                    <button type="button" class="btn-pick-location" onclick="openSellLocationPicker()">📍 Pick on Map</button>
+                    <span id="sellLocationCoords" class="coords-display"></span>
+                </div>
                 <input type="file" class="form-input" id="sellImages" accept="image/*" multiple required>
-                <button type="submit" class="btn btn-primary" style="width:100%">Post Listing</button>
+                <button type="submit" class="btn btn-primary" style="width:100%;margin-top:0.5rem">Post Listing</button>
             </form>
         </div>
     </div>
 
-    <!-- Profile Modal -->
-    <div class="modal" id="profileModal">
-        <div class="modal-content">
-            <h2>My Profile</h2>
-            <div id="profileContent"></div>
+    <!-- Listing Detail Modal -->
+    <div class="modal" id="listingModal">
+        <div class="modal-content modal-wide">
+            <button class="modal-close" onclick="closeModal('listingModal')">✕</button>
+            <div id="listingDetail"></div>
         </div>
     </div>
 
+    <!-- Profile Dropdown (shown below navbar) -->
+    <div class="profile-dropdown" id="profileDropdown">
+        <button class="dropdown-item" onclick="closeDropdown(); showSellModal()">🛒 Sell Item</button>
+        <button class="dropdown-item" onclick="closeDropdown(); showMyItems()">📦 My Items</button>
+        <button class="dropdown-item" onclick="closeDropdown(); showChats()">💬 Chats</button>
+        <button class="dropdown-item" onclick="closeDropdown(); showChangePassword()">🔒 Change Password</button>
+        <hr class="dropdown-divider">
+        <button class="dropdown-item danger" onclick="logout()">🚪 Logout</button>
+    </div>
+
+    <!-- My Items Modal -->
+    <div class="modal" id="myItemsModal">
+        <div class="modal-content modal-wide">
+            <button class="modal-close" onclick="closeModal('myItemsModal')">✕</button>
+            <h2>My Items</h2>
+            <div id="myItemsContent" class="my-items-grid">
+                <div class="loading-state">Loading your items...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chats Modal -->
+    <div class="modal" id="chatsModal">
+        <div class="modal-content modal-wide chat-layout">
+            <button class="modal-close" onclick="closeModal('chatsModal')">✕</button>
+            <h2>Chats</h2>
+            <div class="chat-container">
+                <div class="chat-list" id="chatList">
+                    <div class="loading-state">Loading chats...</div>
+                </div>
+                <div class="chat-window" id="chatWindow">
+                    <div class="chat-placeholder">Select a conversation to start chatting</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal" id="changePasswordModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('changePasswordModal')">✕</button>
+            <h2>Change Password</h2>
+            <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
+                <input type="password" class="form-input" placeholder="Current Password" required id="currentPassword">
+                <input type="password" class="form-input" placeholder="New Password" required id="newPassword">
+                <input type="password" class="form-input" placeholder="Confirm New Password" required id="confirmPassword">
+                <button type="submit" class="btn btn-primary" style="width:100%">Update Password</button>
+            </form>
+            <div id="changePasswordMsg" class="form-message"></div>
+        </div>
+    </div>
+
+    <!-- Map Filter Modal -->
+    <div class="modal" id="mapFilterModal">
+        <div class="modal-content modal-wide">
+            <button class="modal-close" onclick="closeModal('mapFilterModal')">✕</button>
+            <h2>📍 Filter by Location</h2>
+            <p class="map-hint">Click on the map to set your location, then choose a radius to see nearby listings.</p>
+            <div id="mapContainer" style="height:350px;border-radius:15px;overflow:hidden;margin:1rem 0;"></div>
+            <div class="range-control">
+                <label>Search Radius: <strong id="radiusValue">10 km</strong></label>
+                <input type="range" id="radiusSlider" min="1" max="100" value="10" oninput="updateRadius(this.value)">
+            </div>
+            <div id="mapLocationText" class="map-location-text">No location selected. Click the map.</div>
+            <div style="display:flex;gap:1rem;margin-top:1rem">
+                <button class="btn btn-primary" style="flex:1" onclick="useMyLocation()">📡 Use My Location</button>
+                <button class="btn btn-primary" style="flex:1" onclick="applyLocationFilter()">Apply Filter</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sell Location Picker Modal -->
+    <div class="modal" id="sellMapModal">
+        <div class="modal-content modal-wide">
+            <button class="modal-close" onclick="closeModal('sellMapModal')">✕</button>
+            <h2>📍 Pick Item Location</h2>
+            <p class="map-hint">Click on the map to set where this item is located.</p>
+            <div id="sellMapContainer" style="height:350px;border-radius:15px;overflow:hidden;margin:1rem 0;"></div>
+            <div id="sellMapLocationText" class="map-location-text">No location selected. Click the map.</div>
+            <button class="btn btn-primary" style="width:100%;margin-top:1rem" onclick="confirmSellLocation()">Confirm Location</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="js/main.js"></script>
 </body>

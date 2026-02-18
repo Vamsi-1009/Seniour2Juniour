@@ -30,13 +30,18 @@ const upload = multer({
 
 router.get('/', async (req, res) => {
     try {
-        const { category, search, sort } = req.query;
+        const { category, search, sort, condition, lat, lng, radius } = req.query;
         let query = 'SELECT l.*, u.name as seller_name, u.avatar as seller_avatar FROM listings l JOIN users u ON l.user_id = u.user_id WHERE l.status = $1 AND l.is_draft = FALSE';
         const params = ['active'];
 
         if (category) {
             params.push(category);
             query += ' AND l.category = $' + params.length;
+        }
+
+        if (condition) {
+            params.push(condition);
+            query += ' AND l.condition = $' + params.length;
         }
 
         if (search) {
@@ -50,7 +55,28 @@ router.get('/', async (req, res) => {
         else query += ' ORDER BY l.created_at DESC';
 
         const result = await pool.query(query, params);
-        res.json({ success: true, listings: result.rows });
+        let listings = result.rows;
+
+        // Location-based filtering using Haversine formula (done in JS since coordinates stored as text)
+        if (lat && lng && radius) {
+            const userLat = parseFloat(lat);
+            const userLng = parseFloat(lng);
+            const radiusKm = parseFloat(radius);
+
+            listings = listings.filter(listing => {
+                if (!listing.latitude || !listing.longitude) return true; // include if no coords
+                const dLat = (listing.latitude - userLat) * Math.PI / 180;
+                const dLng = (listing.longitude - userLng) * Math.PI / 180;
+                const a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+                    Math.cos(userLat*Math.PI/180)*Math.cos(listing.latitude*Math.PI/180)*
+                    Math.sin(dLng/2)*Math.sin(dLng/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                const distance = 6371 * c; // km
+                return distance <= radiusKm;
+            });
+        }
+
+        res.json({ success: true, listings });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to fetch listings' });
@@ -59,14 +85,16 @@ router.get('/', async (req, res) => {
 
 router.post('/', authenticateToken, upload.array('images', 5), async (req, res) => {
     try {
-        const { title, description, price, category, condition, location } = req.body;
+        const { title, description, price, category, condition, location, latitude, longitude } = req.body;
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ error: 'At least one image required' });
         }
         const imageUrls = req.files.map(f => '/uploads/' + f.filename);
+        const lat = latitude ? parseFloat(latitude) : null;
+        const lng = longitude ? parseFloat(longitude) : null;
         const result = await pool.query(
-            'INSERT INTO listings (user_id, title, description, price, category, condition, images, location) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-            [req.user.user_id, title, description, price, category, condition, imageUrls, location]
+            'INSERT INTO listings (user_id, title, description, price, category, condition, images, location, latitude, longitude) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+            [req.user.user_id, title, description, price, category, condition, imageUrls, location, lat, lng]
         );
         res.status(201).json({ success: true, listing: result.rows[0] });
     } catch (error) {
