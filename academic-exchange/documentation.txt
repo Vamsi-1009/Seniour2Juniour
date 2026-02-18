@@ -15,6 +15,7 @@ Name        : Academic Exchange / Student-to-Student Marketplace
 Version     : 1.0.0
 Stack       : Node.js + Express.js (backend), Vanilla JavaScript SPA (frontend)
 Database    : PostgreSQL
+Storage     : Supabase Storage (cloud image hosting)
 Real-time   : Socket.io
 Maps        : Leaflet.js + OpenStreetMap (no API key needed)
 Design      : Deep dark glassmorphism UI with full animations
@@ -290,20 +291,23 @@ NOTE: No separate frontend server needed — the backend serves the frontend
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   BEFORE DEPLOYING - MUST DO:
+  [ ] Create Supabase project and Storage bucket named "listings" (set to public)
+        https://app.supabase.com → Storage → New bucket → name: listings → Public
+  [ ] Add SUPABASE_URL and SUPABASE_SERVICE_KEY to your .env
   [ ] Generate a new JWT_SECRET for production (never reuse dev secret)
         node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
   [ ] Set NODE_ENV=production in .env
   [ ] Use a production PostgreSQL database (not localhost)
-  [ ] Set up a cloud storage (AWS S3 / Cloudinary) for uploads
-        Currently uploads are stored locally — they will be lost on server restart
   [ ] Set up HTTPS (SSL certificate via Let's Encrypt or hosting provider)
   [ ] Add CORS origin restriction in server.js (currently allows all)
 
-  READY FOR LOCAL/STAGING DEPLOYMENT:
+  READY FOR DEPLOYMENT:
   [✅] All routes implemented and tested
   [✅] Authentication secure (bcrypt + JWT)
   [✅] SQL injection prevented (parameterized queries throughout)
   [✅] File type and size validation on uploads
+  [✅] Images stored in Supabase Storage (cloud, persistent)
+  [✅] Images deleted from Supabase when listing is deleted
   [✅] .env secrets not committed to git
   [✅] Frontend fully responsive (all device sizes)
   [✅] Real-time chat working via Socket.io
@@ -314,7 +318,7 @@ NOTE: No separate frontend server needed — the backend serves the frontend
   11. KNOWN LIMITATIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  - Image uploads stored locally (not cloud) — add S3/Cloudinary for production
+  - Image uploads stored in Supabase Storage (cloud) ✅ production-ready
   - Wishlist heart is UI-only (local toggle) — not persisted to DB on click
     (backend wishlist API exists, frontend can be wired in future)
   - No email verification on registration (can add Nodemailer)
