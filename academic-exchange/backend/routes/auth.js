@@ -118,7 +118,6 @@ router.put('/change-password', async (req, res) => {
         const token = authHeader && authHeader.split(' ')[1];
         if (!token) return res.status(401).json({ error: 'No token' });
 
-        const jwt = require('jsonwebtoken');
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         const { currentPassword, newPassword } = req.body;

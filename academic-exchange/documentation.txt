@@ -1,0 +1,348 @@
+================================================================================
+  ACADEMIC EXCHANGE - Student-to-Student Marketplace
+  Documentation & Project Notes
+  Last Updated: 2026-02-18
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  1. PROJECT OVERVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+A full-stack web marketplace where students can buy and sell academic items
+(books, notes, lab equipment, electronics, stationery, etc.).
+
+Name        : Academic Exchange / Student-to-Student Marketplace
+Version     : 1.0.0
+Stack       : Node.js + Express.js (backend), Vanilla JavaScript SPA (frontend)
+Database    : PostgreSQL
+Real-time   : Socket.io
+Maps        : Leaflet.js + OpenStreetMap (no API key needed)
+Design      : Deep dark glassmorphism UI with full animations
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  2. PROJECT STRUCTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+academic-exchange/
+├── documentation.txt          ← This file
+├── README.md                  ← Setup guide
+├── QUICK_START.txt            ← Quick start instructions
+├── frontend/
+│   ├── index.html             ← Single-page app entry point
+│   ├── css/
+│   │   └── styles.css         ← All styles (glassmorphism + animations)
+│   └── js/
+│       └── main.js            ← All frontend logic (817 lines)
+└── backend/
+    ├── server.js              ← Express + Socket.io server (port 5000)
+    ├── package.json           ← Dependencies
+    ├── .env                   ← Environment variables (NOT in git)
+    ├── .env.example           ← Template for .env
+    ├── .gitignore             ← Ignores node_modules, .env, uploads/*, *.log
+    ├── database.sql           ← Full schema + migrations
+    ├── setupDatabase.js       ← Run once to create all tables
+    ├── setupadmin.js          ← Run once to create admin user
+    ├── config/
+    │   └── db.js              ← PostgreSQL pool connection
+    ├── middleware/
+    │   └── auth.js            ← JWT authentication + admin role check
+    ├── routes/
+    │   ├── auth.js            ← /api/auth (register, login, change-password)
+    │   ├── listings.js        ← /api/listings (CRUD + filters + location)
+    │   ├── messages.js        ← /api/messages (conversations + send)
+    │   ├── user.js            ← /api/user (profile, avatar)
+    │   ├── wishlist.js        ← /api/wishlist (add/remove/list)
+    │   └── admin.js           ← /api/admin (manage users/listings)
+    └── uploads/               ← Uploaded listing images (gitignored)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  3. FEATURES IMPLEMENTED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+AUTHENTICATION
+  ✅ Register with name, email, password (bcrypt hashed)
+  ✅ Login with JWT token (7-day expiry)
+  ✅ Change password (verify old, hash new)
+  ✅ Logout (clears localStorage, disconnects socket)
+  ✅ Admin role support
+
+NAVIGATION / PROFILE
+  ✅ Profile button shows username initial + full name + dropdown arrow
+  ✅ Profile dropdown menu: Sell | My Items | Chats | Change Password | Logout
+  ✅ Close dropdown on outside click
+
+LISTINGS
+  ✅ Post listing with: title, description, price, category, condition,
+       location text, lat/lng (map picker), up to multiple images
+  ✅ Image upload (JPEG/PNG/WEBP, max 5MB, stored in backend/uploads/)
+  ✅ View listing detail in modal (images, price, seller, contact button)
+  ✅ Delete own listing
+  ✅ Category filter: All, Books, Electronics, Notes, Lab Equipment,
+       Stationery, Sports, Clothing, Other
+  ✅ Condition filter (always visible): All, New, Like New, Good, Fair
+  ✅ Sort: Newest, Oldest, Price Low→High, Price High→Low
+  ✅ Search bar with debounce (300ms)
+  ✅ Category icons on cards (📚💻📓🔬✏️⚽👕📦)
+  ✅ Wishlist heart button on every card (local toggle + toast)
+
+MY ITEMS
+  ✅ View all your posted listings in a modal
+  ✅ Quick View or Delete from My Items panel
+
+LOCATION / MAP FILTER (OLX-style)
+  ✅ Map filter modal using Leaflet.js + OpenStreetMap
+  ✅ Click map to set center location
+  ✅ "Use My Location" button (browser geolocation)
+  ✅ Radius slider (1–200 km)
+  ✅ Haversine formula distance calculation on backend
+  ✅ Location badge shown when filter is active, click to clear
+  ✅ Sell location picker: attach exact lat/lng to listing
+
+REAL-TIME CHAT
+  ✅ Socket.io DM system (user-ID-based rooms)
+  ✅ "Contact Seller" button from listing detail
+  ✅ Conversations list showing all active chats
+  ✅ Message thread with send/receive
+  ✅ Unread message highlighting
+  ✅ Real-time append without page refresh
+
+ANIMATED UI
+  ✅ Deep dark glassmorphism (background: #0f0c29 → #302b63 → #24243e)
+  ✅ Canvas particle system (120 particles with connecting lines)
+  ✅ 4 animated background orbs (continuous float)
+  ✅ 10 floating emoji decorations in hero: 📚🔬💡🧪📐🎯✏️🖥️📓🏆
+  ✅ Animated hero badge with blinking green dot
+  ✅ Live listing counter in hero stats
+  ✅ Spring cubic-bezier animations (.34,1.56,.64,1)
+  ✅ Card entrance stagger (IntersectionObserver)
+  ✅ Card hover: lift, glow sweep, image zoom
+  ✅ Toast notifications with icon (✅❌ℹ️⚠️) + slide-in from right
+  ✅ Modal bounce-in animation
+  ✅ Scroll-to-top button (appears after 400px scroll)
+  ✅ Sticky filter bar (top: 64px)
+  ✅ Footer
+
+RESPONSIVE / DEVICE SUPPORT
+  ✅ Mobile (320px+), small mobile (480px), tablet (768px),
+       large tablet (1024px), desktop, large desktop (1400px+)
+  ✅ iOS PWA meta tags (apple-mobile-web-app-capable)
+  ✅ iOS safe area insets via env()
+  ✅ theme-color meta tag
+  ✅ prefers-reduced-motion support
+  ✅ Inter font (Google Fonts)
+
+ADMIN
+  ✅ Admin route /api/admin (protected by isAdmin middleware)
+  ✅ Create admin user via setupadmin.js
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  4. API ENDPOINTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+AUTH          (no token required unless noted)
+  POST   /api/auth/register          Register new user
+  POST   /api/auth/login             Login, returns JWT
+  PUT    /api/auth/change-password   Change password [token required]
+
+LISTINGS
+  GET    /api/listings               List all (query: category, condition,
+                                       sort, lat, lng, radius)
+  POST   /api/listings               Create listing [token required]
+                                       (multipart/form-data with images)
+  GET    /api/listings/:id           Get single listing
+  DELETE /api/listings/:id           Delete listing [token, owner only]
+
+USER
+  GET    /api/user/profile           Get own profile + listings [token]
+  PUT    /api/user/profile           Update profile [token]
+  POST   /api/user/avatar            Upload avatar [token]
+
+MESSAGES
+  GET    /api/messages/conversations List all conversations [token]
+  GET    /api/messages/:lid/:uid     Get message thread [token]
+  POST   /api/messages               Send message [token]
+
+WISHLIST
+  GET    /api/wishlist               Get wishlist [token]
+  POST   /api/wishlist               Add/remove item [token]
+
+ADMIN         [token + admin role required]
+  GET    /api/admin/users            List all users
+  PUT    /api/admin/users/:id        Update user (activate/deactivate/role)
+  DELETE /api/admin/listings/:id     Delete any listing
+  GET    /api/admin/reports          List reports
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  5. DATABASE SCHEMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TABLES
+  users           - user_id (UUID PK), name, email, password (bcrypt),
+                    role (user/admin), avatar, bio, location, phone,
+                    is_active, last_login, created_at, updated_at
+
+  listings        - listing_id (UUID PK), user_id (FK), title, description,
+                    price (DECIMAL), category, condition, location,
+                    latitude (DECIMAL 10,7), longitude (DECIMAL 10,7),
+                    images (TEXT[]), status (active/sold/deleted),
+                    views (INT), created_at
+
+  messages        - message_id (UUID PK), sender_id (FK), receiver_id (FK),
+                    listing_id (FK), content, is_read, created_at
+
+  wishlist        - wishlist_id (UUID PK), user_id (FK), listing_id (FK),
+                    created_at
+
+  recently_viewed - id (UUID PK), user_id (FK), listing_id (FK), viewed_at
+
+  reports         - report_id (UUID PK), listing_id (FK), reporter_id (FK),
+                    reason, status (pending/resolved), created_at
+
+INDEXES
+  idx_listings_user_id, idx_listings_category, idx_listings_status,
+  idx_listings_created_at, idx_messages_listing_id,
+  idx_wishlist_user_id, idx_recently_viewed_user_id
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  6. SETUP INSTRUCTIONS (LOCAL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+REQUIREMENTS
+  - Node.js v18+
+  - PostgreSQL v14+
+
+STEPS
+  1. Clone the repo and navigate to academic-exchange/backend/
+  2. Run:  npm install
+  3. Copy .env.example to .env and fill in your DATABASE_URL and JWT_SECRET
+  4. Create the database:
+       createdb academic_exchange
+  5. Run the schema:
+       node setupDatabase.js
+  6. (Optional) Create admin user:
+       node setupadmin.js
+  7. Start the server:
+       npm start          (production)
+       npm run dev        (development with nodemon)
+  8. Open browser at:  http://localhost:5000
+
+NOTE: No separate frontend server needed — the backend serves the frontend
+      as static files from the frontend/ directory.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  7. ENVIRONMENT VARIABLES (.env)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  DATABASE_URL         PostgreSQL connection string
+  JWT_SECRET           Secret key for signing JWTs (use 64+ random chars)
+  PORT                 Server port (default: 5000)
+  NODE_ENV             development | production
+  MAX_FILE_SIZE        Max upload size in bytes (default: 5242880 = 5MB)
+  ALLOWED_FILE_TYPES   Comma-separated MIME types for image uploads
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  8. GIT BRANCHES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  main                        - Base project
+  claude/recursing-fermat     - All feature additions (this branch)
+
+  PR URL: https://github.com/Vamsi-1009/Seniour2Juniour/compare/main...claude/recursing-fermat
+
+  Commits on claude/recursing-fermat:
+    0e53d06  chore: Add server.log to .gitignore and untrack it
+    58afb4a  feat: Add fully animated, responsive UI
+    2c060f8  Add profile dropdown, filters, map, My Items, Chats, Change Password
+    ec5326c  Add complete Academic Exchange marketplace with glassmorphism UI
+    f6ab642  Add improved setup scripts and Quick Start guide
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  9. DEPENDENCIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  express          Web framework
+  pg               PostgreSQL client
+  bcrypt           Password hashing (salt rounds: 10)
+  jsonwebtoken     JWT auth (7-day expiry)
+  multer           File upload handling
+  socket.io        Real-time WebSocket chat
+  cors             Cross-origin resource sharing
+  dotenv           Environment variable loader
+  uuid             UUID generation utility
+  nodemon (dev)    Auto-restart on file changes
+
+  Frontend CDNs (no install needed):
+    Leaflet.js     Maps (openstreetmap)
+    Socket.io      Client WebSocket
+    Google Fonts   Inter font family
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  10. DEPLOYMENT CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  BEFORE DEPLOYING - MUST DO:
+  [ ] Generate a new JWT_SECRET for production (never reuse dev secret)
+        node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+  [ ] Set NODE_ENV=production in .env
+  [ ] Use a production PostgreSQL database (not localhost)
+  [ ] Set up a cloud storage (AWS S3 / Cloudinary) for uploads
+        Currently uploads are stored locally — they will be lost on server restart
+  [ ] Set up HTTPS (SSL certificate via Let's Encrypt or hosting provider)
+  [ ] Add CORS origin restriction in server.js (currently allows all)
+
+  READY FOR LOCAL/STAGING DEPLOYMENT:
+  [✅] All routes implemented and tested
+  [✅] Authentication secure (bcrypt + JWT)
+  [✅] SQL injection prevented (parameterized queries throughout)
+  [✅] File type and size validation on uploads
+  [✅] .env secrets not committed to git
+  [✅] Frontend fully responsive (all device sizes)
+  [✅] Real-time chat working via Socket.io
+  [✅] Database schema with indexes
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  11. KNOWN LIMITATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  - Image uploads stored locally (not cloud) — add S3/Cloudinary for production
+  - Wishlist heart is UI-only (local toggle) — not persisted to DB on click
+    (backend wishlist API exists, frontend can be wired in future)
+  - No email verification on registration (can add Nodemailer)
+  - No password reset via email (can add in future)
+  - Location distance filter uses Haversine in JS (works, but not DB-indexed)
+    For large datasets, consider PostGIS extension for performance
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  12. CLEANUP DONE (2026-02-18)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  REMOVED (unnecessary files):
+  - backend/setup_db.js          (outdated duplicate schema, used SERIAL instead
+                                   of UUID, missing many columns)
+  - backend/config/supabaseClient.js  (unused Supabase config — project uses
+                                        PostgreSQL directly)
+  - frontend/js/git              (empty stray file)
+  - backend/server.log           (runtime log, untracked via .gitignore *.log)
+  - backend/migrate.js           (redundant migration file, covered by database.sql)
+
+  FIXED:
+  - backend/routes/auth.js       Removed duplicate `const jwt = require(...)` inside
+                                  change-password handler (already required at top)
+  - backend/.env.example         Removed Supabase references, added NODE_ENV and
+                                  file upload variables, updated instructions
+  - backend/.gitignore           Added *.log to prevent server.log from being tracked
+
+================================================================================
+  END OF DOCUMENTATION
+================================================================================
