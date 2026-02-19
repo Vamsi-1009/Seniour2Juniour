@@ -875,6 +875,13 @@ body::after {
     background: rgba(255, 255, 255, 0.12);
 }
 
+/* Fix dropdown option visibility on all browsers */
+.form-select option,
+.form-select.modern option {
+    background: #4a3f6b;
+    color: white;
+}
+
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;

@@ -816,9 +816,18 @@ function validateStep(step) {
         const desc = document.getElementById('sellDesc').value;
         const price = document.getElementById('sellPrice').value;
         const category = document.getElementById('sellCategory').value;
+        const condition = document.getElementById('sellCondition').value;
 
-        if (!title || !desc || !price || !category) {
+        if (!title || !desc || !price) {
             showAlert('Please fill all required fields', 'error');
+            return false;
+        }
+        if (!category) {
+            showAlert('Please select a category', 'error');
+            return false;
+        }
+        if (!condition) {
+            showAlert('Please select a condition', 'error');
             return false;
         }
     } else if (step === 2) {
