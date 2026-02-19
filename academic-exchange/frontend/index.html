@@ -47,11 +47,11 @@
 
     <!-- Advanced Filters -->
     <div class="filters">
-        <button class="filter-btn active" onclick="filterCategory('all')">All</button>
-        <button class="filter-btn" onclick="filterCategory('Engineering')">Engineering</button>
-        <button class="filter-btn" onclick="filterCategory('MBBS')">MBBS</button>
-        <button class="filter-btn" onclick="filterCategory('Law')">Law</button>
-        <button class="filter-btn" onclick="filterCategory('Gadgets')">Gadgets</button>
+        <button class="filter-btn active" onclick="filterCategory('all', this)">All</button>
+        <button class="filter-btn" onclick="filterCategory('Engineering', this)">Engineering</button>
+        <button class="filter-btn" onclick="filterCategory('MBBS', this)">MBBS</button>
+        <button class="filter-btn" onclick="filterCategory('Law', this)">Law</button>
+        <button class="filter-btn" onclick="filterCategory('Gadgets', this)">Gadgets</button>
         <button class="filter-btn" onclick="toggleAdvancedFilters()">⚙️ More Filters</button>
     </div>
 
@@ -231,19 +231,19 @@
                     <div class="form-group">
                         <label class="form-label">Category *</label>
                         <div class="category-grid">
-                            <div class="category-card" onclick="selectCategory('Engineering')">
+                            <div class="category-card" onclick="selectCategory('Engineering', this)">
                                 <div class="category-icon">📚</div>
                                 <div class="category-name">Engineering</div>
                             </div>
-                            <div class="category-card" onclick="selectCategory('MBBS')">
+                            <div class="category-card" onclick="selectCategory('MBBS', this)">
                                 <div class="category-icon">🏥</div>
                                 <div class="category-name">MBBS</div>
                             </div>
-                            <div class="category-card" onclick="selectCategory('Law')">
+                            <div class="category-card" onclick="selectCategory('Law', this)">
                                 <div class="category-icon">⚖️</div>
                                 <div class="category-name">Law</div>
                             </div>
-                            <div class="category-card" onclick="selectCategory('Gadgets')">
+                            <div class="category-card" onclick="selectCategory('Gadgets', this)">
                                 <div class="category-icon">💻</div>
                                 <div class="category-name">Gadgets</div>
                             </div>

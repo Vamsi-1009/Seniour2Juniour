@@ -2,6 +2,7 @@ let currentUser = null;
 let allListings = [];
 let selectedImages = [];
 let currentChatRoom = null;
+let currentSellerId = null;
 let typingTimeout = null;
 const API = '/api';
 const socket = io();
@@ -13,6 +14,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDragDrop();
     setupSocketListeners();
     loadSavedSearches();
+
+    if (currentUser) {
+        loadMyItems();
+    }
 });
 
 function checkAuth() {
@@ -101,12 +106,12 @@ function logout() {
 async function loadListings(filters = {}) {
     try {
         let url = API + '/listings?';
-        if (filters.category) url += `category=${filters.category}&`;
-        if (filters.minPrice) url += `minPrice=${filters.minPrice}&`;
-        if (filters.maxPrice) url += `maxPrice=${filters.maxPrice}&`;
-        if (filters.condition) url += `condition=${filters.condition}&`;
-        if (filters.location) url += `location=${filters.location}&`;
-        if (filters.sort) url += `sort=${filters.sort}&`;
+        if (filters.category) url += `category=${encodeURIComponent(filters.category)}&`;
+        if (filters.minPrice) url += `minPrice=${encodeURIComponent(filters.minPrice)}&`;
+        if (filters.maxPrice) url += `maxPrice=${encodeURIComponent(filters.maxPrice)}&`;
+        if (filters.condition) url += `condition=${encodeURIComponent(filters.condition)}&`;
+        if (filters.location) url += `location=${encodeURIComponent(filters.location)}&`;
+        if (filters.sort) url += `sort=${encodeURIComponent(filters.sort)}&`;
 
         const res = await fetch(url);
         const data = await res.json();
@@ -355,9 +360,9 @@ function loadSavedSearches() {
     // Can display these in UI if needed
 }
 
-function filterCategory(category) {
+function filterCategory(category, el) {
     document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    if (el) el.classList.add('active');
 
     if (category === 'all') {
         loadListings();
@@ -412,12 +417,14 @@ function openChat(listingId, sellerId) {
     }
 
     currentChatRoom = listingId;
+    currentSellerId = sellerId;
     socket.emit('join_chat', { listingId, userId: currentUser.user_id });
 
     showModal('chatModal');
     loadChatHistory(listingId);
 
     const chatInput = document.getElementById('chatInput');
+    chatInput.removeEventListener('input', handleTyping);
     chatInput.addEventListener('input', handleTyping);
 }
 
@@ -456,7 +463,7 @@ function sendMessage() {
     socket.emit('send_message', {
         listingId: currentChatRoom,
         senderId: currentUser.user_id,
-        receiverId: 'seller_id', // Should be passed from listing
+        receiverId: currentSellerId,
         message: message
     });
 
@@ -759,7 +766,7 @@ let selectedCategoryValue = '';
 let sellMap = null;
 let sellMarker = null;
 
-function selectCategory(category) {
+function selectCategory(category, el) {
     selectedCategoryValue = category;
     document.getElementById('sellCategory').value = category;
 
@@ -767,7 +774,7 @@ function selectCategory(category) {
     document.querySelectorAll('.category-card').forEach(card => {
         card.classList.remove('selected');
     });
-    event.target.closest('.category-card').classList.add('selected');
+    if (el) el.closest('.category-card').classList.add('selected');
 }
 
 function nextStep(step) {
@@ -1064,15 +1071,15 @@ const originalLoadListings = loadListings;
 loadListings = async function(filters = {}) {
     try {
         let url = API + '/listings?';
-        if (filters.category) url += `category=${filters.category}&`;
-        if (filters.minPrice) url += `minPrice=${filters.minPrice}&`;
-        if (filters.maxPrice) url += `maxPrice=${filters.maxPrice}&`;
-        if (filters.condition) url += `condition=${filters.condition}&`;
-        if (filters.location) url += `location=${filters.location}&`;
-        if (filters.latitude) url += `latitude=${filters.latitude}&`;
-        if (filters.longitude) url += `longitude=${filters.longitude}&`;
-        if (filters.range) url += `range=${filters.range}&`;
-        if (filters.sort) url += `sort=${filters.sort}&`;
+        if (filters.category) url += `category=${encodeURIComponent(filters.category)}&`;
+        if (filters.minPrice) url += `minPrice=${encodeURIComponent(filters.minPrice)}&`;
+        if (filters.maxPrice) url += `maxPrice=${encodeURIComponent(filters.maxPrice)}&`;
+        if (filters.condition) url += `condition=${encodeURIComponent(filters.condition)}&`;
+        if (filters.location) url += `location=${encodeURIComponent(filters.location)}&`;
+        if (filters.latitude) url += `latitude=${encodeURIComponent(filters.latitude)}&`;
+        if (filters.longitude) url += `longitude=${encodeURIComponent(filters.longitude)}&`;
+        if (filters.range) url += `range=${encodeURIComponent(filters.range)}&`;
+        if (filters.sort) url += `sort=${encodeURIComponent(filters.sort)}&`;
 
         const res = await fetch(url);
         const data = await res.json();
@@ -1086,16 +1093,3 @@ loadListings = async function(filters = {}) {
     }
 };
 
-// Load my items when user logs in
-document.addEventListener('DOMContentLoaded', () => {
-    checkAuth();
-    loadListings();
-    setupSearch();
-    setupDragDrop();
-    setupSocketListeners();
-    loadSavedSearches();
-
-    if (currentUser) {
-        loadMyItems();
-    }
-});
