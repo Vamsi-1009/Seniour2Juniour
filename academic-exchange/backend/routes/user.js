@@ -2,14 +2,16 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 const pool = require('../config/db');
 const { authenticateToken } = require('../middleware/auth');
 
+// Supabase client for storage
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+// Use memory storage — avatars go to Supabase Storage, not local disk
 const upload = multer({
-    storage: multer.diskStorage({
-        destination: './uploads/',
-        filename: (req, file, cb) => cb(null, 'avatar-' + Date.now() + path.extname(file.originalname))
-    }),
+    storage: multer.memoryStorage(),
     limits: { fileSize: 2 * 1024 * 1024 }
 });
 
@@ -39,10 +41,22 @@ router.put('/profile', authenticateToken, async (req, res) => {
 router.post('/avatar', authenticateToken, upload.single('avatar'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-        const avatarUrl = '/uploads/' + req.file.filename;
+
+        // Upload avatar to Supabase Storage
+        const filename = `avatars/${req.user.user_id}-${Date.now()}${path.extname(req.file.originalname)}`;
+        const { error: uploadError } = await supabase.storage
+            .from('uploads')
+            .upload(filename, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
+
+        if (uploadError) throw new Error('Avatar upload failed: ' + uploadError.message);
+
+        const { data } = supabase.storage.from('uploads').getPublicUrl(filename);
+        const avatarUrl = data.publicUrl;
+
         await pool.query('UPDATE users SET avatar = $1 WHERE user_id = $2', [avatarUrl, req.user.user_id]);
         res.json({ success: true, avatar: avatarUrl });
     } catch (error) {
+        console.error('Avatar upload error:', error);
         res.status(500).json({ error: 'Failed to upload avatar' });
     }
 });

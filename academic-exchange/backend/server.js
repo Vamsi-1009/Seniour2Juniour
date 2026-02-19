@@ -2,14 +2,14 @@ const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
 const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
 require('dotenv').config();
+
+const FRONTEND_URL = process.env.FRONTEND_URL || '*';
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
-    cors: { origin: "*", methods: ["GET", "POST"] }
+    cors: { origin: FRONTEND_URL, methods: ["GET", "POST"] }
 });
 
 // Rate Limiting
@@ -17,16 +17,8 @@ const rateLimiter = require('./middleware/rateLimiter');
 app.use(rateLimiter(100, 15 * 60 * 1000)); // 100 requests per 15 minutes
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: FRONTEND_URL }));
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Ensure uploads folder exists
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-    console.log('✅ Created uploads folder');
-}
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -86,14 +78,6 @@ io.on('connection', (socket) => {
             }
         }
     });
-});
-
-// Serve frontend
-const frontendPath = path.join(__dirname, '../frontend');
-app.use(express.static(frontendPath));
-
-app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 const PORT = process.env.PORT || 5000;

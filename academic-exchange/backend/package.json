@@ -8,10 +8,15 @@
     "setup": "node setupAdmin.js",
     "dev": "nodemon server.js"
   },
-  "keywords": ["marketplace", "academic", "student"],
+  "keywords": [
+    "marketplace",
+    "academic",
+    "student"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@supabase/supabase-js": "^2.97.0",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -24,5 +29,8 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

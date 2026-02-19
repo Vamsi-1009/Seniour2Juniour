@@ -2,19 +2,16 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 const pool = require('../config/db');
 const { authenticateToken } = require('../middleware/auth');
 
-const storage = multer.diskStorage({
-    destination: './uploads/',
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'listing-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
+// Supabase client for storage
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
+// Use memory storage — files go to Supabase Storage, not local disk
 const upload = multer({
-    storage: storage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         const allowedTypes = /jpeg|jpg|png|webp/;
@@ -100,9 +97,20 @@ router.post('/', authenticateToken, upload.array('images', 5), async (req, res) 
             return res.status(400).json({ error: 'At least one image required' });
         }
 
-        const imageUrls = req.files.map(f => '/uploads/' + f.filename);
+        // Upload each image to Supabase Storage
+        const imageUrls = [];
+        for (const file of req.files) {
+            const filename = `listings/${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
+            const { error: uploadError } = await supabase.storage
+                .from('uploads')
+                .upload(filename, file.buffer, { contentType: file.mimetype });
 
-        // Parse latitude and longitude if provided
+            if (uploadError) throw new Error('Image upload failed: ' + uploadError.message);
+
+            const { data } = supabase.storage.from('uploads').getPublicUrl(filename);
+            imageUrls.push(data.publicUrl);
+        }
+
         const lat = latitude ? parseFloat(latitude) : null;
         const lng = longitude ? parseFloat(longitude) : null;
 

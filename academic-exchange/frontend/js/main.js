@@ -4,8 +4,9 @@ let selectedImages = [];
 let currentChatRoom = null;
 let currentSellerId = null;
 let typingTimeout = null;
-const API = '/api';
-const socket = io();
+const API_BASE = window.ENV_API_URL || '';
+const API = API_BASE + '/api';
+const socket = io(API_BASE);
 
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
