@@ -3,11 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Academic Exchange - Student Marketplace</title>
+    <title>Academic Exchange — Student Marketplace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+
+    <!-- Animated background layers -->
+    <canvas id="starsCanvas"></canvas>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
     <!-- Navbar -->
     <nav class="navbar">
         <div class="logo">🎓 Academic Exchange</div>
@@ -33,10 +42,49 @@
 
     <!-- Hero Section -->
     <section class="hero">
-        <h1>Student-to-Student Marketplace</h1>
-        <p>Buy, sell, and trade academic resources with fellow students</p>
+        <!-- floating decorative cards in background -->
+        <div class="floating-cards" aria-hidden="true">
+            <div class="floating-card" style="top:8%;left:4%;animation-duration:18s;">📚</div>
+            <div class="floating-card" style="top:20%;right:6%;animation-duration:22s;animation-delay:-5s;">💻</div>
+            <div class="floating-card" style="bottom:15%;left:8%;animation-duration:16s;animation-delay:-9s;">🔬</div>
+            <div class="floating-card" style="bottom:25%;right:4%;animation-duration:20s;animation-delay:-3s;">⚖️</div>
+            <div class="floating-card" style="top:50%;left:2%;animation-duration:24s;animation-delay:-12s;">🏥</div>
+            <div class="floating-card" style="top:55%;right:3%;animation-duration:19s;animation-delay:-7s;">🎓</div>
+        </div>
+
+        <div class="hero-badge">✨ Student Marketplace</div>
+
+        <h1>
+            Trade Smart,<br>
+            <span class="gradient-text">Study Smarter</span>
+        </h1>
+
+        <p>Buy, sell, and exchange academic resources — books, gadgets, notes &amp; more — with students at your college.</p>
+
         <div class="search-container">
-            <input type="text" class="search-input" id="searchInput" placeholder="Search books, notes, gadgets...">
+            <div class="search-wrap">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="searchInput" placeholder="Search books, notes, gadgets, equipment...">
+            </div>
+        </div>
+
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <div class="hero-stat-num">500+</div>
+                <div class="hero-stat-label">Listings</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-num">200+</div>
+                <div class="hero-stat-label">Students</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-num">4</div>
+                <div class="hero-stat-label">Categories</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-num">₹0</div>
+                <div class="hero-stat-label">Platform Fee</div>
+            </div>
         </div>
     </section>
 
@@ -121,7 +169,7 @@
     <!-- My Items Section (shown when logged in) -->
     <div class="my-items-section" id="myItemsSection" style="display:none;">
         <div class="section-header">
-            <h2>📦 My Items</h2>
+            <h2>📦 <span>My Items</span></h2>
             <button class="btn btn-primary" onclick="showSellModal()">+ Add New Item</button>
         </div>
         <div class="my-items-grid" id="myItemsGrid"></div>
@@ -129,7 +177,7 @@
 
     <!-- All Listings Section -->
     <div class="section-header">
-        <h2>🛍️ Browse Marketplace</h2>
+        <h2>🛍️ <span>Browse Marketplace</span></h2>
     </div>
     <div class="listings-grid" id="listingsGrid"></div>
 
@@ -380,5 +428,91 @@
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/main.js"></script>
+
+    <!-- ★ Stars canvas animation -->
+    <script>
+    (function() {
+        const canvas = document.getElementById('starsCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let stars = [];
+        let W, H;
+
+        function resize() {
+            W = canvas.width  = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+        }
+
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 160; i++) {
+                stars.push({
+                    x: Math.random() * W,
+                    y: Math.random() * H,
+                    r: Math.random() * 1.4 + 0.2,
+                    alpha: Math.random() * 0.7 + 0.2,
+                    speed: Math.random() * 0.3 + 0.05,
+                    twinkleSpeed: Math.random() * 0.015 + 0.005,
+                    twinkleDir: Math.random() > 0.5 ? 1 : -1,
+                    color: ['#a78bfa','#f472b6','#2dd4bf','#ffffff'][Math.floor(Math.random()*4)]
+                });
+            }
+        }
+
+        function drawStars() {
+            ctx.clearRect(0, 0, W, H);
+            stars.forEach(s => {
+                s.alpha += s.twinkleSpeed * s.twinkleDir;
+                if (s.alpha >= 1)   { s.alpha = 1;   s.twinkleDir = -1; }
+                if (s.alpha <= 0.1) { s.alpha = 0.1; s.twinkleDir =  1; }
+                s.y += s.speed;
+                if (s.y > H) { s.y = 0; s.x = Math.random() * W; }
+
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                ctx.fillStyle = s.color;
+                ctx.globalAlpha = s.alpha;
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+            requestAnimationFrame(drawStars);
+        }
+
+        resize();
+        initStars();
+        drawStars();
+        window.addEventListener('resize', () => { resize(); initStars(); });
+    })();
+    </script>
+
+    <!-- ★ 3D card tilt on mouse move -->
+    <script>
+    document.addEventListener('mousemove', function(e) {
+        document.querySelectorAll('.card').forEach(card => {
+            const rect = card.getBoundingClientRect();
+            const cx = rect.left + rect.width  / 2;
+            const cy = rect.top  + rect.height / 2;
+            const dx = (e.clientX - cx) / (rect.width  / 2);
+            const dy = (e.clientY - cy) / (rect.height / 2);
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 1.8) {
+                card.style.transform = `perspective(800px) rotateY(${dx*6}deg) rotateX(${-dy*6}deg) scale(1.03)`;
+            }
+        });
+    });
+
+    document.addEventListener('mouseleave', function() {
+        document.querySelectorAll('.card').forEach(card => {
+            card.style.transform = '';
+        });
+    });
+
+    // Also reset on mouseout from card
+    document.addEventListener('mouseout', function(e) {
+        if (e.target.classList && e.target.classList.contains('card')) {
+            e.target.style.transform = '';
+        }
+    });
+    </script>
 </body>
 </html>
