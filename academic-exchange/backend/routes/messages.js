@@ -27,11 +27,12 @@ router.get('/my-chats', authenticateToken, async (req, res) => {
                 l.user_id as seller_id,
                 m.content as last_message,
                 m.created_at as last_message_time,
-                (SELECT COUNT(*) FROM messages WHERE listing_id = m.listing_id AND receiver_id = $1 AND is_read = FALSE) as unread_count,
-                -- other person: if I am the sender use receiver, else use sender
+                (SELECT COUNT(*) FROM messages
+                 WHERE listing_id = m.listing_id AND receiver_id = $1 AND is_read = FALSE) as unread_count,
+                -- Always pick the person who is NOT the current user
                 CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END as other_user_id,
-                CASE WHEN m.sender_id = $1 THEN ru.name    ELSE su.name    END as other_user_name,
-                CASE WHEN m.sender_id = $1 THEN ru.avatar  ELSE su.avatar  END as other_user_avatar
+                CASE WHEN m.sender_id = $1 THEN ru.name   ELSE su.name   END as other_user_name,
+                CASE WHEN m.sender_id = $1 THEN ru.avatar ELSE su.avatar END as other_user_avatar
              FROM messages m
              LEFT JOIN listings l ON m.listing_id = l.listing_id
              LEFT JOIN users su ON m.sender_id   = su.user_id
@@ -41,7 +42,39 @@ router.get('/my-chats', authenticateToken, async (req, res) => {
             [req.user.user_id]
         );
 
-        res.json({ success: true, chats: result.rows });
+        // Post-process: if the last message was sent by ME, the other_user is receiver (ru).
+        // But if both sides have messaged, DISTINCT ON picks the latest row — re-resolve other_user
+        // from a subquery to always guarantee the non-current-user identity.
+        const chats = result.rows;
+
+        // For each chat, fetch the actual other participant (the person I've exchanged messages with)
+        const enriched = await Promise.all(chats.map(async (chat) => {
+            try {
+                const participants = await pool.query(
+                    `SELECT DISTINCT
+                        CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END as other_id
+                     FROM messages
+                     WHERE listing_id = $2 AND (sender_id = $1 OR receiver_id = $1)
+                     LIMIT 1`,
+                    [req.user.user_id, chat.listing_id]
+                );
+                if (participants.rows.length > 0) {
+                    const otherId = participants.rows[0].other_id;
+                    const userRes = await pool.query(
+                        'SELECT user_id, name, avatar FROM users WHERE user_id = $1',
+                        [otherId]
+                    );
+                    if (userRes.rows.length > 0) {
+                        chat.other_user_id     = userRes.rows[0].user_id;
+                        chat.other_user_name   = userRes.rows[0].name;
+                        chat.other_user_avatar = userRes.rows[0].avatar;
+                    }
+                }
+            } catch (e) { /* keep original values */ }
+            return chat;
+        }));
+
+        res.json({ success: true, chats: enriched });
     } catch (err) {
         console.error('Get chats error:', err.message);
         res.status(500).json({ error: 'Server Error' });
