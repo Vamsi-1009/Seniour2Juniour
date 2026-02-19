@@ -4,7 +4,7 @@ const socketIO = require('socket.io');
 const cors = require('cors');
 require('dotenv').config();
 
-const FRONTEND_URL = process.env.FRONTEND_URL || '*';
+const FRONTEND_URL = (process.env.FRONTEND_URL || '*').trim();
 
 const app = express();
 const server = http.createServer(app);
