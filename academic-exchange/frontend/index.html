@@ -17,21 +17,16 @@
         </div>
     </nav>
 
-    <!-- Profile Dropdown Menu -->
+    <!-- Profile Dropdown Menu (only My Profile, Change Password, Logout) -->
     <div class="profile-dropdown" id="profileDropdown">
-        <div class="dropdown-item" onclick="showSellModal(); closeProfileDropdown()">
-            <span>📦</span> Sell Item
-        </div>
-        <div class="dropdown-item" onclick="openChatsPanel(); closeProfileDropdown()">
-            <span>💬</span> Chats
+        <div class="dropdown-item" onclick="showProfile(); closeProfileDropdown()">
+            <span>👤</span> My Profile
         </div>
         <div class="dropdown-item" onclick="showChangePassword(); closeProfileDropdown()">
             <span>🔒</span> Change Password
         </div>
-        <div class="dropdown-item" onclick="showProfile(); closeProfileDropdown()">
-            <span>👤</span> My Profile
-        </div>
-        <div class="dropdown-item" onclick="logout(); closeProfileDropdown()">
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item danger" onclick="logout(); closeProfileDropdown()">
             <span>🚪</span> Logout
         </div>
     </div>
@@ -129,23 +124,22 @@
             <h2>📦 My Items</h2>
             <button class="btn btn-primary" onclick="showSellModal()">+ Add New Item</button>
         </div>
-        <div class="my-items-grid" id="myItemsGrid">
-            <!-- User's listings will be shown here -->
-        </div>
+        <div class="my-items-grid" id="myItemsGrid"></div>
     </div>
 
     <!-- All Listings Section -->
     <div class="section-header">
         <h2>🛍️ Browse Marketplace</h2>
     </div>
-    <div class="listings-grid" id="listingsGrid">
-        <!-- Dynamic content -->
-    </div>
+    <div class="listings-grid" id="listingsGrid"></div>
 
     <!-- Login Modal -->
     <div class="modal" id="loginModal">
         <div class="modal-content">
-            <h2>Welcome Back</h2>
+            <div class="modal-header">
+                <h2>Welcome Back</h2>
+                <button onclick="closeModal('loginModal')" class="close-btn">✕</button>
+            </div>
             <form id="loginForm" onsubmit="handleLogin(event)">
                 <input type="email" class="form-input" placeholder="Email" required id="loginEmail">
                 <input type="password" class="form-input" placeholder="Password" required id="loginPassword">
@@ -160,7 +154,10 @@
     <!-- Register Modal -->
     <div class="modal" id="registerModal">
         <div class="modal-content">
-            <h2>Create Account</h2>
+            <div class="modal-header">
+                <h2>Create Account</h2>
+                <button onclick="closeModal('registerModal')" class="close-btn">✕</button>
+            </div>
             <form id="registerForm" onsubmit="handleRegister(event)">
                 <input type="text" class="form-input" placeholder="Full Name" required id="registerName">
                 <input type="email" class="form-input" placeholder="Email" required id="registerEmail">
@@ -173,16 +170,14 @@
         </div>
     </div>
 
-    <!-- Sell Modal with Enhanced UI -->
+    <!-- Sell Modal -->
     <div class="modal" id="sellModal">
         <div class="modal-content sell-modal-content">
             <div class="modal-header">
                 <h2>📦 List Your Item</h2>
                 <button onclick="closeModal('sellModal')" class="close-btn">✕</button>
             </div>
-
             <form id="sellForm" onsubmit="handleSell(event)">
-                <!-- Step Indicator -->
                 <div class="step-indicator">
                     <div class="step active" data-step="1">
                         <div class="step-number">1</div>
@@ -204,12 +199,10 @@
                         <label class="form-label">Item Title *</label>
                         <input type="text" class="form-input modern" placeholder="e.g., Engineering Mathematics Book" required id="sellTitle">
                     </div>
-
                     <div class="form-group">
                         <label class="form-label">Description *</label>
                         <textarea class="form-textarea modern" placeholder="Describe your item in detail..." required id="sellDesc" rows="4"></textarea>
                     </div>
-
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Price (₹) *</label>
@@ -217,7 +210,7 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Condition *</label>
-                            <select class="form-select modern" id="sellCondition" required>
+                            <select class="form-select modern" id="sellCondition">
                                 <option value="">Select</option>
                                 <option value="New">New</option>
                                 <option value="Like New">Like New</option>
@@ -227,7 +220,6 @@
                             </select>
                         </div>
                     </div>
-
                     <div class="form-group">
                         <label class="form-label">Category *</label>
                         <div class="category-grid">
@@ -250,7 +242,6 @@
                         </div>
                         <input type="hidden" id="sellCategory">
                     </div>
-
                     <button type="button" class="btn btn-primary btn-block" onclick="nextStep(2)">Next: Add Photos →</button>
                 </div>
 
@@ -259,7 +250,7 @@
                     <div class="form-group">
                         <label class="form-label">Upload Photos *</label>
                         <div class="drag-drop-area modern" id="dragDropArea">
-                            <input type="file" class="file-input" id="sellImages" accept="image/*" multiple required>
+                            <input type="file" class="file-input" id="sellImages" accept="image/*" multiple>
                             <div class="drag-drop-text">
                                 <div class="upload-icon">📸</div>
                                 <p class="upload-title">Drag & drop your photos here</p>
@@ -271,10 +262,8 @@
                                 </div>
                             </div>
                         </div>
-
                         <div class="image-preview-container" id="imagePreview"></div>
                     </div>
-
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" onclick="prevStep(1)">← Back</button>
                         <button type="button" class="btn btn-primary" onclick="nextStep(3)">Next: Set Location →</button>
@@ -287,14 +276,12 @@
                         <label class="form-label">Location *</label>
                         <input type="text" class="form-input modern" placeholder="e.g., Mumbai, Maharashtra" id="sellLocation" required>
                     </div>
-
                     <div class="form-group">
                         <label class="form-label">Select on Map (Optional)</label>
                         <div id="sellMap" class="location-map"></div>
                         <input type="hidden" id="sellLatitude">
                         <input type="hidden" id="sellLongitude">
                     </div>
-
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" onclick="prevStep(2)">← Back</button>
                         <button type="submit" class="btn btn-primary btn-block">✓ Post Listing</button>
@@ -306,45 +293,67 @@
 
     <!-- Profile Modal -->
     <div class="modal" id="profileModal">
-        <div class="modal-content">
-            <h2>My Profile</h2>
+        <div class="modal-content profile-modal-content">
+            <div class="modal-header">
+                <h2>👤 My Profile</h2>
+                <button onclick="closeModal('profileModal')" class="close-btn">✕</button>
+            </div>
             <div id="profileContent"></div>
         </div>
     </div>
 
-    <!-- Chat Modal -->
+    <!-- Chat Modal — redesigned -->
     <div class="modal" id="chatModal">
-        <div class="modal-content chat-container">
-            <div class="chat-header">
-                <h3 id="chatTitle">Chat</h3>
+        <div class="modal-content chat-modal-content">
+            <!-- Chat Header with person info -->
+            <div class="chat-header-bar">
+                <div class="chat-person-info">
+                    <div class="chat-person-avatar" id="chatPersonAvatar">👤</div>
+                    <div class="chat-person-details">
+                        <div class="chat-person-name" id="chatPersonName">Loading...</div>
+                        <div class="chat-person-item" id="chatPersonItem"></div>
+                    </div>
+                </div>
                 <button onclick="closeModal('chatModal')" class="close-btn">✕</button>
             </div>
+            <!-- Messages -->
             <div class="chat-messages" id="chatMessages"></div>
             <div class="typing-indicator" id="typingIndicator" style="display:none;">
                 <span class="typing-dots"></span>
-                <span>typing...</span>
+                <span id="typingName">Someone</span> is typing...
             </div>
+            <!-- Input -->
             <div class="chat-input-area">
-                <input type="text" class="chat-input" id="chatInput" placeholder="Type a message...">
-                <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+                <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendMessage()">
+                <button class="chat-send-btn" onclick="sendMessage()">➤</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Chats Panel Modal -->
+    <div class="modal" id="chatsPanelModal">
+        <div class="modal-content chats-panel-content">
+            <div class="modal-header">
+                <h2>💬 My Chats</h2>
+                <button onclick="closeModal('chatsPanelModal')" class="close-btn">✕</button>
+            </div>
+            <div id="chatsList" class="chats-list"></div>
         </div>
     </div>
 
     <!-- Payment Modal -->
     <div class="modal" id="paymentModal">
         <div class="modal-content">
-            <h2>Complete Payment</h2>
+            <div class="modal-header">
+                <h2>💳 Complete Payment</h2>
+                <button onclick="closeModal('paymentModal')" class="close-btn">✕</button>
+            </div>
             <div id="paymentContent">
                 <p>Item: <strong id="paymentItem"></strong></p>
                 <p>Price: <strong id="paymentPrice"></strong></p>
                 <div class="payment-methods">
-                    <button class="payment-btn" onclick="initiatePayment('razorpay')">
-                        💳 Pay with Razorpay
-                    </button>
-                    <button class="payment-btn" onclick="initiatePayment('stripe')">
-                        💳 Pay with Stripe
-                    </button>
+                    <button class="payment-btn" onclick="initiatePayment('razorpay')">💳 Pay with Razorpay</button>
+                    <button class="payment-btn" onclick="initiatePayment('stripe')">💳 Pay with Stripe</button>
                 </div>
             </div>
         </div>
@@ -353,23 +362,16 @@
     <!-- Change Password Modal -->
     <div class="modal" id="changePasswordModal">
         <div class="modal-content">
-            <h2>Change Password</h2>
+            <div class="modal-header">
+                <h2>🔒 Change Password</h2>
+                <button onclick="closeModal('changePasswordModal')" class="close-btn">✕</button>
+            </div>
             <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
                 <input type="password" class="form-input" placeholder="Current Password" required id="currentPassword">
                 <input type="password" class="form-input" placeholder="New Password" required id="newPassword">
                 <input type="password" class="form-input" placeholder="Confirm New Password" required id="confirmPassword">
                 <button type="submit" class="btn btn-primary" style="width:100%">Change Password</button>
             </form>
-        </div>
-    </div>
-
-    <!-- Chats Panel Modal -->
-    <div class="modal" id="chatsPanelModal">
-        <div class="modal-content" style="max-width: 800px;">
-            <h2>My Chats</h2>
-            <div id="chatsList" class="chats-list">
-                <!-- Dynamic chat list will be loaded here -->
-            </div>
         </div>
     </div>
 

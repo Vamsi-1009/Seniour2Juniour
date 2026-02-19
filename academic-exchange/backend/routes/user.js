@@ -27,14 +27,43 @@ router.get('/profile', authenticateToken, async (req, res) => {
 
 router.put('/profile', authenticateToken, async (req, res) => {
     try {
-        const { name, location, bio } = req.body;
+        const { name, email, location, bio } = req.body;
+
+        // Check if new email already taken by another user
+        if (email) {
+            const existing = await pool.query(
+                'SELECT user_id FROM users WHERE email = $1 AND user_id != $2',
+                [email, req.user.user_id]
+            );
+            if (existing.rows.length > 0) {
+                return res.status(400).json({ error: 'Email already in use by another account' });
+            }
+        }
+
         const result = await pool.query(
-            'UPDATE users SET name = $1, location = $2, bio = $3 WHERE user_id = $4 RETURNING user_id, name, email, avatar, location, bio',
-            [name, location, bio, req.user.user_id]
+            'UPDATE users SET name = $1, email = COALESCE($2, email), location = $3, bio = $4 WHERE user_id = $5 RETURNING user_id, name, email, avatar, location, bio',
+            [name, email || null, location, bio, req.user.user_id]
         );
         res.json({ success: true, user: result.rows[0] });
     } catch (error) {
+        console.error('Update profile error:', error);
         res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
+// Public user info (for chat header — shows seller name/avatar)
+router.get('/public/:userId', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT user_id, name, avatar FROM users WHERE user_id = $1',
+            [req.params.userId]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json({ success: true, user: result.rows[0] });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch user' });
     }
 });
 

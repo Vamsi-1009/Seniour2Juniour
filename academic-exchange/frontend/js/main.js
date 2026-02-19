@@ -39,12 +39,31 @@ function updateNav() {
     if (currentUser) {
         nav.innerHTML = `
             ${currentUser.role === 'admin' ? '<button class="nav-btn" onclick="showAdminDashboard()">Admin</button>' : ''}
+            <button class="nav-btn nav-action-btn" onclick="showSellModal()">📦 Sell Item</button>
+            <button class="nav-btn nav-action-btn" onclick="openChatsPanel()">💬 Chats</button>
             <button class="profile-btn" onclick="toggleProfileDropdown(event)">
-                <div class="profile-icon">👤</div>
+                <div class="profile-icon" id="navAvatarIcon">👤</div>
                 <span>${currentUser.name || 'User'}</span>
             </button>
         `;
+        // Load avatar in nav if available
+        loadNavAvatar();
     }
+}
+
+async function loadNavAvatar() {
+    try {
+        const res = await fetch(API + '/user/profile', {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        const data = await res.json();
+        if (data.success && data.user.avatar) {
+            const icon = document.getElementById('navAvatarIcon');
+            if (icon) {
+                icon.innerHTML = `<img src="${data.user.avatar}" alt="avatar" style="width:35px;height:35px;border-radius:50%;object-fit:cover;">`;
+            }
+        }
+    } catch (e) { /* ignore */ }
 }
 
 async function handleLogin(e) {
@@ -300,23 +319,183 @@ async function showProfile() {
         const data = await res.json();
 
         if (data.success) {
-            const content = document.getElementById('profileContent');
-            content.innerHTML = `
-                <p><strong>Name:</strong> ${data.user.name}</p>
-                <p><strong>Email:</strong> ${data.user.email}</p>
-                <p><strong>Role:</strong> ${data.user.role}</p>
-                <h3 style="margin-top:1.5rem;">My Listings</h3>
-                ${data.listings.map(l => `
-                    <div style="padding:1rem;background:rgba(255,255,255,0.1);border-radius:10px;margin:0.5rem 0">
-                        <p><strong>${l.title}</strong> - ₹${l.price}</p>
-                        <small>Status: ${l.status}</small>
-                    </div>
-                `).join('')}
-            `;
+            renderProfileView(data.user, data.listings);
             showModal('profileModal');
         }
     } catch (error) {
         showAlert('Failed to load profile', 'error');
+    }
+}
+
+function renderProfileView(user, listings) {
+    const content = document.getElementById('profileContent');
+    const avatarSrc = user.avatar
+        ? `<img src="${user.avatar}" alt="avatar" class="profile-avatar-img">`
+        : `<div class="profile-avatar-placeholder">👤</div>`;
+
+    content.innerHTML = `
+        <div class="profile-view">
+            <!-- Avatar -->
+            <div class="profile-avatar-section">
+                <div class="profile-avatar-wrapper" id="profileAvatarWrapper">
+                    ${avatarSrc}
+                </div>
+                <div class="profile-basic-info">
+                    <h3 class="profile-name" id="profileDisplayName">${user.name}</h3>
+                    <p class="profile-email" id="profileDisplayEmail">${user.email}</p>
+                    <span class="profile-role-badge">${user.role || 'student'}</span>
+                </div>
+            </div>
+
+            <!-- Details -->
+            <div class="profile-details-section">
+                <div class="profile-detail-row">
+                    <span class="profile-detail-label">📍 Location</span>
+                    <span class="profile-detail-value" id="profileDisplayLocation">${user.location || 'Not set'}</span>
+                </div>
+                <div class="profile-detail-row">
+                    <span class="profile-detail-label">📝 Bio</span>
+                    <span class="profile-detail-value" id="profileDisplayBio">${user.bio || 'No bio yet'}</span>
+                </div>
+            </div>
+
+            <!-- Edit Button -->
+            <button class="btn btn-primary profile-edit-btn" onclick="renderProfileEdit(${JSON.stringify(user).replace(/"/g, '&quot;')})">✏️ Edit Profile</button>
+
+            <!-- My Listings -->
+            <div class="profile-listings-section">
+                <h3>📦 My Listings (${listings.length})</h3>
+                <div class="profile-listings-grid">
+                    ${listings.length === 0
+                        ? '<p style="opacity:0.6;margin-top:0.5rem;">No listings yet. Start selling!</p>'
+                        : listings.map(l => `
+                            <div class="profile-listing-card">
+                                <strong>${l.title}</strong>
+                                <span class="profile-listing-price">₹${l.price}</span>
+                                <span class="profile-listing-status ${l.status}">${l.status}</span>
+                            </div>
+                        `).join('')
+                    }
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderProfileEdit(user) {
+    const content = document.getElementById('profileContent');
+    const avatarSrc = user.avatar
+        ? `<img src="${user.avatar}" alt="avatar" class="profile-avatar-img" id="profileAvatarPreview">`
+        : `<div class="profile-avatar-placeholder" id="profileAvatarPreview">👤</div>`;
+
+    content.innerHTML = `
+        <div class="profile-edit-form">
+            <!-- Avatar Upload -->
+            <div class="profile-avatar-section">
+                <div class="profile-avatar-wrapper profile-avatar-upload" onclick="document.getElementById('avatarInput').click()">
+                    <div id="profileAvatarPreviewWrap">${avatarSrc}</div>
+                    <div class="avatar-upload-overlay">📷 Change</div>
+                </div>
+                <input type="file" id="avatarInput" accept="image/*" style="display:none;" onchange="handleAvatarChange(this)">
+            </div>
+
+            <!-- Form Fields -->
+            <form id="profileEditForm" onsubmit="handleUpdateProfile(event)">
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" class="form-input modern" id="editName" value="${user.name || ''}" placeholder="Your name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input modern" id="editEmail" value="${user.email || ''}" placeholder="Your email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location</label>
+                    <input type="text" class="form-input modern" id="editLocation" value="${user.location || ''}" placeholder="e.g., Mumbai, Maharashtra">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Bio</label>
+                    <textarea class="form-textarea modern" id="editBio" rows="3" placeholder="Tell others about yourself...">${user.bio || ''}</textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="showProfile()">← Cancel</button>
+                    <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+                </div>
+            </form>
+        </div>
+    `;
+}
+
+let pendingAvatarFile = null;
+
+function handleAvatarChange(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+        showAlert('Avatar must be under 2MB', 'error');
+        return;
+    }
+    pendingAvatarFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const wrap = document.getElementById('profileAvatarPreviewWrap');
+        if (wrap) {
+            wrap.innerHTML = `<img src="${e.target.result}" alt="avatar" class="profile-avatar-img">`;
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+async function handleUpdateProfile(e) {
+    e.preventDefault();
+    const name = document.getElementById('editName').value.trim();
+    const email = document.getElementById('editEmail').value.trim();
+    const location = document.getElementById('editLocation').value.trim();
+    const bio = document.getElementById('editBio').value.trim();
+
+    try {
+        // Update profile info
+        const res = await fetch(API + '/user/profile', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            body: JSON.stringify({ name, email, location, bio })
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+            showAlert(data.error || 'Failed to update profile', 'error');
+            return;
+        }
+
+        // Upload avatar if changed
+        if (pendingAvatarFile) {
+            const formData = new FormData();
+            formData.append('avatar', pendingAvatarFile);
+            const avatarRes = await fetch(API + '/user/avatar', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                body: formData
+            });
+            const avatarData = await avatarRes.json();
+            if (!avatarData.success) {
+                showAlert('Profile saved but avatar upload failed', 'error');
+            }
+            pendingAvatarFile = null;
+        }
+
+        showAlert('Profile updated successfully!', 'success');
+
+        // Update displayed name in navbar
+        currentUser.name = name;
+        updateNav();
+
+        // Reload profile view
+        showProfile();
+    } catch (error) {
+        showAlert('Network error. Please try again.', 'error');
     }
 }
 
@@ -411,7 +590,7 @@ function setupSocketListeners() {
     });
 }
 
-function openChat(listingId, sellerId) {
+async function openChat(listingId, sellerId) {
     if (!currentUser) {
         showAlert('Please login to chat', 'error');
         return;
@@ -421,8 +600,57 @@ function openChat(listingId, sellerId) {
     currentSellerId = sellerId;
     socket.emit('join_chat', { listingId, userId: currentUser.user_id });
 
+    // Reset header while loading
+    const nameEl = document.getElementById('chatPersonName');
+    const itemEl = document.getElementById('chatPersonItem');
+    const avatarEl = document.getElementById('chatPersonAvatar');
+    if (nameEl) nameEl.textContent = 'Loading...';
+    if (itemEl) itemEl.textContent = '';
+    if (avatarEl) avatarEl.innerHTML = '👤';
+
     showModal('chatModal');
     loadChatHistory(listingId);
+
+    // Fetch listing details to populate chat header
+    try {
+        const res = await fetch(`${API}/listings/${listingId}`);
+        const data = await res.json();
+        if (data.success) {
+            const listing = data.listing;
+            if (itemEl) itemEl.textContent = listing.title;
+
+            // Determine who we are chatting with
+            const isSellerMe = listing.user_id === currentUser.user_id;
+            const otherUserId = isSellerMe ? null : listing.user_id;
+
+            if (otherUserId) {
+                // Fetch other user's info (seller)
+                try {
+                    const uRes = await fetch(`${API}/user/public/${otherUserId}`, {
+                        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                    });
+                    const uData = await uRes.json();
+                    if (uData.success && uData.user) {
+                        if (nameEl) nameEl.textContent = uData.user.name || 'Seller';
+                        if (avatarEl && uData.user.avatar) {
+                            avatarEl.innerHTML = `<img src="${uData.user.avatar}" alt="avatar" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">`;
+                        } else if (nameEl) {
+                            if (avatarEl) avatarEl.innerHTML = '👤';
+                        }
+                    } else {
+                        if (nameEl) nameEl.textContent = 'Seller';
+                    }
+                } catch(e) {
+                    if (nameEl) nameEl.textContent = 'Seller';
+                }
+            } else {
+                // We are the seller — show "You are the seller"
+                if (nameEl) nameEl.textContent = 'You (Seller)';
+            }
+        }
+    } catch (e) {
+        if (nameEl) nameEl.textContent = 'Chat';
+    }
 
     const chatInput = document.getElementById('chatInput');
     chatInput.removeEventListener('input', handleTyping);
