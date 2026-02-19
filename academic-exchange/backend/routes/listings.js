@@ -45,7 +45,7 @@ router.get('/my-items', authenticateToken, async (req, res) => {
 router.get('/', async (req, res) => {
     try {
         const { category, search, sort, minPrice, maxPrice, condition, location, latitude, longitude, range } = req.query;
-        let query = 'SELECT l.*, u.name as seller_name, u.avatar as seller_avatar FROM listings l JOIN users u ON l.user_id = u.user_id WHERE l.status = $1 AND l.is_draft = FALSE';
+        let query = 'SELECT l.*, u.name as seller_name, u.avatar as seller_avatar FROM listings l JOIN users u ON l.user_id = u.user_id WHERE l.status = $1';
         const params = ['active'];
 
         if (category) {
