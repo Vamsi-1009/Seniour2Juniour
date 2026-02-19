@@ -27,9 +27,15 @@ router.get('/my-chats', authenticateToken, async (req, res) => {
                 l.user_id as seller_id,
                 m.content as last_message,
                 m.created_at as last_message_time,
-                (SELECT COUNT(*) FROM messages WHERE listing_id = m.listing_id AND receiver_id = $1 AND is_read = FALSE) as unread_count
+                (SELECT COUNT(*) FROM messages WHERE listing_id = m.listing_id AND receiver_id = $1 AND is_read = FALSE) as unread_count,
+                -- other person: if I am the sender use receiver, else use sender
+                CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END as other_user_id,
+                CASE WHEN m.sender_id = $1 THEN ru.name    ELSE su.name    END as other_user_name,
+                CASE WHEN m.sender_id = $1 THEN ru.avatar  ELSE su.avatar  END as other_user_avatar
              FROM messages m
              LEFT JOIN listings l ON m.listing_id = l.listing_id
+             LEFT JOIN users su ON m.sender_id   = su.user_id
+             LEFT JOIN users ru ON m.receiver_id = ru.user_id
              WHERE m.sender_id = $1 OR m.receiver_id = $1
              ORDER BY m.listing_id, m.created_at DESC`,
             [req.user.user_id]

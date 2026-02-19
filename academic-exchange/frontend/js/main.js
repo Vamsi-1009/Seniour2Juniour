@@ -702,18 +702,26 @@ function sendMessage() {
 
 function displayMessage(message) {
     const messagesDiv = document.getElementById('chatMessages');
+    const isSent = message.sender_id === currentUser?.user_id;
+    const senderLabel = isSent ? 'You' : (message.sender_name || 'User');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `chat-message-wrapper ${isSent ? 'sent' : 'received'}`;
+
     const div = document.createElement('div');
-    div.className = `chat-message ${message.sender_id === currentUser?.user_id ? 'sent' : 'received'}`;
+    div.className = `chat-message ${isSent ? 'sent' : 'received'}`;
     div.innerHTML = `
+        <span class="message-sender-name">${senderLabel}</span>
         ${message.content}
-        <span class="message-time">${new Date(message.created_at).toLocaleTimeString()}</span>
+        <span class="message-time">${new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         <div class="message-reactions">
             <span class="reaction" onclick="addReaction('${message.message_id}', '👍')">👍</span>
             <span class="reaction" onclick="addReaction('${message.message_id}', '❤️')">❤️</span>
             <span class="reaction" onclick="addReaction('${message.message_id}', '😂')">😂</span>
         </div>
     `;
-    messagesDiv.appendChild(div);
+    wrapper.appendChild(div);
+    messagesDiv.appendChild(wrapper);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
@@ -956,17 +964,25 @@ function renderChatsList(chats) {
         return;
     }
 
-    chatsList.innerHTML = chats.map(chat => `
-        <div class="chat-list-item" onclick="openChatFromList('${chat.listing_id}', '${chat.seller_id}')">
-            <img src="${chat.listing_image || '/uploads/default.png'}" alt="Listing">
-            <div class="chat-list-info">
-                <h4>${chat.listing_title || 'Listing'}</h4>
-                <p>${chat.last_message || 'No messages yet'}</p>
-                <small>${chat.last_message_time ? new Date(chat.last_message_time).toLocaleString() : ''}</small>
+    chatsList.innerHTML = chats.map(chat => {
+        const personName = chat.other_user_name || 'User';
+        const personAvatar = chat.other_user_avatar
+            ? `<img src="${chat.other_user_avatar}" alt="${personName}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;">`
+            : `<div class="chat-list-avatar-placeholder">${personName.charAt(0).toUpperCase()}</div>`;
+
+        return `
+            <div class="chat-list-item" onclick="openChatFromList('${chat.listing_id}', '${chat.seller_id}')">
+                <div class="chat-list-avatar">${personAvatar}</div>
+                <div class="chat-list-info">
+                    <h4>${personName}</h4>
+                    <p class="chat-list-item-title">📦 ${chat.listing_title || 'Listing'}</p>
+                    <p class="chat-list-last-msg">${chat.last_message || 'No messages yet'}</p>
+                    <small>${chat.last_message_time ? new Date(chat.last_message_time).toLocaleString() : ''}</small>
+                </div>
+                ${chat.unread_count > 0 ? `<span class="chat-unread-badge">${chat.unread_count}</span>` : ''}
             </div>
-            ${chat.unread_count > 0 ? `<span class="chat-unread-badge">${chat.unread_count}</span>` : ''}
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function openChatFromList(listingId, sellerId) {

@@ -420,23 +420,60 @@ body::after {
     gap: 0.5rem;
 }
 
+/* Message wrapper aligns bubble left or right */
+.chat-message-wrapper {
+    display: flex;
+    flex-direction: column;
+    max-width: 75%;
+}
+
+.chat-message-wrapper.sent {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.chat-message-wrapper.received {
+    align-self: flex-start;
+    align-items: flex-start;
+}
+
 .chat-message {
-    max-width: 70%;
     padding: 0.8rem 1rem;
     border-radius: 15px;
     word-wrap: break-word;
     animation: slideIn 0.3s ease;
+    width: fit-content;
+    max-width: 100%;
 }
 
 .chat-message.sent {
-    align-self: flex-end;
     background: linear-gradient(135deg, var(--primary), var(--secondary));
-    margin-left: auto;
+    border-bottom-right-radius: 4px;
 }
 
 .chat-message.received {
-    align-self: flex-start;
     background: rgba(255, 255, 255, 0.15);
+    border-bottom-left-radius: 4px;
+}
+
+/* Sender name above each bubble */
+.message-sender-name {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    opacity: 0.8;
+    letter-spacing: 0.02em;
+}
+
+.chat-message.sent .message-sender-name {
+    text-align: right;
+    color: rgba(255,255,255,0.85);
+}
+
+.chat-message.received .message-sender-name {
+    text-align: left;
+    color: var(--accent);
 }
 
 .chat-message .message-time {
@@ -690,26 +727,67 @@ body::after {
     transform: translateX(5px);
 }
 
-.chat-list-item img {
-    width: 50px;
-    height: 50px;
+.chat-list-avatar {
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
-    object-fit: cover;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-list-avatar-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
 }
 
 .chat-list-info {
     flex: 1;
+    overflow: hidden;
 }
 
 .chat-list-info h4 {
-    margin: 0 0 0.3rem 0;
-    font-size: 1rem;
+    margin: 0 0 0.15rem 0;
+    font-size: 0.98rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.chat-list-info p {
-    margin: 0;
-    font-size: 0.85rem;
-    opacity: 0.7;
+.chat-list-item-title {
+    font-size: 0.78rem !important;
+    opacity: 0.6 !important;
+    margin: 0 0 0.1rem 0 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-list-last-msg {
+    margin: 0 !important;
+    font-size: 0.85rem !important;
+    opacity: 0.75 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-list-info small {
+    font-size: 0.72rem;
+    opacity: 0.5;
 }
 
 .chat-unread-badge {
