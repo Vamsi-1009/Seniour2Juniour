@@ -1,3 +1,2 @@
-// Backend API URL — update this after deploying to Render
-// Example: window.ENV_API_URL = 'https://your-app-name.onrender.com';
-window.ENV_API_URL = '';
+// Backend API URL — Render deployment
+window.ENV_API_URL = 'https://academic-exchange-backend.onrender.com';
