@@ -40,10 +40,15 @@ function updateNav() {
         nav.innerHTML = `
             ${currentUser.role === 'admin' ? '<button class="nav-btn" onclick="showAdminDashboard()">Admin</button>' : ''}
             <button class="nav-action-btn" onclick="showSellModal()">📦 Sell</button>
-            <button class="nav-action-btn" onclick="openChatsPanel()">💬 Chats</button>
+            <button class="nav-action-btn" onclick="openChatsPanel()" style="position:relative;">
+                💬 Chats
+                <span class="nav-badge" id="chatsBadge" style="display:none;">0</span>
+            </button>
             <button class="nav-profile-btn" id="navAvatarIcon" onclick="toggleProfileDropdown(event)">👤</button>
         `;
         loadNavAvatar();
+        loadWishlistIds();
+        updateUnreadBadge();
     }
 }
 
@@ -158,11 +163,15 @@ function renderListings(listings) {
         const img = item.images && item.images[0]
             ? `<img src="${item.images[0]}" alt="${item.title}">`
             : `<div class="card-no-image">📦</div>`;
+        const isSold = item.status === 'sold';
+        const isWished = myWishlist && myWishlist.has(String(item.listing_id));
         return `
         <div class="listing-card" onclick="viewListing('${item.listing_id}')">
             <div class="card-image-container">
                 ${img}
                 <span class="card-condition">${item.condition || ''}</span>
+                ${isSold ? '<div class="sold-overlay"><span class="sold-tag">SOLD</span></div>' : ''}
+                <button class="wish-btn ${isWished ? 'active' : ''}" data-id="${item.listing_id}" onclick="toggleWishlist(event,'${item.listing_id}')" title="Save to wishlist">${isWished ? '❤️' : '🤍'}</button>
             </div>
             <div class="card-content">
                 <span class="card-category">${item.category || ''}</span>
@@ -1218,14 +1227,17 @@ function renderMyItems(items) {
         const img = item.images && item.images[0]
             ? `<img src="${item.images[0]}" alt="${item.title}">`
             : `<div class="card-no-image">📦</div>`;
+        const isSold = item.status === 'sold';
+        const soldLabel = isSold ? '🔄 Relist' : '✅ Sold';
         return `
         <div class="listing-card">
             <div class="card-image-container">
                 ${img}
                 <span class="card-condition">${item.condition || ''}</span>
+                ${isSold ? '<div class="sold-overlay"><span class="sold-tag">SOLD</span></div>' : ''}
             </div>
             <div class="card-content">
-                <span class="card-category">${item.status || 'active'}</span>
+                <span class="card-category">${isSold ? '🔴 Sold' : '🟢 Active'}</span>
                 <h3 class="card-title">${item.title}</h3>
                 <div class="card-footer">
                     <span class="card-price">₹${item.price}</span>
@@ -1233,6 +1245,7 @@ function renderMyItems(items) {
                 </div>
                 <div class="card-actions">
                     <button class="card-btn" onclick="event.stopPropagation();editListing('${item.listing_id}')">✏️ Edit</button>
+                    <button class="card-btn" onclick="event.stopPropagation();markAsSold('${item.listing_id}','${item.status}')">${soldLabel}</button>
                     <button class="card-btn danger" onclick="event.stopPropagation();deleteListing('${item.listing_id}')">🗑️ Delete</button>
                 </div>
             </div>
@@ -1240,23 +1253,24 @@ function renderMyItems(items) {
     }).join('');
 }
 
-async function deleteListing(id) {
-    if (!confirm('Are you sure you want to delete this listing?')) return;
-
-    try {
-        const res = await fetch(API + `/listings/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
-        });
-
-        if (res.ok) {
-            showAlert('Listing deleted successfully', 'success');
-            loadMyItems();
-            loadListings();
+function deleteListing(id) {
+    showConfirm('Delete this listing permanently?', async () => {
+        try {
+            const res = await fetch(API + `/listings/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+            });
+            if (res.ok) {
+                showAlert('Listing deleted', 'success');
+                loadMyItems();
+                loadListings();
+            } else {
+                showAlert('Failed to delete listing', 'error');
+            }
+        } catch (error) {
+            showAlert('Failed to delete listing', 'error');
         }
-    } catch (error) {
-        showAlert('Failed to delete listing', 'error');
-    }
+    }, 'Delete');
 }
 
 // Map Filter System
@@ -1376,6 +1390,264 @@ function applyMapFilter() {
 
     loadListings(filters);
     showAlert(`Showing items within ${selectedRange}km radius`, 'success');
+}
+
+// ==================== MOBILE NAV HAMBURGER ====================
+
+function toggleMobileMenu() {
+    const nav = document.getElementById('navMenu');
+    const btn = document.getElementById('hamburgerBtn');
+    if (!nav || !btn) return;
+    nav.classList.toggle('mobile-open');
+    btn.classList.toggle('active');
+}
+
+// Close mobile menu when clicking outside
+document.addEventListener('click', (e) => {
+    const nav = document.getElementById('navMenu');
+    const btn = document.getElementById('hamburgerBtn');
+    if (nav && btn && nav.classList.contains('mobile-open')) {
+        if (!nav.contains(e.target) && !btn.contains(e.target)) {
+            nav.classList.remove('mobile-open');
+            btn.classList.remove('active');
+        }
+    }
+});
+
+// ==================== UNREAD BADGE ====================
+
+async function updateUnreadBadge() {
+    if (!currentUser) return;
+    try {
+        const res = await fetch(API + '/messages/my-chats', {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        const data = await res.json();
+        if (data.success) {
+            const unread = (data.chats || []).reduce((sum, c) => sum + (c.unread_count > 0 ? 1 : 0), 0);
+            const badge = document.getElementById('chatsBadge');
+            if (badge) {
+                if (unread > 0) {
+                    badge.textContent = unread > 9 ? '9+' : unread;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+    } catch (e) { /* ignore */ }
+}
+
+// Refresh badge every 30 s while logged in
+setInterval(() => { if (currentUser) updateUnreadBadge(); }, 30000);
+
+// ==================== CUSTOM CONFIRM MODAL ====================
+
+function showConfirm(message, onConfirm, dangerLabel = 'Delete') {
+    const old = document.getElementById('confirmModal');
+    if (old) old.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'confirmModal';
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="confirm-modal">
+            <div class="confirm-icon">⚠️</div>
+            <div class="confirm-message">${message}</div>
+            <div class="confirm-actions">
+                <button class="btn btn-secondary" onclick="document.getElementById('confirmModal').remove()">Cancel</button>
+                <button class="btn btn-danger" id="confirmOkBtn">${dangerLabel}</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    document.getElementById('confirmOkBtn').addEventListener('click', () => {
+        modal.remove();
+        onConfirm();
+    });
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+// ==================== EDIT LISTING ====================
+
+async function editListing(id) {
+    try {
+        const res = await fetch(API + '/listings/' + id);
+        const data = await res.json();
+        if (!data.success) { showAlert('Failed to load listing', 'error'); return; }
+        const l = data.listing;
+
+        const old = document.getElementById('editListingModal');
+        if (old) old.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'editListingModal';
+        modal.className = 'modal active';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width:520px;">
+                <div class="modal-header">
+                    <h2>✏️ Edit Listing</h2>
+                    <button class="close-btn" onclick="document.getElementById('editListingModal').remove()">✕</button>
+                </div>
+                <form id="editListingForm" onsubmit="handleEditListing(event,'${id}')">
+                    <div class="form-group">
+                        <label class="form-label">Title</label>
+                        <input type="text" class="form-input" id="editTitle" value="${(l.title || '').replace(/"/g, '&quot;')}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-textarea" id="editDescription" rows="3" required>${l.description || ''}</textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Price (₹)</label>
+                            <input type="number" class="form-input" id="editPrice" value="${l.price}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Condition</label>
+                            <select class="form-select" id="editCondition">
+                                <option value="New" ${l.condition==='New'?'selected':''}>New</option>
+                                <option value="Like New" ${l.condition==='Like New'?'selected':''}>Like New</option>
+                                <option value="Good" ${l.condition==='Good'?'selected':''}>Good</option>
+                                <option value="Fair" ${l.condition==='Fair'?'selected':''}>Fair</option>
+                                <option value="Used" ${l.condition==='Used'?'selected':''}>Used</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Location</label>
+                        <input type="text" class="form-input" id="editLocation" value="${(l.location || '').replace(/"/g, '&quot;')}">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('editListingModal').remove()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+    } catch (e) {
+        showAlert('Failed to load listing', 'error');
+    }
+}
+
+async function handleEditListing(e, id) {
+    e.preventDefault();
+    const body = {
+        title: document.getElementById('editTitle').value,
+        description: document.getElementById('editDescription').value,
+        price: document.getElementById('editPrice').value,
+        condition: document.getElementById('editCondition').value,
+        location: document.getElementById('editLocation').value
+    };
+    try {
+        const res = await fetch(API + '/listings/' + id, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAlert('Listing updated!', 'success');
+            document.getElementById('editListingModal').remove();
+            loadMyItems();
+            loadListings();
+        } else {
+            showAlert(data.error || 'Update failed', 'error');
+        }
+    } catch (e) {
+        showAlert('Network error', 'error');
+    }
+}
+
+// ==================== MARK AS SOLD ====================
+
+function markAsSold(id, currentStatus) {
+    const newStatus = currentStatus === 'sold' ? 'active' : 'sold';
+    const msg = newStatus === 'sold' ? 'Mark this listing as sold?' : 'Relist this item as active?';
+    const label = newStatus === 'sold' ? 'Mark Sold' : 'Relist';
+    showConfirm(msg, async () => {
+        try {
+            const res = await fetch(API + '/listings/' + id + '/status', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showAlert(newStatus === 'sold' ? 'Marked as sold!' : 'Listing relisted!', 'success');
+                loadMyItems();
+                loadListings();
+            } else {
+                showAlert(data.error || 'Failed to update status', 'error');
+            }
+        } catch (e) {
+            showAlert('Network error', 'error');
+        }
+    }, label);
+}
+
+// ==================== WISHLIST ====================
+
+let myWishlist = new Set();
+
+async function loadWishlistIds() {
+    if (!currentUser) return;
+    try {
+        const res = await fetch(API + '/wishlist', {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        const data = await res.json();
+        if (data.success) {
+            myWishlist = new Set((data.wishlist || []).map(w => String(w.listing_id)));
+            // Refresh any already-rendered heart buttons
+            document.querySelectorAll('.wish-btn').forEach(btn => {
+                const id = btn.dataset.id;
+                const active = myWishlist.has(String(id));
+                btn.classList.toggle('active', active);
+                btn.textContent = active ? '❤️' : '🤍';
+            });
+        }
+    } catch (e) { /* ignore */ }
+}
+
+async function toggleWishlist(e, listingId) {
+    e.stopPropagation();
+    if (!currentUser) {
+        showAlert('Please login to save items', 'error');
+        return;
+    }
+    try {
+        const res = await fetch(API + '/wishlist/' + listingId, {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        const data = await res.json();
+        if (data.success) {
+            const id = String(listingId);
+            if (data.action === 'added') {
+                myWishlist.add(id);
+                showAlert('Saved to wishlist ❤️', 'success');
+            } else {
+                myWishlist.delete(id);
+                showAlert('Removed from wishlist', 'info');
+            }
+            const btn = document.querySelector(`.wish-btn[data-id="${id}"]`);
+            if (btn) {
+                btn.classList.toggle('active', myWishlist.has(id));
+                btn.textContent = myWishlist.has(id) ? '❤️' : '🤍';
+            }
+        }
+    } catch (e) {
+        showAlert('Failed to update wishlist', 'error');
+    }
 }
 
 // Update loadListings to handle location filtering

@@ -141,6 +141,44 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// Edit listing (title, description, price, condition, location)
+router.put('/:id', authenticateToken, async (req, res) => {
+    try {
+        const { title, description, price, condition, location } = req.body;
+        const check = await pool.query('SELECT user_id FROM listings WHERE listing_id = $1', [req.params.id]);
+        if (check.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+        if (check.rows[0].user_id !== req.user.user_id && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Not authorized' });
+        }
+        const result = await pool.query(
+            'UPDATE listings SET title=$1, description=$2, price=$3, condition=$4, location=$5 WHERE listing_id=$6 RETURNING *',
+            [title, description, price, condition, location, req.params.id]
+        );
+        res.json({ success: true, listing: result.rows[0] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to update listing' });
+    }
+});
+
+// Mark as sold / reactivate
+router.patch('/:id/status', authenticateToken, async (req, res) => {
+    try {
+        const { status } = req.body;
+        if (!['active', 'sold'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
+        const check = await pool.query('SELECT user_id FROM listings WHERE listing_id = $1', [req.params.id]);
+        if (check.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+        if (check.rows[0].user_id !== req.user.user_id && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Not authorized' });
+        }
+        await pool.query('UPDATE listings SET status=$1 WHERE listing_id=$2', [status, req.params.id]);
+        res.json({ success: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to update status' });
+    }
+});
+
 router.delete('/:id', authenticateToken, async (req, res) => {
     try {
         const check = await pool.query('SELECT user_id FROM listings WHERE listing_id = $1', [req.params.id]);
