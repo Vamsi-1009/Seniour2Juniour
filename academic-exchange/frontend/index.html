@@ -143,16 +143,25 @@
     <div class="modal" id="loginModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Welcome Back</h2>
+                <div>
+                    <h2>👋 Welcome Back!</h2>
+                    <p class="modal-header-sub">Login to your Academic Exchange account</p>
+                </div>
                 <button onclick="closeModal('loginModal')" class="close-btn">✕</button>
             </div>
             <form id="loginForm" onsubmit="handleLogin(event)">
-                <input type="email" class="form-input" placeholder="Email" required id="loginEmail">
-                <input type="password" class="form-input" placeholder="Password" required id="loginPassword">
-                <button type="submit" class="btn btn-primary" style="width:100%">Login</button>
+                <div class="input-wrap">
+                    <span class="input-icon">✉️</span>
+                    <input type="email" class="form-input" placeholder="Email address" required id="loginEmail">
+                </div>
+                <div class="input-wrap">
+                    <span class="input-icon">🔒</span>
+                    <input type="password" class="form-input" placeholder="Password" required id="loginPassword">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Login →</button>
             </form>
-            <p style="margin-top:1rem;text-align:center">
-                Don't have an account? <a href="#" onclick="showRegister()" style="color:var(--accent)">Sign up</a>
+            <p style="margin-top:1.1rem;text-align:center;font-size:0.88rem;font-weight:700;color:var(--text-2);">
+                Don't have an account? <a href="#" onclick="showRegister()" style="color:var(--p1);font-weight:800;">Sign up</a>
             </p>
         </div>
     </div>
@@ -161,17 +170,29 @@
     <div class="modal" id="registerModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Create Account</h2>
+                <div>
+                    <h2>🎓 Create Account</h2>
+                    <p class="modal-header-sub">Join thousands of students on Academic Exchange</p>
+                </div>
                 <button onclick="closeModal('registerModal')" class="close-btn">✕</button>
             </div>
             <form id="registerForm" onsubmit="handleRegister(event)">
-                <input type="text" class="form-input" placeholder="Full Name" required id="registerName">
-                <input type="email" class="form-input" placeholder="Email" required id="registerEmail">
-                <input type="password" class="form-input" placeholder="Password" required id="registerPassword">
-                <button type="submit" class="btn btn-primary" style="width:100%">Sign Up</button>
+                <div class="input-wrap">
+                    <span class="input-icon">👤</span>
+                    <input type="text" class="form-input" placeholder="Full Name" required id="registerName">
+                </div>
+                <div class="input-wrap">
+                    <span class="input-icon">✉️</span>
+                    <input type="email" class="form-input" placeholder="Email address" required id="registerEmail">
+                </div>
+                <div class="input-wrap">
+                    <span class="input-icon">🔒</span>
+                    <input type="password" class="form-input" placeholder="Password (min 6 chars)" required id="registerPassword">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Create Account →</button>
             </form>
-            <p style="margin-top:1rem;text-align:center">
-                Already have an account? <a href="#" onclick="showLogin()" style="color:var(--accent)">Login</a>
+            <p style="margin-top:1.1rem;text-align:center;font-size:0.88rem;font-weight:700;color:var(--text-2);">
+                Already have an account? <a href="#" onclick="showLogin()" style="color:var(--p1);font-weight:800;">Login</a>
             </p>
         </div>
     </div>
