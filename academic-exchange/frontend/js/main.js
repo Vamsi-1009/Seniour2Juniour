@@ -40,6 +40,7 @@ function updateNav() {
         nav.innerHTML = `
             ${currentUser.role === 'admin' ? '<button class="nav-btn" onclick="showAdminDashboard()">Admin</button>' : ''}
             <button class="nav-action-btn" onclick="showSellModal()">📦 Sell</button>
+            <button class="nav-action-btn" onclick="openWishlist()">❤️ Saved</button>
             <button class="nav-action-btn" onclick="openChatsPanel()" style="position:relative;">
                 💬 Chats
                 <span class="nav-badge" id="chatsBadge" style="display:none;">0</span>
@@ -1592,6 +1593,71 @@ function markAsSold(id, currentStatus) {
             showAlert('Network error', 'error');
         }
     }, label);
+}
+
+// ==================== WISHLIST VIEW ====================
+
+async function openWishlist() {
+    if (!currentUser) {
+        showAlert('Please login to view your wishlist', 'error');
+        return;
+    }
+    showModal('wishlistModal');
+    const list = document.getElementById('wishlistList');
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading...</p></div>`;
+
+    try {
+        const res = await fetch(API + '/wishlist', {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        const data = await res.json();
+        if (data.success) {
+            myWishlist = new Set((data.wishlist || []).map(w => String(w.listing_id)));
+            renderWishlistPanel(data.wishlist || []);
+        }
+    } catch (e) {
+        list.innerHTML = `<div class="empty-state"><div class="empty-icon">❌</div><p>Failed to load wishlist</p></div>`;
+    }
+}
+
+function renderWishlistPanel(items) {
+    const list = document.getElementById('wishlistList');
+    if (items.length === 0) {
+        list.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🤍</div>
+                <h3>No saved items yet</h3>
+                <p>Tap the ❤️ heart on any listing to save it here</p>
+            </div>`;
+        return;
+    }
+
+    list.innerHTML = items.map(item => {
+        const thumb = item.images && item.images[0]
+            ? `<img src="${item.images[0]}" alt="${item.title}" class="wishlist-thumb">`
+            : `<div class="wishlist-thumb wishlist-thumb-placeholder">📦</div>`;
+        const isSold = item.status === 'sold';
+        const statusBadge = isSold
+            ? `<span class="wishlist-status sold">🔴 Sold</span>`
+            : `<span class="wishlist-status available">🟢 Available</span>`;
+        return `
+        <div class="wishlist-item" onclick="closeModal('wishlistModal');viewListing('${item.listing_id}')">
+            ${thumb}
+            <div class="wishlist-item-info">
+                <div class="wishlist-item-title">${item.title}</div>
+                <div class="wishlist-item-sub">₹${item.price} &nbsp;·&nbsp; ${item.category || ''} &nbsp;·&nbsp; ${item.seller_name || 'Seller'}</div>
+                ${statusBadge}
+            </div>
+            <button class="wish-btn active" style="position:static;flex-shrink:0;"
+                onclick="event.stopPropagation();toggleAndRefreshWishlist(event,'${item.listing_id}')">❤️</button>
+        </div>`;
+    }).join('');
+}
+
+async function toggleAndRefreshWishlist(e, listingId) {
+    await toggleWishlist(e, listingId);
+    // Small delay so the alert shows before the panel reloads
+    setTimeout(openWishlist, 400);
 }
 
 // ==================== WISHLIST ====================

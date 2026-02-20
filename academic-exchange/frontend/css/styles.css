@@ -1207,6 +1207,61 @@ a { color: var(--p1); text-decoration: none; }
 
 .chats-list { padding: 0.6rem 0; }
 
+/* ============================================================
+   WISHLIST PANEL
+   ============================================================ */
+.wishlist-item {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.85rem 1.2rem;
+    cursor: pointer;
+    border-bottom: 1.5px solid #f3f0ff;
+    transition: background 0.15s;
+}
+.wishlist-item:hover { background: #faf9ff; }
+
+.wishlist-thumb {
+    width: 62px; height: 62px;
+    border-radius: var(--r);
+    object-fit: cover;
+    border: 2.5px solid var(--border);
+    flex-shrink: 0;
+    box-shadow: 3px 3px 0 rgba(124,58,237,0.12);
+}
+.wishlist-thumb-placeholder {
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #c4b5fd, #f9a8d4);
+    font-size: 1.5rem;
+}
+.wishlist-item-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.wishlist-item-title {
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.wishlist-item-sub {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-3);
+}
+.wishlist-status {
+    font-size: 0.72rem;
+    font-weight: 800;
+    margin-top: 2px;
+}
+.wishlist-status.sold    { color: #dc2626; }
+.wishlist-status.available { color: #16a34a; }
+
 .chat-item {
     display: flex;
     align-items: center;

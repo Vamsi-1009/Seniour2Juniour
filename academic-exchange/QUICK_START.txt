@@ -29,26 +29,29 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   academic-exchange/
+  ├── QUICK_START.txt             ← THIS FILE (update after every session)
   ├── backend/
   │   ├── server.js               ← Entry point, Express + Socket.io setup
   │   ├── .env                    ← DB URL, JWT secret, Supabase keys
   │   ├── config/
   │   │   └── db.js               ← PostgreSQL pool (connects to Supabase)
   │   ├── middleware/
-  │   │   └── auth.js             ← JWT verify middleware
+  │   │   ├── auth.js             ← JWT verify middleware (authenticateToken)
+  │   │   └── rateLimiter.js      ← 100 req/15min via express-rate-limit
   │   └── routes/
   │       ├── auth.js             ← POST /api/auth/login, /api/auth/register
-  │       ├── listings.js         ← CRUD for listings, image upload to Supabase
-  │       ├── messages.js         ← Chat messages, GET /my-chats
-  │       ├── user.js             ← Profile GET/PUT, avatar upload, public user info
+  │       ├── listings.js         ← CRUD for listings + PUT edit + PATCH status
+  │       ├── messages.js         ← Chat messages, GET /my-chats (unread count)
+  │       ├── user.js             ← Profile GET/PUT, avatar upload, public user
+  │       ├── wishlist.js         ← GET wishlist (full listing data), POST toggle
   │       └── transactions.js     ← Payment record (Razorpay)
   └── frontend/
       ├── index.html              ← Single HTML page, all modals defined here
       ├── css/
-      │   └── styles.css          ← CLAYMORPHISM theme (Nunito font, pastel+purple)
+      │   └── styles.css          ← CLAYMORPHISM theme (Nunito, pastel+purple)
       └── js/
           ├── config.js           ← Sets window.ENV_API_URL for Vercel deploy
-          └── main.js             ← ALL frontend logic (1300+ lines, single file)
+          └── main.js             ← ALL frontend logic (1700+ lines, single file)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   DATABASE TABLES (PostgreSQL on Supabase)
@@ -58,10 +61,10 @@
                   location, bio, created_at
   listings      → listing_id, user_id, title, description, price,
                   category, condition, images[], location, latitude,
-                  longitude, status, views, created_at
+                  longitude, status ('active'|'sold'), views, created_at
   messages      → message_id, listing_id, sender_id, receiver_id,
                   content, created_at  [JOIN users for sender_name]
-  wishlist      → user_id, listing_id
+  wishlist      → user_id, listing_id, created_at
   recently_viewed → user_id, listing_id, viewed_at
   reports       → report_id, reporter_id, listing_id, reason
 
@@ -77,7 +80,8 @@
     GET    /api/listings            → All listings (with filters)
     GET    /api/listings/:id        → Single listing detail
     POST   /api/listings            → Create listing (multipart/form-data)
-    PUT    /api/listings/:id        → Edit listing
+    PUT    /api/listings/:id        → Edit listing (title/desc/price/cond/loc)
+    PATCH  /api/listings/:id/status → Mark sold/active { status:'sold'|'active' }
     DELETE /api/listings/:id        → Delete listing
     GET    /api/listings/my-items   → Current user's listings
 
@@ -92,7 +96,13 @@
     GET    /api/messages/:listingId → Chat history for a listing
     GET    /api/messages/my-chats   → All chats for current user
                                       (returns other_user_name, other_user_avatar,
-                                       last_message, listing_title)
+                                       last_message, listing_title, unread_count)
+
+  Wishlist:
+    GET    /api/wishlist            → All saved listings (full listing rows +
+                                      seller_name + added_at), ordered by newest
+    POST   /api/wishlist/:listingId → Toggle: adds if not saved, removes if saved
+                                      Returns { action: 'added' | 'removed' }
 
   Socket.io events:
     Emit:  join_chat      { listingId, userId }
@@ -109,13 +119,15 @@
 
   Auth / Nav:
     checkAuth()           → Reads JWT from localStorage, calls updateNav()
-    updateNav()           → Injects nav buttons: Sell, Chats, profile avatar btn
-    loadNavAvatar()       → Fetches /user/profile and shows avatar in nav
+    updateNav()           → Injects nav: Sell | ❤️ Saved | 💬 Chats | Avatar
+                            Also calls loadWishlistIds() + updateUnreadBadge()
+    loadNavAvatar()       → Fetches /user/profile, shows avatar in nav
     handleLogin(e)        → POST /auth/login → store token → reload
     handleRegister(e)     → POST /auth/register → store token → reload
     logout()              → Clears token, reloads
     toggleProfileDropdown(event) → Toggles .open on #profileDropdown
-    closeProfileDropdown() → Removes .open
+    toggleMobileMenu()    → Hamburger: toggles .mobile-open on #navMenu
+                            + .active on #hamburgerBtn. Auto-closes on outside click.
 
   Modal control:
     showModal(id)         → Adds .active class to modal div
@@ -125,16 +137,39 @@
   Alerts / Toasts:
     showAlert(msg, type)  → Creates .alert div inside #alertContainer
                             type = 'success' | 'error' | 'info'
+    showConfirm(msg, onConfirm, label) → Custom confirm modal (replaces
+                            window.confirm). Creates #confirmModal dynamically.
     ⚠️  IMPORTANT: class is .alert (NOT .alert-notification)
 
   Listings:
-    loadListings(filters) → GET /listings, calls renderListings()
-    renderListings(arr)   → Renders .listing-card divs in #listingsGrid
-    renderMyItems(arr)    → Renders .listing-card in #myItemsGrid
-    viewListing(id)       → Creates dynamic modal with id="listingDetailModal"
-    loadMyItems()         → GET /listings/my-items
-    deleteListing(id)     → DELETE /listings/:id
+    loadListings(filters) → GET /listings (supports location/range filters)
+    renderListings(arr)   → Renders .listing-card in #listingsGrid
+                            Includes ❤️ heart button + SOLD overlay
+    renderMyItems(arr)    → Renders cards in #myItemsGrid
+                            Includes Edit | ✅ Sold/🔄 Relist | Delete buttons
+    viewListing(id)       → Creates dynamic modal id="listingDetailModal"
+    loadMyItems()         → GET /listings/my-items → renderMyItems()
+    editListing(id)       → Fetches listing, shows pre-filled edit modal
+    handleEditListing(e,id) → PUT /listings/:id with updated fields
+    markAsSold(id, status) → PATCH /listings/:id/status (toggles sold/active)
+                             Uses showConfirm() for confirmation
+    deleteListing(id)     → Uses showConfirm(), then DELETE /listings/:id
     handleSell(e)         → POST /listings (FormData with images)
+
+  Wishlist:
+    loadWishlistIds()     → GET /wishlist → populates myWishlist (Set of IDs)
+                            Called automatically after login via updateNav()
+    toggleWishlist(e, id) → POST /wishlist/:id, updates heart button state
+    openWishlist()        → Shows #wishlistModal, fetches + renders saved items
+    renderWishlistPanel(items) → Renders .wishlist-item rows in #wishlistList
+    toggleAndRefreshWishlist(e,id) → Toggle heart then reload the wishlist panel
+
+    Global: let myWishlist = new Set()  ← Set of saved listing_id strings
+
+  Unread Badge:
+    updateUnreadBadge()   → GET /messages/my-chats, counts chats with
+                            unread_count > 0, updates #chatsBadge span
+                            Auto-called every 30s via setInterval
 
   Sell form (multi-step):
     nextStep(n) / prevStep(n) → show/hide .form-step divs
@@ -144,28 +179,29 @@
 
   Profile:
     showProfile()             → GET /user/profile → renderProfileView()
-    renderProfileView(u, l)   → Shows avatar (.profile-avatar), details, listings
-    renderProfileEdit(u)      → Shows edit form with inputs
+    renderProfileView(u, l)   → Shows avatar, details, listings
+    renderProfileEdit(u)      → Shows edit form
     handleAvatarChange(input) → Preview file, store in pendingAvatarFile
     handleUpdateProfile(e)    → PUT /user/profile + POST /user/avatar
 
   Chat:
-    openChat(listingId, sellerId) → joins socket room, shows chatModal,
+    openChat(listingId, sellerId) → Joins socket room, shows chatModal,
                                     fetches seller info for chat header
     loadChatHistory(id)     → GET /messages/:id → displayMessage() each
     sendMessage()           → socket.emit('send_message', ...)
     displayMessage(msg)     → Creates .chat-message-wrapper.sent/.received
-                              Shows "You" or sender_name above bubble
     openChatsPanel()        → showModal('chatsPanelModal') + loadAllChats()
     loadAllChats()          → GET /messages/my-chats
-    renderChatsList(chats)  → Renders .chat-item divs with other_user_name/avatar
+    renderChatsList(chats)  → Renders .chat-item rows with name/avatar/unread
     openChatFromList(lid,sid) → closeModal panel, openChat()
 
-  Filters:
-    filterCategory(cat, el)   → loadListings({ category })
-    toggleAdvancedFilters()   → show/hide #advancedFilters panel
-    applyAdvancedFilters()    → loadListings with all filter values
-    setupSearch()             → live filter on searchInput keyup
+  Filters / Map:
+    filterCategory(cat, el)    → loadListings({ category })
+    toggleAdvancedFilters()    → show/hide #advancedFilters panel
+    applyAdvancedFilters()     → loadListings with all filter values
+    setupSearch()              → Live filter on searchInput
+    showMapFilter()            → Open map modal (Leaflet)
+    applyMapFilter()           → loadListings with lat/lng/range
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   CSS DESIGN SYSTEM — CLAYMORPHISM THEME
@@ -181,21 +217,25 @@
   CSS Variables:
     --r-sm: 12px  --r: 20px  --r-lg: 28px  --r-xl: 36px  --r-full: 999px
     --shadow-clay: 4px 4px 0 rgba(124,58,237,0.25)
-    --shadow-clay-lg: 6px 6px 0 ...
-    --shadow-clay-xl: 8px 8px 0 ...
+    --shadow-clay-lg / --shadow-clay-xl → same, bigger offset
     --inset: inset 0 2px 0 rgba(255,255,255,0.7)  ← top highlight
 
-  Key CSS Classes:
+  Key CSS Classes — Cards:
     .listing-card          → Main product card (hover: lift + tilt)
-    .card-image-container  → Image area (200px height)
+    .card-image-container  → Image area, position:relative (200px height)
     .card-no-image         → Emoji placeholder when no image
-    .card-condition        → Absolute badge top-right of card
+    .card-condition        → Absolute badge top-right of card image
     .card-category         → Purple pill tag
     .card-footer           → Price + location row
-    .card-actions          → Edit/Delete button row (My Items)
+    .card-actions          → Edit/Delete/Sold button row (My Items)
     .card-btn              → Small pill button inside card
     .card-btn.danger       → Red variant
+    .wish-btn              → ❤️ Heart button absolute top-left of card image
+    .wish-btn.active       → Pink background (item is saved)
+    .sold-overlay          → Semi-transparent overlay on sold cards
+    .sold-tag              → Red diagonal "SOLD" badge inside overlay
 
+  Key CSS Classes — Buttons:
     .btn                   → Base button (pill, clay shadow)
     .btn-primary           → Purple gradient, white text
     .btn-secondary         → Light grey
@@ -203,50 +243,75 @@
     .btn-block             → width: 100%
     .btn-sm                → Smaller padding
 
-    .modal                 → Fixed overlay (display:none default)
+  Key CSS Classes — Modals:
+    .modal                 → Fixed overlay (default hidden)
     .modal.active          → display:flex  ← USE .active NOT .show
     .modal-content         → White box, border-radius var(--r-xl)
     .modal-header          → Header with close btn
     .modal-header-sub      → Subtitle text below h2
+    ⚠️  On mobile (≤768px): modals become bottom sheets
+        (align-items:flex-end, rounded top only)
 
-    #loginModal .modal-header    → Pastel gradient banner header
-    #registerModal .modal-header → Same
+  Key CSS Classes — Wishlist Panel:
+    .wishlist-item         → Row in wishlist panel (flex, hover bg)
+    .wishlist-thumb        → 62×62 rounded image thumbnail
+    .wishlist-thumb-placeholder → Purple gradient fallback
+    .wishlist-item-title   → Bold truncated title
+    .wishlist-item-sub     → Price · Category · Seller (small text)
+    .wishlist-status       → .sold (red) | .available (green)
 
-    .form-input / .form-textarea / .form-select → Clay inputs
-    .input-wrap            → Wrapper for icon+input combo
-    .input-wrap .input-icon → Emoji/icon inside input
-
-    .alert-container       → Fixed bottom-right toast container
-    .alert                 → Toast card (border-left colored)
-    .alert.success         → Green left border
-    .alert.error           → Red left border
-
-    .nav-profile-btn       → Round avatar button in navbar
-    .nav-action-btn        → Sell / Chats pill buttons in navbar
+  Key CSS Classes — Nav:
+    .navbar                → Sticky, blur backdrop, clay border
+    .logo                  → Purple, font-weight:900
+    .nav-menu              → Flex row of nav buttons
+    .nav-btn               → Base pill nav button
+    .nav-action-btn        → Sell / Chats / Saved action pill
+    .nav-profile-btn       → Round avatar button
+    .nav-badge             → Red unread count bubble (absolute, top-right)
+    .hamburger-btn         → 3-line icon (mobile only, display:none on desktop)
+    .hamburger-btn.active  → Animated X shape
+    .nav-menu.mobile-open  → Shown as dropdown on mobile
     .profile-dropdown      → Dropdown menu (.open = visible)
 
+  Key CSS Classes — Chat:
     .chat-modal-content    → Flex column, fixed height chat window
     .chat-header-bar       → Purple gradient header
-    .chat-messages         → Scrollable message area (#f5f3ff bg)
+    .chat-messages         → Scrollable message area
     .chat-message-wrapper  → .sent or .received (aligns left/right)
     .chat-message          → Actual bubble (.sent=purple, .received=white)
     .message-sender-name   → Small name above bubble
     .chat-input-area       → Bottom input row
     .chat-item             → Row in chats list panel
     .chat-item-avatar      → Round avatar in chat list
+    .chat-unread-badge     → Purple pill count on chat list rows
 
-    .profile-avatar-section → Gradient background panel (lavender-pink)
-    .profile-avatar         → Round avatar circle
-    .profile-details        → Detail rows section
-    .profile-detail-item    → Icon + label + value row
-    .profile-listings       → Listings list in profile
+  Key CSS Classes — Custom Confirm:
+    .confirm-modal         → Centered white card (max 360px)
+    .confirm-icon          → Large emoji icon area
+    .confirm-message       → Message text
+    .confirm-actions       → Cancel + danger button row
+
+  Responsive Breakpoints:
+    1024px → Tablet: wider card columns, adjusted hero
+    768px  → Mobile: hamburger nav, bottom-sheet modals, 2-col card grid,
+              horizontal-scroll filters, full-width alerts
+    480px  → Small mobile: .card-description hidden, .step-label hidden,
+              smaller fonts and gaps
+    360px  → Tiny mobile: extra compact adjustments
+
+  Key CSS Classes — Alerts:
+    .alert-container       → Fixed bottom-right toast container
+    .alert                 → Toast card (border-left colored)
+    .alert.success         → Green left border
+    .alert.error           → Red left border
+    .alert.info            → Blue/purple left border
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  FULL HISTORY OF CHANGES MADE (Chronological)
+  FULL HISTORY OF CHANGES (Chronological)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   ── Phase 1: Initial Setup ──────────────────────────────────────────
-  ✅ Full backend built: Express, JWT auth, PostgreSQL (Supabase), Socket.io
+  ✅ Full backend: Express, JWT auth, PostgreSQL (Supabase), Socket.io
   ✅ Listings CRUD with Supabase Storage image upload
   ✅ Real-time chat with Socket.io rooms (per listing)
   ✅ Frontend: Vanilla JS SPA, single index.html
@@ -254,57 +319,64 @@
   ✅ Custom domain: academicexchange.24102002.xyz
 
   ── Phase 2: Feature Additions ──────────────────────────────────────
-  ✅ Navbar: "Sell Item" and "Chats" buttons moved outside dropdown
-  ✅ Chat header: shows seller name + avatar (fetched via /user/public/:userId)
-  ✅ Profile modal: full editable profile (name, email, location, bio, avatar)
-  ✅ Backend: PUT /user/profile now accepts email field
-  ✅ Backend: GET /user/public/:userId added (for chat header)
+  ✅ Navbar: "Sell Item" and "Chats" buttons outside profile dropdown
+  ✅ Chat header: shows seller name + avatar (/user/public/:userId)
+  ✅ Profile modal: full editable (name, email, location, bio, avatar)
+  ✅ Backend: PUT /user/profile accepts email field
+  ✅ Backend: GET /user/public/:userId added
 
   ── Phase 3: Chat Bug Fixes ─────────────────────────────────────────
-  ✅ Fix: displayMessage() now shows "You" (sent) or sender_name (received)
-           above each chat bubble using .message-sender-name span
-  ✅ Fix: My Chats list was showing listing image instead of person avatar
-           → renderChatsList() now uses other_user_name + other_user_avatar
-  ✅ Fix: My Chats was showing own name ("Vamsi") instead of other person
-           → backend GET /my-chats uses Promise.all subquery to always find
-             the non-current-user participant reliably
+  ✅ displayMessage() shows "You" (sent) or sender_name (received)
+  ✅ My Chats list: uses other_user_name + other_user_avatar correctly
+  ✅ My Chats: backend Promise.all subquery always returns the OTHER
+     user's name (not the current user's own name)
 
-  ── Phase 4: UI Overhaul (3 iterations) ────────────────────────────
-  ✅ Iteration 1: Full dark space theme (stars canvas, orbs, 3D cards, badge)
-     → User rejected: "too much over, remove these"
-  ✅ Iteration 2: Simplified dark theme (stars/orbs/badge removed)
-     → User rejected: "change the UI make the theme light"
-  ✅ Iteration 3: Clean light theme (Inter font, indigo #4f46e5, white surfaces)
-     → Committed and pushed
+  ── Phase 4: UI Overhaul (4 iterations) ────────────────────────────
+  ✅ Iteration 1: Dark space theme → rejected by user
+  ✅ Iteration 2: Simpler dark → rejected
+  ✅ Iteration 3: Clean light theme (Inter, indigo) → committed
   ✅ Iteration 4 (CURRENT): CLAYMORPHISM THEME
-     → Nunito font, pastel purple palette, chunky flat shadows,
-        heavy rounded corners, dot-grid background, pastel blob glows in hero
+     Nunito font, pastel purple, chunky flat shadows, dot-grid bg,
+     heavy rounded corners, pastel blob glows in hero
 
   ── Phase 5: JS / CSS Class Mismatch Fix ───────────────────────────
-  ✅ CRITICAL FIX: After claymorphism CSS rewrite, old JS used wrong class
-     names everywhere. All fixed:
-     • showModal/closeModal:  .show → .active
-     • Profile dropdown:      .show → .open  |  .profile-btn → .nav-profile-btn
-     • updateNav():           .profile-btn/.profile-icon → .nav-profile-btn
-     • showAlert():           .alert-notification → .alert + #alertContainer
-     • renderListings():      .card/.card-image → .listing-card/.card-image-container
-     • renderMyItems():       same card class fixes + .card-actions/.card-btn
-     • renderChatsList():     .chat-list-item → .chat-item  etc.
-     • viewListing():         rebuilt with .modal.active + .listing-detail-* classes
-     • initiatePaymentModal():.show → .active
-     • renderProfileView():   .profile-avatar-img → .profile-avatar  etc.
-     • renderProfileEdit():   new avatar-upload-btn, form-input classes
-     • Added #alertContainer to index.html
+  ✅ After claymorphism rewrite, ALL old JS class names fixed:
+     .show → .active (modals)  |  .show → .open (dropdown)
+     .profile-btn → .nav-profile-btn
+     .alert-notification → .alert + #alertContainer
+     .card → .listing-card  |  .card-image → .card-image-container
+     renderChatsList: .chat-list-item → .chat-item etc.
 
   ── Phase 6: Small UI Polish ────────────────────────────────────────
-  ✅ Buttons:
-     - Primary: linear-gradient instead of flat colour
-     - :active press-down effect (translateY(1px) + smaller shadow)
-     - Hover lifts higher (translateY(-3px))
-     - New .btn-danger class (red)
-  ✅ Login Modal: pastel gradient header banner, subtitle, icon inputs
-  ✅ Register Modal: same treatment as login
-  ✅ Form inputs: hover border, brighter focus shadow, .input-wrap icon helper
+  ✅ Primary buttons: gradient + hover lift + press-down effect
+  ✅ .btn-danger: red outline → solid red on hover
+  ✅ Login/Register modals: pastel gradient header banner + icon inputs
+  ✅ Form inputs: hover border glow, brighter focus shadow
+
+  ── Phase 7: Responsive Design + New Features ───────────────────────
+  ✅ Hamburger menu for mobile (≤768px), animated X on open
+  ✅ Bottom-sheet modals on mobile (align-items:flex-end, rounded top)
+  ✅ Horizontal-scroll filter bar on mobile
+  ✅ 2-col card grid on tablet, responsive to 1-col on small mobile
+  ✅ .card-description hidden on ≤480px to save space
+  ✅ Wishlist ❤️ heart button on every listing card
+     - myWishlist = Set of saved listing_id strings (global)
+     - loadWishlistIds() called on login
+     - toggleWishlist() POSTs to /wishlist/:id, updates button
+  ✅ ❤️ Saved nav button → opens Wishlist panel modal
+     - Displays all saved items: thumbnail, price, category, seller, status
+     - Heart button inside panel to remove from wishlist + refresh
+  ✅ SOLD overlay badge on sold listings (both Browse and My Items)
+  ✅ Edit listing modal (pre-filled with current data)
+     - Backend: PUT /api/listings/:id (new endpoint)
+  ✅ Mark as Sold / Relist toggle button on My Items cards
+     - Backend: PATCH /api/listings/:id/status (new endpoint)
+  ✅ Custom confirm modal replacing window.confirm() (showConfirm())
+  ✅ Unread chat badge on nav 💬 Chats button (red dot with count)
+     - updateUnreadBadge() auto-refreshes every 30 seconds
+  ✅ Rate limiting: 100 req/15 min (already existed via rateLimiter.js)
+  ✅ Skeleton loading card styles added to CSS (.skeleton-card etc.)
+  ✅ nav-badge CSS for red bubble counter on nav buttons
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   KNOWN ISSUES / WATCH OUT FOR
@@ -315,13 +387,14 @@
   ⚠️  Profile dropdown = .open (NOT .show)
   ⚠️  Card class = .listing-card (NOT .card)
   ⚠️  Razorpay key is placeholder ('YOUR_RAZORPAY_KEY') — needs real key
-  ⚠️  editListing() function is called but NOT fully implemented yet
-  ⚠️  Socket.io "send_message" event: receiverId is currentSellerId which
-      may be null if the current user IS the seller opening their own chat
-  ⚠️  Backend GET /my-chats uses a Promise.all post-processing subquery
-      (not pure SQL) — works but is slower with many chats
-  ⚠️  Supabase Storage bucket name for avatars must match what's in user.js
-  ⚠️  Render backend free tier sleeps after inactivity — first request is slow
+  ⚠️  myWishlist is a Set of STRING IDs — always cast with String(id)
+  ⚠️  toggleWishlist() calls e.stopPropagation() — prevents card click
+  ⚠️  Socket.io "send_message": receiverId is currentSellerId which may
+      be null if current user IS the seller viewing their own chat
+  ⚠️  Backend GET /my-chats uses Promise.all post-processing (not pure SQL)
+      — works but slower with many chats
+  ⚠️  Supabase Storage bucket name for avatars must match user.js
+  ⚠️  Render backend free tier sleeps after inactivity — first request slow
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   HOW TO RUN LOCALLY
@@ -330,14 +403,14 @@
   Backend:
     cd academic-exchange/backend
     npm install
-    # Make sure .env has: DATABASE_URL, JWT_SECRET, SUPABASE_URL, SUPABASE_KEY
+    # Ensure .env has: DATABASE_URL, JWT_SECRET, SUPABASE_URL, SUPABASE_KEY
     npm start              ← runs on http://localhost:5000
 
   Frontend:
     Open academic-exchange/frontend/index.html in browser
-    OR serve with Live Server VS Code extension
+    OR serve with Live Server (VS Code extension)
 
-  To check if backend is running:
+  To verify backend is running:
     Visit http://localhost:5000/api/listings
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -348,13 +421,13 @@
     git add frontend/
     git commit -m "your message"
     git push origin main
-    → Vercel picks up the push and deploys in ~1-2 minutes
+    → Vercel picks up push and deploys in ~1-2 minutes
 
   Backend (Render auto-deploys):
     git add backend/
     git commit -m "your message"
     git push origin main
-    → Render picks up the push and re-deploys automatically
+    → Render picks up push and re-deploys automatically
 
   Working directory for git:
     E:\AI Course\Project\Seniour2Juniour\academic-exchange\
@@ -364,17 +437,26 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   ✅ Claymorphism UI fully applied and working
-  ✅ All JS functions aligned to new CSS class names
+  ✅ All JS functions aligned to correct CSS class names
   ✅ Login/Register modals polished (gradient header + icon inputs)
-  ✅ Buttons have gradient + press effect + hover lift
+  ✅ Buttons: gradient + press effect + hover lift
   ✅ Chat: sender name shown above each bubble
   ✅ My Chats: shows correct other person's name and avatar
-  ✅ Profile: view + edit both working
+  ✅ Profile: view + edit both working (avatar upload too)
   ✅ Sell: 3-step form with image upload + map
   ✅ Real-time chat via Socket.io
+  ✅ Hamburger menu for mobile, bottom-sheet modals
+  ✅ Wishlist: heart button on every card, toggle save/remove
+  ✅ ❤️ Saved nav button → panel showing all saved listings
+  ✅ Edit listing: pre-filled modal, PUT /listings/:id
+  ✅ Mark as Sold / Relist toggle on My Items
+  ✅ Custom confirm modal (no more browser alert)
+  ✅ Unread badge on Chats nav button (auto-refreshes 30s)
+  ✅ SOLD overlay on sold listings
+  ✅ Rate limiting (100 req/15 min) on backend
   ✅ Deployed live on Vercel + Render
 
-  ❌ editListing() — UI shell exists but edit form not yet implemented
   ❌ Razorpay — placeholder key, payment flow not live yet
+  ❌ Admin dashboard — button exists but no route/UI built
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
