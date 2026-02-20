@@ -39,14 +39,10 @@ function updateNav() {
     if (currentUser) {
         nav.innerHTML = `
             ${currentUser.role === 'admin' ? '<button class="nav-btn" onclick="showAdminDashboard()">Admin</button>' : ''}
-            <button class="nav-btn nav-action-btn" onclick="showSellModal()">📦 Sell Item</button>
-            <button class="nav-btn nav-action-btn" onclick="openChatsPanel()">💬 Chats</button>
-            <button class="profile-btn" onclick="toggleProfileDropdown(event)">
-                <div class="profile-icon" id="navAvatarIcon">👤</div>
-                <span>${currentUser.name || 'User'}</span>
-            </button>
+            <button class="nav-action-btn" onclick="showSellModal()">📦 Sell</button>
+            <button class="nav-action-btn" onclick="openChatsPanel()">💬 Chats</button>
+            <button class="nav-profile-btn" id="navAvatarIcon" onclick="toggleProfileDropdown(event)">👤</button>
         `;
-        // Load avatar in nav if available
         loadNavAvatar();
     }
 }
@@ -57,10 +53,12 @@ async function loadNavAvatar() {
             headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
         });
         const data = await res.json();
-        if (data.success && data.user.avatar) {
-            const icon = document.getElementById('navAvatarIcon');
-            if (icon) {
-                icon.innerHTML = `<img src="${data.user.avatar}" alt="avatar" style="width:35px;height:35px;border-radius:50%;object-fit:cover;">`;
+        const icon = document.getElementById('navAvatarIcon');
+        if (icon) {
+            if (data.success && data.user.avatar) {
+                icon.innerHTML = `<img src="${data.user.avatar}" alt="avatar">`;
+            } else if (data.success && data.user.name) {
+                icon.textContent = data.user.name.charAt(0).toUpperCase();
             }
         }
     } catch (e) { /* ignore */ }
@@ -148,26 +146,35 @@ async function loadListings(filters = {}) {
 function renderListings(listings) {
     const grid = document.getElementById('listingsGrid');
     if (listings.length === 0) {
-        grid.innerHTML = '<p style="text-align:center;width:100%;color:white;">No listings found</p>';
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+            <div class="empty-icon">📭</div>
+            <h3>No listings found</h3>
+            <p>Try a different search or category</p>
+        </div>`;
         return;
     }
 
-    grid.innerHTML = listings.map(item => `
-        <div class="card" onclick="viewListing('${item.listing_id}')">
-            <img src="${item.images[0]}" class="card-image" alt="${item.title}">
+    grid.innerHTML = listings.map(item => {
+        const img = item.images && item.images[0]
+            ? `<img src="${item.images[0]}" alt="${item.title}">`
+            : `<div class="card-no-image">📦</div>`;
+        return `
+        <div class="listing-card" onclick="viewListing('${item.listing_id}')">
+            <div class="card-image-container">
+                ${img}
+                <span class="card-condition">${item.condition || ''}</span>
+            </div>
             <div class="card-content">
+                <span class="card-category">${item.category || ''}</span>
                 <h3 class="card-title">${item.title}</h3>
-                <p class="card-price">₹${item.price}</p>
-                <div class="card-meta">
-                    <span>${item.condition}</span>
-                    <span>${item.location || 'Online'}</span>
-                </div>
-                <div class="card-meta">
-                    <span>👁️ ${item.views || 0} views</span>
+                <p class="card-description">${item.description || ''}</p>
+                <div class="card-footer">
+                    <span class="card-price">₹${item.price}</span>
+                    <span class="card-location">📍 ${item.location || 'Online'}</span>
                 </div>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
 // Drag & Drop Image Upload
@@ -286,25 +293,45 @@ async function viewListing(id) {
 
         if (data.success) {
             const listing = data.listing;
+            // Remove any previous dynamic listing modal
+            const old = document.getElementById('listingDetailModal');
+            if (old) old.remove();
+
+            const images = (listing.images && listing.images.length > 0)
+                ? listing.images.map(src => `<img src="${src}" alt="${listing.title}">`).join('')
+                : `<div class="card-no-image" style="height:200px;border-radius:var(--r-lg);">📦</div>`;
+
+            const isOwner = currentUser && currentUser.user_id === listing.user_id;
+
             const modal = document.createElement('div');
-            modal.className = 'modal show';
+            modal.id = 'listingDetailModal';
+            modal.className = 'modal active';
             modal.innerHTML = `
-                <div class="modal-content" style="max-width: 700px;">
-                    <h2>${listing.title}</h2>
-                    <img src="${listing.images[0]}" style="width:100%; border-radius:15px; margin:1rem 0;">
-                    <p><strong>Price:</strong> ₹${listing.price}</p>
-                    <p><strong>Condition:</strong> ${listing.condition}</p>
-                    <p><strong>Category:</strong> ${listing.category}</p>
-                    <p><strong>Location:</strong> ${listing.location || 'Not specified'}</p>
-                    <p style="margin-top:1rem;">${listing.description}</p>
-                    <div style="margin-top:1.5rem; display:flex; gap:1rem;">
-                        <button class="btn btn-primary" onclick="openChat('${listing.listing_id}', '${listing.user_id}')">💬 Chat with Seller</button>
-                        <button class="btn btn-primary" onclick="initiatePaymentModal('${listing.listing_id}', '${listing.title}', ${listing.price})">💳 Buy Now</button>
-                        <button class="btn" onclick="this.parentElement.parentElement.parentElement.remove()">Close</button>
+                <div class="modal-content" style="max-width:680px;">
+                    <div class="modal-header">
+                        <h2>${listing.title}</h2>
+                        <button class="close-btn" onclick="document.getElementById('listingDetailModal').remove()">✕</button>
+                    </div>
+                    <div class="listing-detail-images">${images}</div>
+                    <div class="listing-detail-body">
+                        <div class="listing-detail-price">₹${listing.price}</div>
+                        <div class="listing-detail-meta">
+                            <span class="detail-badge">📦 ${listing.condition}</span>
+                            <span class="detail-badge">🏷️ ${listing.category}</span>
+                            <span class="detail-badge">📍 ${listing.location || 'Online'}</span>
+                        </div>
+                        <p class="listing-detail-desc">${listing.description}</p>
+                        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+                            ${!isOwner ? `<button class="btn btn-primary" onclick="openChat('${listing.listing_id}','${listing.user_id}');document.getElementById('listingDetailModal').remove()">💬 Chat with Seller</button>` : ''}
+                            ${!isOwner ? `<button class="btn btn-primary" onclick="initiatePaymentModal('${listing.listing_id}','${listing.title}',${listing.price})">💳 Buy Now</button>` : ''}
+                            <button class="btn btn-secondary" onclick="document.getElementById('listingDetailModal').remove()">Close</button>
+                        </div>
                     </div>
                 </div>
             `;
             document.body.appendChild(modal);
+            // Close on backdrop click
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
     } catch (error) {
         showAlert('Failed to load listing details', 'error');
@@ -329,100 +356,106 @@ async function showProfile() {
 
 function renderProfileView(user, listings) {
     const content = document.getElementById('profileContent');
-    const avatarSrc = user.avatar
-        ? `<img src="${user.avatar}" alt="avatar" class="profile-avatar-img">`
-        : `<div class="profile-avatar-placeholder">👤</div>`;
+    const avatarContent = user.avatar
+        ? `<img src="${user.avatar}" alt="avatar">`
+        : '👤';
 
     content.innerHTML = `
-        <div class="profile-view">
-            <!-- Avatar -->
-            <div class="profile-avatar-section">
-                <div class="profile-avatar-wrapper" id="profileAvatarWrapper">
-                    ${avatarSrc}
-                </div>
-                <div class="profile-basic-info">
-                    <h3 class="profile-name" id="profileDisplayName">${user.name}</h3>
-                    <p class="profile-email" id="profileDisplayEmail">${user.email}</p>
-                    <span class="profile-role-badge">${user.role || 'student'}</span>
+        <div class="profile-avatar-section">
+            <div class="profile-avatar-wrapper">
+                <div class="profile-avatar">${avatarContent}</div>
+            </div>
+            <div class="profile-name">${user.name}</div>
+            <span class="profile-role-badge">${user.role || 'Student'}</span>
+        </div>
+
+        <div class="profile-details">
+            <div class="profile-detail-item">
+                <span class="profile-detail-icon">✉️</span>
+                <div>
+                    <div class="profile-detail-label">Email</div>
+                    <div class="profile-detail-value">${user.email}</div>
                 </div>
             </div>
-
-            <!-- Details -->
-            <div class="profile-details-section">
-                <div class="profile-detail-row">
-                    <span class="profile-detail-label">📍 Location</span>
-                    <span class="profile-detail-value" id="profileDisplayLocation">${user.location || 'Not set'}</span>
-                </div>
-                <div class="profile-detail-row">
-                    <span class="profile-detail-label">📝 Bio</span>
-                    <span class="profile-detail-value" id="profileDisplayBio">${user.bio || 'No bio yet'}</span>
+            <div class="profile-detail-item">
+                <span class="profile-detail-icon">📍</span>
+                <div>
+                    <div class="profile-detail-label">Location</div>
+                    <div class="profile-detail-value">${user.location || 'Not set'}</div>
                 </div>
             </div>
-
-            <!-- Edit Button -->
-            <button class="btn btn-primary profile-edit-btn" onclick="renderProfileEdit(${JSON.stringify(user).replace(/"/g, '&quot;')})">✏️ Edit Profile</button>
-
-            <!-- My Listings -->
-            <div class="profile-listings-section">
-                <h3>📦 My Listings (${listings.length})</h3>
-                <div class="profile-listings-grid">
-                    ${listings.length === 0
-                        ? '<p style="opacity:0.6;margin-top:0.5rem;">No listings yet. Start selling!</p>'
-                        : listings.map(l => `
-                            <div class="profile-listing-card">
-                                <strong>${l.title}</strong>
-                                <span class="profile-listing-price">₹${l.price}</span>
-                                <span class="profile-listing-status ${l.status}">${l.status}</span>
-                            </div>
-                        `).join('')
-                    }
+            <div class="profile-detail-item">
+                <span class="profile-detail-icon">📝</span>
+                <div>
+                    <div class="profile-detail-label">Bio</div>
+                    <div class="profile-detail-value">${user.bio || 'No bio yet'}</div>
                 </div>
             </div>
+            <div style="padding:1rem 0 0.5rem;">
+                <button class="btn btn-primary btn-block" onclick="renderProfileEdit(${JSON.stringify(user).replace(/"/g, '&quot;')})">✏️ Edit Profile</button>
+            </div>
+        </div>
+
+        <div class="profile-listings">
+            <h3>📦 My Listings (${listings.length})</h3>
+            ${listings.length === 0
+                ? '<p style="color:var(--text-3);font-size:0.88rem;font-weight:600;">No listings yet. Start selling!</p>'
+                : listings.map(l => {
+                    const thumb = l.images && l.images[0]
+                        ? `<div class="profile-listing-thumb"><img src="${l.images[0]}" alt="${l.title}"></div>`
+                        : `<div class="profile-listing-thumb">📦</div>`;
+                    return `
+                    <div class="profile-listing-item">
+                        ${thumb}
+                        <div class="profile-listing-info">
+                            <div class="profile-listing-title">${l.title}</div>
+                            <div class="profile-listing-price">₹${l.price} · ${l.status}</div>
+                        </div>
+                    </div>`;
+                }).join('')
+            }
         </div>
     `;
 }
 
 function renderProfileEdit(user) {
     const content = document.getElementById('profileContent');
-    const avatarSrc = user.avatar
-        ? `<img src="${user.avatar}" alt="avatar" class="profile-avatar-img" id="profileAvatarPreview">`
-        : `<div class="profile-avatar-placeholder" id="profileAvatarPreview">👤</div>`;
+    const avatarContent = user.avatar
+        ? `<img src="${user.avatar}" alt="avatar">`
+        : '👤';
 
     content.innerHTML = `
-        <div class="profile-edit-form">
-            <!-- Avatar Upload -->
-            <div class="profile-avatar-section">
-                <div class="profile-avatar-wrapper profile-avatar-upload" onclick="document.getElementById('avatarInput').click()">
-                    <div id="profileAvatarPreviewWrap">${avatarSrc}</div>
-                    <div class="avatar-upload-overlay">📷 Change</div>
-                </div>
-                <input type="file" id="avatarInput" accept="image/*" style="display:none;" onchange="handleAvatarChange(this)">
+        <div class="profile-avatar-section">
+            <div class="profile-avatar-wrapper" style="cursor:pointer;" onclick="document.getElementById('avatarInput').click()">
+                <div class="profile-avatar" id="profileAvatarPreviewWrap">${avatarContent}</div>
+                <button type="button" class="avatar-upload-btn" onclick="event.stopPropagation();document.getElementById('avatarInput').click()">📷</button>
             </div>
-
-            <!-- Form Fields -->
-            <form id="profileEditForm" onsubmit="handleUpdateProfile(event)">
-                <div class="form-group">
-                    <label class="form-label">Full Name</label>
-                    <input type="text" class="form-input modern" id="editName" value="${user.name || ''}" placeholder="Your name" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input modern" id="editEmail" value="${user.email || ''}" placeholder="Your email" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Location</label>
-                    <input type="text" class="form-input modern" id="editLocation" value="${user.location || ''}" placeholder="e.g., Mumbai, Maharashtra">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Bio</label>
-                    <textarea class="form-textarea modern" id="editBio" rows="3" placeholder="Tell others about yourself...">${user.bio || ''}</textarea>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="showProfile()">← Cancel</button>
-                    <button type="submit" class="btn btn-primary">💾 Save Changes</button>
-                </div>
-            </form>
+            <div class="avatar-edit-hint">Click to change photo</div>
+            <input type="file" id="avatarInput" accept="image/*" style="display:none;" onchange="handleAvatarChange(this)">
         </div>
+
+        <form id="profileEditForm" onsubmit="handleUpdateProfile(event)" style="padding:0 1.5rem 1.5rem;">
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-input" id="editName" value="${user.name || ''}" placeholder="Your name" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-input" id="editEmail" value="${user.email || ''}" placeholder="Your email" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Location</label>
+                <input type="text" class="form-input" id="editLocation" value="${user.location || ''}" placeholder="e.g., Mumbai, Maharashtra">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Bio</label>
+                <textarea class="form-textarea" id="editBio" rows="3" placeholder="Tell others about yourself...">${user.bio || ''}</textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="showProfile()">← Cancel</button>
+                <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+            </div>
+        </form>
     `;
 }
 
@@ -744,7 +777,9 @@ function initiatePaymentModal(listingId, title, price) {
     document.getElementById('paymentPrice').textContent = `₹${price}`;
 
     // Close listing modal
-    document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
+    document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+    const dynModal = document.getElementById('listingDetailModal');
+    if (dynModal) dynModal.remove();
 
     showModal('paymentModal');
 }
@@ -819,13 +854,24 @@ async function recordTransaction(paymentId, amount) {
 
 // Utility Functions
 function showAlert(message, type = 'info') {
+    let container = document.getElementById('alertContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'alertContainer';
+        container.className = 'alert-container';
+        document.body.appendChild(container);
+    }
+
+    const icons = { success: '✅', error: '❌', info: 'ℹ️' };
     const alert = document.createElement('div');
-    alert.className = `alert-notification ${type}`;
-    alert.textContent = message;
-    document.body.appendChild(alert);
+    alert.className = `alert ${type}`;
+    alert.innerHTML = `<span>${icons[type] || 'ℹ️'}</span> ${message}`;
+    container.appendChild(alert);
 
     setTimeout(() => {
-        alert.style.animation = 'slideInRight 0.3s ease reverse';
+        alert.style.opacity = '0';
+        alert.style.transform = 'translateX(40px)';
+        alert.style.transition = 'opacity 0.3s, transform 0.3s';
         setTimeout(() => alert.remove(), 300);
     }, 3000);
 }
@@ -847,11 +893,11 @@ function checkLoginAlert() {
 }
 
 function showModal(id) {
-    document.getElementById(id).classList.add('show');
+    document.getElementById(id).classList.add('active');
 }
 
 function closeModal(id) {
-    document.getElementById(id).classList.remove('show');
+    document.getElementById(id).classList.remove('active');
 }
 
 function showLogin() {
@@ -876,12 +922,12 @@ function showSellModal() {
 function toggleProfileDropdown(event) {
     event.stopPropagation();
     const dropdown = document.getElementById('profileDropdown');
-    dropdown.classList.toggle('show');
+    dropdown.classList.toggle('open');
 }
 
 function closeProfileDropdown() {
     const dropdown = document.getElementById('profileDropdown');
-    dropdown.classList.remove('show');
+    dropdown.classList.remove('open');
 }
 
 // Change Password Handler
@@ -960,26 +1006,34 @@ function renderChatsList(chats) {
     const chatsList = document.getElementById('chatsList');
 
     if (chats.length === 0) {
-        chatsList.innerHTML = '<p style="text-align:center;opacity:0.7;">No chats yet</p>';
+        chatsList.innerHTML = `<div class="empty-state">
+            <div class="empty-icon">💬</div>
+            <h3>No chats yet</h3>
+            <p>Start a conversation from a listing</p>
+        </div>`;
         return;
     }
 
     chatsList.innerHTML = chats.map(chat => {
         const personName = chat.other_user_name || 'User';
-        const personAvatar = chat.other_user_avatar
-            ? `<img src="${chat.other_user_avatar}" alt="${personName}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;">`
-            : `<div class="chat-list-avatar-placeholder">${personName.charAt(0).toUpperCase()}</div>`;
+        const avatarContent = chat.other_user_avatar
+            ? `<img src="${chat.other_user_avatar}" alt="${personName}">`
+            : personName.charAt(0).toUpperCase();
+        const timeStr = chat.last_message_time
+            ? new Date(chat.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '';
 
         return `
-            <div class="chat-list-item" onclick="openChatFromList('${chat.listing_id}', '${chat.seller_id}')">
-                <div class="chat-list-avatar">${personAvatar}</div>
-                <div class="chat-list-info">
-                    <h4>${personName}</h4>
-                    <p class="chat-list-item-title">📦 ${chat.listing_title || 'Listing'}</p>
-                    <p class="chat-list-last-msg">${chat.last_message || 'No messages yet'}</p>
-                    <small>${chat.last_message_time ? new Date(chat.last_message_time).toLocaleString() : ''}</small>
+            <div class="chat-item" onclick="openChatFromList('${chat.listing_id}', '${chat.seller_id}')">
+                <div class="chat-item-avatar">${avatarContent}</div>
+                <div class="chat-item-info">
+                    <div class="chat-item-name">${personName}</div>
+                    <div class="chat-item-subtitle">📦 ${chat.listing_title || 'Listing'} · ${chat.last_message || 'No messages yet'}</div>
                 </div>
-                ${chat.unread_count > 0 ? `<span class="chat-unread-badge">${chat.unread_count}</span>` : ''}
+                <div class="chat-item-meta">
+                    <span class="chat-item-time">${timeStr}</span>
+                    ${chat.unread_count > 0 ? `<span class="chat-unread-badge">${chat.unread_count}</span>` : ''}
+                </div>
             </div>
         `;
     }).join('');
@@ -993,13 +1047,13 @@ function openChatFromList(listingId, sellerId) {
 // Close dropdown when clicking outside
 window.onclick = (e) => {
     if (e.target.classList.contains('modal')) {
-        e.target.classList.remove('show');
+        e.target.classList.remove('active');
     }
 
     // Close profile dropdown when clicking outside
     const dropdown = document.getElementById('profileDropdown');
-    if (dropdown && !e.target.closest('.profile-btn') && !e.target.closest('.profile-dropdown')) {
-        dropdown.classList.remove('show');
+    if (dropdown && !e.target.closest('.nav-profile-btn') && !e.target.closest('.profile-dropdown')) {
+        dropdown.classList.remove('open');
     }
 };
 
@@ -1160,26 +1214,30 @@ async function loadMyItems() {
 function renderMyItems(items) {
     const grid = document.getElementById('myItemsGrid');
 
-    grid.innerHTML = items.map(item => `
-        <div class="card">
-            <img src="${item.images[0]}" class="card-image" alt="${item.title}">
+    grid.innerHTML = items.map(item => {
+        const img = item.images && item.images[0]
+            ? `<img src="${item.images[0]}" alt="${item.title}">`
+            : `<div class="card-no-image">📦</div>`;
+        return `
+        <div class="listing-card">
+            <div class="card-image-container">
+                ${img}
+                <span class="card-condition">${item.condition || ''}</span>
+            </div>
             <div class="card-content">
+                <span class="card-category">${item.status || 'active'}</span>
                 <h3 class="card-title">${item.title}</h3>
-                <p class="card-price">₹${item.price}</p>
-                <div class="card-meta">
-                    <span>${item.condition}</span>
-                    <span>${item.status}</span>
+                <div class="card-footer">
+                    <span class="card-price">₹${item.price}</span>
+                    <span class="card-location">👁️ ${item.views || 0}</span>
                 </div>
-                <div class="card-meta">
-                    <span>👁️ ${item.views || 0} views</span>
-                </div>
-                <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
-                    <button class="btn btn-sm" onclick="editListing('${item.listing_id}')">Edit</button>
-                    <button class="btn btn-sm btn-secondary" onclick="deleteListing('${item.listing_id}')">Delete</button>
+                <div class="card-actions">
+                    <button class="card-btn" onclick="event.stopPropagation();editListing('${item.listing_id}')">✏️ Edit</button>
+                    <button class="card-btn danger" onclick="event.stopPropagation();deleteListing('${item.listing_id}')">🗑️ Delete</button>
                 </div>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
 async function deleteListing(id) {
