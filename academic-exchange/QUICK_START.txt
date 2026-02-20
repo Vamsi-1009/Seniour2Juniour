@@ -1,157 +1,380 @@
-╔═══════════════════════════════════════════════════════════╗
-║         🎓 ACADEMIC EXCHANGE - QUICK START GUIDE         ║
-╚═══════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════════╗
+║           🎓 ACADEMIC EXCHANGE — PROJECT REFERENCE GUIDE            ║
+║              Last Updated: 2026-02-20  (Claude Session Log)         ║
+╚══════════════════════════════════════════════════════════════════════╝
 
-✅ YOUR PROJECT IS READY TO RUN!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WHAT IS THIS PROJECT?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📁 Location: academic-exchange/
+  A student-to-student marketplace web app (like OLX for college students).
+  Students can sell/buy academic resources: books, notes, gadgets, etc.
 
-┌─────────────────────────────────────────────────────────┐
-│  STEP 1: Verify Database (Already Done! ✅)             │
-└─────────────────────────────────────────────────────────┘
+  Tech Stack:
+    Backend  → Node.js + Express.js (REST API + Socket.io)
+    Database → PostgreSQL on Supabase (cloud)
+    Storage  → Supabase Storage (for listing images + user avatars)
+    Frontend → Vanilla JS SPA (Single Page App), no framework
+    Auth     → JWT (JSON Web Tokens) + bcrypt password hashing
+    Maps     → Leaflet.js (OpenStreetMap) for location filter
+    Payment  → Razorpay integration (key needs replacing)
 
-The database has been created with all tables:
-  ✓ users
-  ✓ listings
-  ✓ wishlist  
-  ✓ messages
-  ✓ recently_viewed
-  ✓ reports
+  Deployed at:
+    Frontend → Vercel  → https://academicexchange.24102002.xyz
+    Backend  → Render  → (Render auto-deploys from GitHub main branch)
+    GitHub   → https://github.com/Vamsi-1009/Seniour2Juniour
 
-┌─────────────────────────────────────────────────────────┐
-│  STEP 2: Server is Running! ✅                          │
-└─────────────────────────────────────────────────────────┘
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PROJECT FOLDER STRUCTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-The server is already started and running on:
-  🌐 http://localhost:5000
+  academic-exchange/
+  ├── backend/
+  │   ├── server.js               ← Entry point, Express + Socket.io setup
+  │   ├── .env                    ← DB URL, JWT secret, Supabase keys
+  │   ├── config/
+  │   │   └── db.js               ← PostgreSQL pool (connects to Supabase)
+  │   ├── middleware/
+  │   │   └── auth.js             ← JWT verify middleware
+  │   └── routes/
+  │       ├── auth.js             ← POST /api/auth/login, /api/auth/register
+  │       ├── listings.js         ← CRUD for listings, image upload to Supabase
+  │       ├── messages.js         ← Chat messages, GET /my-chats
+  │       ├── user.js             ← Profile GET/PUT, avatar upload, public user info
+  │       └── transactions.js     ← Payment record (Razorpay)
+  └── frontend/
+      ├── index.html              ← Single HTML page, all modals defined here
+      ├── css/
+      │   └── styles.css          ← CLAYMORPHISM theme (Nunito font, pastel+purple)
+      └── js/
+          ├── config.js           ← Sets window.ENV_API_URL for Vercel deploy
+          └── main.js             ← ALL frontend logic (1300+ lines, single file)
 
-If you need to restart it:
-  cd backend
-  npm start
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  DATABASE TABLES (PostgreSQL on Supabase)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-┌─────────────────────────────────────────────────────────┐
-│  STEP 3: Open Your Browser                              │
-└─────────────────────────────────────────────────────────┘
+  users         → user_id, name, email, password_hash, role, avatar,
+                  location, bio, created_at
+  listings      → listing_id, user_id, title, description, price,
+                  category, condition, images[], location, latitude,
+                  longitude, status, views, created_at
+  messages      → message_id, listing_id, sender_id, receiver_id,
+                  content, created_at  [JOIN users for sender_name]
+  wishlist      → user_id, listing_id
+  recently_viewed → user_id, listing_id, viewed_at
+  reports       → report_id, reporter_id, listing_id, reason
 
-Visit: http://localhost:5000
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  KEY API ENDPOINTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-You'll see:
-  ✨ Beautiful Glassmorphism UI
-  🌈 Animated gradient background
-  💫 Floating orbs
-  🎨 Modern card designs
+  Auth:
+    POST   /api/auth/register       → { name, email, password }
+    POST   /api/auth/login          → { email, password } → JWT token
 
-┌─────────────────────────────────────────────────────────┐
-│  STEP 4: Create an Account                              │
-└─────────────────────────────────────────────────────────┘
+  Listings:
+    GET    /api/listings            → All listings (with filters)
+    GET    /api/listings/:id        → Single listing detail
+    POST   /api/listings            → Create listing (multipart/form-data)
+    PUT    /api/listings/:id        → Edit listing
+    DELETE /api/listings/:id        → Delete listing
+    GET    /api/listings/my-items   → Current user's listings
 
-1. Click "Sign Up" button
-2. Enter:
-   - Name: Your Name
-   - Email: your@email.com
-   - Password: yourpassword
-3. Click "Sign Up"
-4. You'll be logged in automatically!
+  User:
+    GET    /api/user/profile        → Own profile + listings (auth required)
+    PUT    /api/user/profile        → Update name, email, location, bio
+    POST   /api/user/avatar         → Upload avatar image (multipart)
+    PUT    /api/user/change-password → { currentPassword, newPassword }
+    GET    /api/user/public/:userId → Public name + avatar (for chat header)
 
-┌─────────────────────────────────────────────────────────┐
-│  STEP 5: Post Your First Listing                        │
-└─────────────────────────────────────────────────────────┘
+  Messages:
+    GET    /api/messages/:listingId → Chat history for a listing
+    GET    /api/messages/my-chats   → All chats for current user
+                                      (returns other_user_name, other_user_avatar,
+                                       last_message, listing_title)
 
-1. Click "+ Sell" button
-2. Fill in details:
-   - Title
-   - Description  
-   - Price
-   - Category
-   - Condition
-   - Upload 1-5 images
-3. Click "Post Listing"
-4. Done! Your item is live!
+  Socket.io events:
+    Emit:  join_chat      { listingId, userId }
+    Emit:  send_message   { listingId, senderId, receiverId, message }
+    Emit:  typing         { room, userId }
+    Emit:  stopped_typing { room }
+    On:    new_message    → displayMessage(message)
+    On:    user_typing    → showTypingIndicator()
+    On:    user_stopped_typing → hideTypingIndicator()
 
-┌─────────────────────────────────────────────────────────┐
-│  OPTIONAL: Create Admin Account                         │
-└─────────────────────────────────────────────────────────┘
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  FRONTEND — KEY JS FUNCTIONS (main.js)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-cd backend
-node setupAdmin.js
+  Auth / Nav:
+    checkAuth()           → Reads JWT from localStorage, calls updateNav()
+    updateNav()           → Injects nav buttons: Sell, Chats, profile avatar btn
+    loadNavAvatar()       → Fetches /user/profile and shows avatar in nav
+    handleLogin(e)        → POST /auth/login → store token → reload
+    handleRegister(e)     → POST /auth/register → store token → reload
+    logout()              → Clears token, reloads
+    toggleProfileDropdown(event) → Toggles .open on #profileDropdown
+    closeProfileDropdown() → Removes .open
 
-Enter admin credentials when prompted.
+  Modal control:
+    showModal(id)         → Adds .active class to modal div
+    closeModal(id)        → Removes .active class
+    ⚠️  IMPORTANT: Always use .active (NOT .show) for modals
 
-┌─────────────────────────────────────────────────────────┐
-│  FEATURES YOU CAN TEST                                   │
-└─────────────────────────────────────────────────────────┘
+  Alerts / Toasts:
+    showAlert(msg, type)  → Creates .alert div inside #alertContainer
+                            type = 'success' | 'error' | 'info'
+    ⚠️  IMPORTANT: class is .alert (NOT .alert-notification)
 
-✓ Browse listings with beautiful cards
-✓ Search in real-time
-✓ Filter by category
-✓ Create new listings
-✓ Upload multiple images
-✓ View profile
-✓ Edit your listings
-✓ Delete listings
-✓ Real-time chat (Socket.io)
-✓ Wishlist items
-✓ Admin dashboard (if admin)
-✓ Responsive mobile design
+  Listings:
+    loadListings(filters) → GET /listings, calls renderListings()
+    renderListings(arr)   → Renders .listing-card divs in #listingsGrid
+    renderMyItems(arr)    → Renders .listing-card in #myItemsGrid
+    viewListing(id)       → Creates dynamic modal with id="listingDetailModal"
+    loadMyItems()         → GET /listings/my-items
+    deleteListing(id)     → DELETE /listings/:id
+    handleSell(e)         → POST /listings (FormData with images)
 
-┌─────────────────────────────────────────────────────────┐
-│  TROUBLESHOOTING                                         │
-└─────────────────────────────────────────────────────────┘
+  Sell form (multi-step):
+    nextStep(n) / prevStep(n) → show/hide .form-step divs
+    selectCategory(cat, el)   → sets hidden input + .selected on category card
+    validateStep(n)           → validates before next step
+    initSellMap()             → Leaflet map in step 3
 
-❌ Port 5000 in use?
-   - Stop other servers first
-   - Or change PORT in .env file
+  Profile:
+    showProfile()             → GET /user/profile → renderProfileView()
+    renderProfileView(u, l)   → Shows avatar (.profile-avatar), details, listings
+    renderProfileEdit(u)      → Shows edit form with inputs
+    handleAvatarChange(input) → Preview file, store in pendingAvatarFile
+    handleUpdateProfile(e)    → PUT /user/profile + POST /user/avatar
 
-❌ Database error?
-   - Check PostgreSQL is running
-   - Verify password in .env (currently: 2002)
-   - Run: node setupDatabase.js
+  Chat:
+    openChat(listingId, sellerId) → joins socket room, shows chatModal,
+                                    fetches seller info for chat header
+    loadChatHistory(id)     → GET /messages/:id → displayMessage() each
+    sendMessage()           → socket.emit('send_message', ...)
+    displayMessage(msg)     → Creates .chat-message-wrapper.sent/.received
+                              Shows "You" or sender_name above bubble
+    openChatsPanel()        → showModal('chatsPanelModal') + loadAllChats()
+    loadAllChats()          → GET /messages/my-chats
+    renderChatsList(chats)  → Renders .chat-item divs with other_user_name/avatar
+    openChatFromList(lid,sid) → closeModal panel, openChat()
 
-❌ Images not uploading?
-   - Check uploads/ folder exists
-   - Verify file size < 5MB
-   - Use JPG/PNG/WEBP only
+  Filters:
+    filterCategory(cat, el)   → loadListings({ category })
+    toggleAdvancedFilters()   → show/hide #advancedFilters panel
+    applyAdvancedFilters()    → loadListings with all filter values
+    setupSearch()             → live filter on searchInput keyup
 
-┌─────────────────────────────────────────────────────────┐
-│  PROJECT STRUCTURE                                       │
-└─────────────────────────────────────────────────────────┘
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  CSS DESIGN SYSTEM — CLAYMORPHISM THEME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-academic-exchange/
-├── backend/
-│   ├── config/db.js         ← Database connection
-│   ├── middleware/auth.js   ← JWT authentication
-│   ├── routes/              ← All API endpoints
-│   ├── uploads/             ← Images stored here
-│   ├── server.js            ← Main server
-│   └── .env                 ← Configuration
-└── frontend/
-    ├── css/styles.css       ← Glassmorphism UI
-    ├── js/main.js           ← App logic
-    └── index.html           ← Single page
+  Font        → Nunito (Google Fonts), weights 400-900
+  Background  → #f0f4ff with dot-grid pattern (radial-gradient)
+  Primary     → --p1: #7c3aed (purple), --p2: #a78bfa (light purple)
+  Text        → --text: #2d1b69 | --text-2: #6b5fa6 | --text-3: #9d94c4
+  Shadows     → Flat offset shadows (NO blur): 4px 4px 0 #color
+  Borders     → 2.5px solid rgba(124,58,237,0.18) rounded corners
 
-┌─────────────────────────────────────────────────────────┐
-│  KEY FILES                                               │
-└─────────────────────────────────────────────────────────┘
+  CSS Variables:
+    --r-sm: 12px  --r: 20px  --r-lg: 28px  --r-xl: 36px  --r-full: 999px
+    --shadow-clay: 4px 4px 0 rgba(124,58,237,0.25)
+    --shadow-clay-lg: 6px 6px 0 ...
+    --shadow-clay-xl: 8px 8px 0 ...
+    --inset: inset 0 2px 0 rgba(255,255,255,0.7)  ← top highlight
 
-📖 README.md              - Full documentation
-📋 FEATURES_CHECKLIST.md  - All implemented features
-⚙️  .env                   - Configuration
-🗄️  database.sql           - Database schema
+  Key CSS Classes:
+    .listing-card          → Main product card (hover: lift + tilt)
+    .card-image-container  → Image area (200px height)
+    .card-no-image         → Emoji placeholder when no image
+    .card-condition        → Absolute badge top-right of card
+    .card-category         → Purple pill tag
+    .card-footer           → Price + location row
+    .card-actions          → Edit/Delete button row (My Items)
+    .card-btn              → Small pill button inside card
+    .card-btn.danger       → Red variant
 
-┌─────────────────────────────────────────────────────────┐
-│  STATS                                                   │
-└─────────────────────────────────────────────────────────┘
+    .btn                   → Base button (pill, clay shadow)
+    .btn-primary           → Purple gradient, white text
+    .btn-secondary         → Light grey
+    .btn-danger            → Red outline → solid red on hover
+    .btn-block             → width: 100%
+    .btn-sm                → Smaller padding
 
-✨ All features from README: 100% Complete
-🎨 UI Quality: Premium Glassmorphism
-🔒 Security: JWT + Bcrypt
-💬 Real-time: Socket.io Chat
-📦 Dependencies: Minimal & Clean
-📱 Responsive: Mobile-First
-🚀 Production: Ready to Deploy
+    .modal                 → Fixed overlay (display:none default)
+    .modal.active          → display:flex  ← USE .active NOT .show
+    .modal-content         → White box, border-radius var(--r-xl)
+    .modal-header          → Header with close btn
+    .modal-header-sub      → Subtitle text below h2
 
-┌─────────────────────────────────────────────────────────┐
-│  ENJOY YOUR MARKETPLACE! 🎉                             │
-└─────────────────────────────────────────────────────────┘
+    #loginModal .modal-header    → Pastel gradient banner header
+    #registerModal .modal-header → Same
 
-Questions? Check README.md for detailed docs.
+    .form-input / .form-textarea / .form-select → Clay inputs
+    .input-wrap            → Wrapper for icon+input combo
+    .input-wrap .input-icon → Emoji/icon inside input
+
+    .alert-container       → Fixed bottom-right toast container
+    .alert                 → Toast card (border-left colored)
+    .alert.success         → Green left border
+    .alert.error           → Red left border
+
+    .nav-profile-btn       → Round avatar button in navbar
+    .nav-action-btn        → Sell / Chats pill buttons in navbar
+    .profile-dropdown      → Dropdown menu (.open = visible)
+
+    .chat-modal-content    → Flex column, fixed height chat window
+    .chat-header-bar       → Purple gradient header
+    .chat-messages         → Scrollable message area (#f5f3ff bg)
+    .chat-message-wrapper  → .sent or .received (aligns left/right)
+    .chat-message          → Actual bubble (.sent=purple, .received=white)
+    .message-sender-name   → Small name above bubble
+    .chat-input-area       → Bottom input row
+    .chat-item             → Row in chats list panel
+    .chat-item-avatar      → Round avatar in chat list
+
+    .profile-avatar-section → Gradient background panel (lavender-pink)
+    .profile-avatar         → Round avatar circle
+    .profile-details        → Detail rows section
+    .profile-detail-item    → Icon + label + value row
+    .profile-listings       → Listings list in profile
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  FULL HISTORY OF CHANGES MADE (Chronological)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ── Phase 1: Initial Setup ──────────────────────────────────────────
+  ✅ Full backend built: Express, JWT auth, PostgreSQL (Supabase), Socket.io
+  ✅ Listings CRUD with Supabase Storage image upload
+  ✅ Real-time chat with Socket.io rooms (per listing)
+  ✅ Frontend: Vanilla JS SPA, single index.html
+  ✅ Deployed: Backend → Render, Frontend → Vercel
+  ✅ Custom domain: academicexchange.24102002.xyz
+
+  ── Phase 2: Feature Additions ──────────────────────────────────────
+  ✅ Navbar: "Sell Item" and "Chats" buttons moved outside dropdown
+  ✅ Chat header: shows seller name + avatar (fetched via /user/public/:userId)
+  ✅ Profile modal: full editable profile (name, email, location, bio, avatar)
+  ✅ Backend: PUT /user/profile now accepts email field
+  ✅ Backend: GET /user/public/:userId added (for chat header)
+
+  ── Phase 3: Chat Bug Fixes ─────────────────────────────────────────
+  ✅ Fix: displayMessage() now shows "You" (sent) or sender_name (received)
+           above each chat bubble using .message-sender-name span
+  ✅ Fix: My Chats list was showing listing image instead of person avatar
+           → renderChatsList() now uses other_user_name + other_user_avatar
+  ✅ Fix: My Chats was showing own name ("Vamsi") instead of other person
+           → backend GET /my-chats uses Promise.all subquery to always find
+             the non-current-user participant reliably
+
+  ── Phase 4: UI Overhaul (3 iterations) ────────────────────────────
+  ✅ Iteration 1: Full dark space theme (stars canvas, orbs, 3D cards, badge)
+     → User rejected: "too much over, remove these"
+  ✅ Iteration 2: Simplified dark theme (stars/orbs/badge removed)
+     → User rejected: "change the UI make the theme light"
+  ✅ Iteration 3: Clean light theme (Inter font, indigo #4f46e5, white surfaces)
+     → Committed and pushed
+  ✅ Iteration 4 (CURRENT): CLAYMORPHISM THEME
+     → Nunito font, pastel purple palette, chunky flat shadows,
+        heavy rounded corners, dot-grid background, pastel blob glows in hero
+
+  ── Phase 5: JS / CSS Class Mismatch Fix ───────────────────────────
+  ✅ CRITICAL FIX: After claymorphism CSS rewrite, old JS used wrong class
+     names everywhere. All fixed:
+     • showModal/closeModal:  .show → .active
+     • Profile dropdown:      .show → .open  |  .profile-btn → .nav-profile-btn
+     • updateNav():           .profile-btn/.profile-icon → .nav-profile-btn
+     • showAlert():           .alert-notification → .alert + #alertContainer
+     • renderListings():      .card/.card-image → .listing-card/.card-image-container
+     • renderMyItems():       same card class fixes + .card-actions/.card-btn
+     • renderChatsList():     .chat-list-item → .chat-item  etc.
+     • viewListing():         rebuilt with .modal.active + .listing-detail-* classes
+     • initiatePaymentModal():.show → .active
+     • renderProfileView():   .profile-avatar-img → .profile-avatar  etc.
+     • renderProfileEdit():   new avatar-upload-btn, form-input classes
+     • Added #alertContainer to index.html
+
+  ── Phase 6: Small UI Polish ────────────────────────────────────────
+  ✅ Buttons:
+     - Primary: linear-gradient instead of flat colour
+     - :active press-down effect (translateY(1px) + smaller shadow)
+     - Hover lifts higher (translateY(-3px))
+     - New .btn-danger class (red)
+  ✅ Login Modal: pastel gradient header banner, subtitle, icon inputs
+  ✅ Register Modal: same treatment as login
+  ✅ Form inputs: hover border, brighter focus shadow, .input-wrap icon helper
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  KNOWN ISSUES / WATCH OUT FOR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ⚠️  Modal class = .active (NOT .show) — always use showModal()/closeModal()
+  ⚠️  Alert class = .alert inside #alertContainer (NOT .alert-notification)
+  ⚠️  Profile dropdown = .open (NOT .show)
+  ⚠️  Card class = .listing-card (NOT .card)
+  ⚠️  Razorpay key is placeholder ('YOUR_RAZORPAY_KEY') — needs real key
+  ⚠️  editListing() function is called but NOT fully implemented yet
+  ⚠️  Socket.io "send_message" event: receiverId is currentSellerId which
+      may be null if the current user IS the seller opening their own chat
+  ⚠️  Backend GET /my-chats uses a Promise.all post-processing subquery
+      (not pure SQL) — works but is slower with many chats
+  ⚠️  Supabase Storage bucket name for avatars must match what's in user.js
+  ⚠️  Render backend free tier sleeps after inactivity — first request is slow
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  HOW TO RUN LOCALLY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Backend:
+    cd academic-exchange/backend
+    npm install
+    # Make sure .env has: DATABASE_URL, JWT_SECRET, SUPABASE_URL, SUPABASE_KEY
+    npm start              ← runs on http://localhost:5000
+
+  Frontend:
+    Open academic-exchange/frontend/index.html in browser
+    OR serve with Live Server VS Code extension
+
+  To check if backend is running:
+    Visit http://localhost:5000/api/listings
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  HOW TO DEPLOY CHANGES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Frontend (Vercel auto-deploys):
+    git add frontend/
+    git commit -m "your message"
+    git push origin main
+    → Vercel picks up the push and deploys in ~1-2 minutes
+
+  Backend (Render auto-deploys):
+    git add backend/
+    git commit -m "your message"
+    git push origin main
+    → Render picks up the push and re-deploys automatically
+
+  Working directory for git:
+    E:\AI Course\Project\Seniour2Juniour\academic-exchange\
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  CURRENT STATE (as of last session)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✅ Claymorphism UI fully applied and working
+  ✅ All JS functions aligned to new CSS class names
+  ✅ Login/Register modals polished (gradient header + icon inputs)
+  ✅ Buttons have gradient + press effect + hover lift
+  ✅ Chat: sender name shown above each bubble
+  ✅ My Chats: shows correct other person's name and avatar
+  ✅ Profile: view + edit both working
+  ✅ Sell: 3-step form with image upload + map
+  ✅ Real-time chat via Socket.io
+  ✅ Deployed live on Vercel + Render
+
+  ❌ editListing() — UI shell exists but edit form not yet implemented
+  ❌ Razorpay — placeholder key, payment flow not live yet
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
